@@ -69,18 +69,18 @@ class BinanceClient:
                 
                 # Get ticker data
                 ticker_data = ticker_dict.get(symbol, {})
-                volume = ticker_data.get('volume', 0)
+                quote_volume = ticker_data.get('volume', 0)  # Volume in USDT (quoteVolume)
                 
                 # Check minimum volume (if min_volume > 0)
-                if min_volume > 0 and volume < min_volume:
-                    logger.debug(f"Excluding {symbol} - volume {volume:,.0f} < {min_volume:,.0f}")
+                if min_volume > 0 and quote_volume < min_volume:
+                    logger.debug(f"Excluding {symbol} - volume {quote_volume:,.0f} < {min_volume:,.0f}")
                     continue
                 
                 valid_symbols.append({
                     'symbol': symbol,
                     'base_asset': symbol_info['baseAsset'],
                     'quote_asset': symbol_info['quoteAsset'],
-                    'volume': volume,  # Accurate 24h volume in USDT
+                    'volume': quote_volume,  # Accurate 24h volume in USDT
                     'price_change_percent': ticker_data.get('price_change_percent', 0)
                 })
             
