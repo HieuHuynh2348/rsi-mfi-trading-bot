@@ -201,7 +201,8 @@ class TradingBot:
                 chart_buf = self.chart_gen.create_multi_timeframe_chart(
                     signal['symbol'],
                     signal['timeframe_data'],
-                    signal['price']
+                    signal['price'],
+                    signal.get('klines_dict')  # ✅ Pass klines_dict
                 )
                 
                 if chart_buf:
