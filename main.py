@@ -8,6 +8,7 @@ import time
 import logging
 from datetime import datetime
 import sys
+import threading
 
 # Import modules
 import config
@@ -15,6 +16,7 @@ from binance_client import BinanceClient
 from telegram_bot import TelegramBot
 from chart_generator import ChartGenerator
 from indicators import analyze_multi_timeframe
+from telegram_commands import TelegramCommandHandler
 
 # Setup logging
 logging.basicConfig(
@@ -43,6 +45,13 @@ class TradingBot:
             height=config.CHART_HEIGHT
         )
         
+        # Initialize command handler
+        self.command_handler = TelegramCommandHandler(
+            self.telegram,
+            self.binance,
+            self.chart_gen
+        )
+        
         # Test connections
         if not self.test_connections():
             logger.error("Failed to initialize connections. Exiting.")
@@ -59,7 +68,20 @@ class TradingBot:
         
         if binance_ok and telegram_ok:
             logger.info("All connections successful")
-            self.telegram.send_message("🤖 <b>Bot Started Successfully!</b>\n\nAll systems operational.")
+            welcome_msg = """
+🤖 <b>Trading Bot Started!</b>
+
+✅ All systems operational
+📊 Interactive commands enabled
+
+<b>Quick Start:</b>
+• Type /<b>BTC</b> for Bitcoin analysis
+• Type /<b>ETH</b> for Ethereum analysis
+• Type /<b>help</b> for all commands
+
+<i>💡 Auto-scan runs every {}</i> seconds
+            """.format(config.SCAN_INTERVAL)
+            self.telegram.send_message(welcome_msg)
             return True
         else:
             logger.error("Connection test failed")
@@ -190,11 +212,18 @@ class TradingBot:
     def run(self):
         """Main bot loop"""
         logger.info("Bot is now running...")
+        
+        # Start command handler in separate thread
+        command_thread = threading.Thread(target=self.command_handler.start_polling, daemon=True)
+        command_thread.start()
+        logger.info("Command handler thread started")
+        
         self.telegram.send_message(
             f"🤖 <b>Bot is now running!</b>\n\n"
-            f"Scan Interval: {config.SCAN_INTERVAL}s\n"
-            f"Monitoring: {config.QUOTE_ASSET} pairs\n"
-            f"Min Consensus: {config.MIN_CONSENSUS_STRENGTH}/4"
+            f"⚙️ Scan Interval: {config.SCAN_INTERVAL}s\n"
+            f"📊 Monitoring: {config.QUOTE_ASSET} pairs\n"
+            f"🎯 Min Consensus: {config.MIN_CONSENSUS_STRENGTH}/4\n\n"
+            f"💬 <b>Commands ready!</b> Type /help for info"
         )
         
         while True:
