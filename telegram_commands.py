@@ -332,6 +332,17 @@ Example: /BTC or /ETH or /LINK
                     change = data.get('price_change_percent', 0)
                     emoji = "📈" if change >= 0 else "📉"
                     
+                    # Format volume intelligently
+                    volume = data.get('volume', 0)
+                    if volume >= 1e9:
+                        vol_str = f"${volume/1e9:.2f}B"
+                    elif volume >= 1e6:
+                        vol_str = f"${volume/1e6:.2f}M"
+                    elif volume >= 1e3:
+                        vol_str = f"${volume/1e3:.2f}K"
+                    else:
+                        vol_str = f"${volume:.2f}"
+                    
                     msg = f"""
 <b>📊 {symbol} - 24h Data</b>
 
@@ -341,7 +352,7 @@ Example: /BTC or /ETH or /LINK
 ⬆️ <b>High:</b> ${data.get('high', 0):,.4f}
 ⬇️ <b>Low:</b> ${data.get('low', 0):,.4f}
 
-💵 <b>Volume:</b> ${data.get('volume', 0)/1e6:.2f}M
+💵 <b>Volume:</b> {vol_str}
                     """
                     self.bot.send_message(msg)
                 else:
@@ -375,11 +386,22 @@ Example: /BTC or /ETH or /LINK
                 msg = "<b>🏆 Top 10 Volume (24h)</b>\n\n"
                 for i, s in enumerate(top_10, 1):
                     symbol = s['symbol']
-                    volume = s.get('volume', 0) / 1e6  # Convert to millions
+                    volume = s.get('volume', 0)
+                    
+                    # Format volume intelligently
+                    if volume >= 1e9:
+                        vol_str = f"${volume/1e9:.2f}B"
+                    elif volume >= 1e6:
+                        vol_str = f"${volume/1e6:.1f}M"
+                    elif volume >= 1e3:
+                        vol_str = f"${volume/1e3:.1f}K"
+                    else:
+                        vol_str = f"${volume:.0f}"
+                    
                     change = s.get('price_change_percent', 0)
                     emoji = "📈" if change >= 0 else "📉"
                     msg += f"{i}. <b>{symbol}</b>\n"
-                    msg += f"   ${volume:.1f}M | {emoji} {change:+.2f}%\n\n"
+                    msg += f"   {vol_str} | {emoji} {change:+.2f}%\n\n"
                 
                 self.bot.send_message(msg)
                 

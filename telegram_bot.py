@@ -168,8 +168,18 @@ class TelegramBot:
             high_24h = market_data.get('high', 0)
             low_24h = market_data.get('low', 0)
             
+            # Format volume intelligently
+            if volume_24h >= 1e9:  # Billions
+                vol_str = f"${volume_24h/1e9:.2f}B"
+            elif volume_24h >= 1e6:  # Millions
+                vol_str = f"${volume_24h/1e6:.2f}M"
+            elif volume_24h >= 1e3:  # Thousands
+                vol_str = f"${volume_24h/1e3:.2f}K"
+            else:
+                vol_str = f"${volume_24h:.2f}"
+            
             change_emoji = "📈" if change_24h >= 0 else "📉"
-            message += f"🕒 <b>24h:</b> {change_emoji} {change_24h:+.2f}% | Vol: ${volume_24h/1e9:.2f}B\n"
+            message += f"🕒 <b>24h:</b> {change_emoji} {change_24h:+.2f}% | Vol: {vol_str}\n"
             
             if price and high_24h > 0:
                 high_diff = ((high_24h - price) / price) * 100

@@ -41,7 +41,8 @@ EXCLUDED_KEYWORDS = ['BEAR', 'BULL', 'UP', 'DOWN']
 QUOTE_ASSET = 'USDT'
 
 # Minimum 24h volume (in USDT) to consider a coin
-MIN_VOLUME_USDT = 1000000  # 1 million USDT
+# Set to 0 to analyze ALL coins (no volume filter)
+MIN_VOLUME_USDT = 0  # Analyze all coins regardless of volume
 
 # ============================================================================
 # BOT SETTINGS

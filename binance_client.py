@@ -25,10 +25,10 @@ class BinanceClient:
         Args:
             quote_asset: Quote currency (default USDT)
             excluded_keywords: List of keywords to exclude (e.g., ['BEAR', 'BULL'])
-            min_volume: Minimum 24h volume in quote asset
+            min_volume: Minimum 24h volume in quote asset (0 = no filter)
         
         Returns:
-            List of symbol dictionaries
+            List of symbol dictionaries with accurate volume data
         """
         if excluded_keywords is None:
             excluded_keywords = []
@@ -37,9 +37,17 @@ class BinanceClient:
             # Get exchange info
             exchange_info = self.client.get_exchange_info()
             
-            # Get 24h ticker for volume data
+            # Get 24h ticker for accurate volume data
             tickers = self.client.get_ticker()
-            ticker_dict = {t['symbol']: float(t['quoteVolume']) for t in tickers}
+            # Create dict: symbol -> {volume, price_change, etc}
+            ticker_dict = {}
+            for t in tickers:
+                ticker_dict[t['symbol']] = {
+                    'volume': float(t.get('quoteVolume', 0)),  # Volume in quote asset (USDT)
+                    'base_volume': float(t.get('volume', 0)),  # Volume in base asset
+                    'price_change_percent': float(t.get('priceChangePercent', 0)),
+                    'last_price': float(t.get('lastPrice', 0))
+                }
             
             valid_symbols = []
             
@@ -59,20 +67,24 @@ class BinanceClient:
                     logger.debug(f"Excluding {symbol} - contains excluded keyword")
                     continue
                 
-                # Check minimum volume
-                volume = ticker_dict.get(symbol, 0)
-                if volume < min_volume:
-                    logger.debug(f"Excluding {symbol} - volume {volume} < {min_volume}")
+                # Get ticker data
+                ticker_data = ticker_dict.get(symbol, {})
+                volume = ticker_data.get('volume', 0)
+                
+                # Check minimum volume (if min_volume > 0)
+                if min_volume > 0 and volume < min_volume:
+                    logger.debug(f"Excluding {symbol} - volume {volume:,.0f} < {min_volume:,.0f}")
                     continue
                 
                 valid_symbols.append({
                     'symbol': symbol,
                     'base_asset': symbol_info['baseAsset'],
                     'quote_asset': symbol_info['quoteAsset'],
-                    'volume_24h': volume
+                    'volume': volume,  # Accurate 24h volume in USDT
+                    'price_change_percent': ticker_data.get('price_change_percent', 0)
                 })
             
-            logger.info(f"Found {len(valid_symbols)} valid symbols")
+            logger.info(f"Found {len(valid_symbols)} valid symbols (volume filter: {min_volume:,.0f})")
             return valid_symbols
             
         except BinanceAPIException as e:
@@ -158,19 +170,27 @@ class BinanceClient:
     
     def get_24h_data(self, symbol):
         """
-        Get 24h market data for a symbol
+        Get 24h market data for a symbol with accurate volume
         
         Returns:
-            Dictionary with high, low, volume, price_change_percent
+            Dictionary with high, low, volume, price_change_percent, last_price
         """
         try:
             ticker = self.client.get_ticker(symbol=symbol)
+            
+            # Get accurate volume data
+            quote_volume = float(ticker.get('quoteVolume', 0))  # Volume in USDT
+            base_volume = float(ticker.get('volume', 0))        # Volume in base asset
+            
             return {
                 'high': float(ticker['highPrice']),
                 'low': float(ticker['lowPrice']),
-                'volume': float(ticker['quoteVolume']),
+                'volume': quote_volume,  # Volume in quote asset (USDT) - ACCURATE
+                'base_volume': base_volume,  # Volume in base asset
                 'price_change_percent': float(ticker['priceChangePercent']),
-                'price_change': float(ticker['priceChange'])
+                'price_change': float(ticker['priceChange']),
+                'last_price': float(ticker.get('lastPrice', ticker.get('price', 0))),
+                'trades': int(ticker.get('count', 0))  # Number of trades
             }
         except Exception as e:
             logger.error(f"Error getting 24h data for {symbol}: {e}")
