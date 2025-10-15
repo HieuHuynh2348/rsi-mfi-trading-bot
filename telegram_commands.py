@@ -168,7 +168,7 @@ Example: /BTC or /ETH or /LINK
                 self.bot.send_message(f"❌ Error: {str(e)}")
         
         @self.telegram_bot.message_handler(func=lambda m: m.text and m.text.startswith('/') and 
-                                          len(m.text) > 1 and m.text[1:].replace('USDT', '').isalpha())
+                                          len(m.text) > 1 and m.text[1:].replace('USDT', '').isalnum())
         def handle_symbol_analysis(message):
             """Handle symbol analysis commands like /BTC, /ETH, /LINK"""
             if not check_authorized(message):
