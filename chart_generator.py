@@ -275,8 +275,8 @@ class ChartGenerator:
             BytesIO object containing PNG image
         """
         try:
-            fig = plt.figure(figsize=(self.width, 7), dpi=self.dpi)
-            gs = GridSpec(2, 2, height_ratios=[2, 1], hspace=0.3, wspace=0.3)
+            fig = plt.figure(figsize=(self.width, 6), dpi=self.dpi)
+            gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.3)
             
             timeframes = sorted(list(timeframe_data.keys()), 
                               key=lambda x: {'5m': 1, '1h': 2, '3h': 3, '4h': 3.5, '1d': 4}.get(x, 5))
@@ -350,71 +350,62 @@ class ChartGenerator:
             ax1.grid(True, alpha=0.3, axis='y', color=self.colors['grid'])
             ax1.set_xlim(-0.5, n_tf - 0.5)
             
-            # === BOTTOM LEFT: Average RSI+MFI ===
-            ax2 = fig.add_subplot(gs[1, 0])
+            # === BOTTOM: TradingView Link Info ===
+            # Instead of Combined Signal chart, show TradingView link info
+            ax2 = fig.add_subplot(gs[1, :])
+            ax2.axis('off')
             
-            colors_avg = ['#26A69A' if avg <= 30 else '#EF5350' if avg >= 70 else 'gray' 
-                         for avg in avg_values]
-            
-            bars_avg = ax2.bar(x, avg_values, color=colors_avg, alpha=0.7, 
-                              edgecolor='black', linewidth=0.5)
-            
-            # Add value labels
-            for i, avg in enumerate(avg_values):
-                ax2.text(i, avg + 2, f'{avg:.1f}', ha='center', va='bottom', 
-                        fontsize=9, fontweight='bold')
-            
-            ax2.axhline(y=50, color='gray', linestyle=':', alpha=0.5, linewidth=1.5)
-            ax2.set_ylabel('Avg (RSI+MFI)/2', fontsize=10, fontweight='bold')
-            ax2.set_title('Combined Signal Strength', fontsize=11, fontweight='bold')
-            ax2.set_xticks(x)
-            ax2.set_xticklabels([tf.upper() for tf in timeframes], fontsize=9)
-            ax2.set_ylim(0, 105)
-            ax2.grid(True, alpha=0.3, axis='y', color=self.colors['grid'])
-            
-            # === BOTTOM RIGHT: Consensus Summary ===
-            ax3 = fig.add_subplot(gs[1, 1])
-            ax3.axis('off')
-            
-            # Count signals
+            # Count signals for summary
             buy_count = signals.count(1)
             sell_count = signals.count(-1)
             neutral_count = signals.count(0)
             
             # Determine overall consensus
             if buy_count > sell_count and buy_count > neutral_count:
-                overall = f"🟢 BUY ({buy_count}/{n_tf})"
+                overall = f"🟢 BUY"
                 consensus_color = '#26A69A'
+                strength_emoji = '🚀'
             elif sell_count > buy_count and sell_count > neutral_count:
-                overall = f"🔴 SELL ({sell_count}/{n_tf})"
+                overall = f"🔴 SELL"
                 consensus_color = '#EF5350'
+                strength_emoji = '⚠️'
             else:
                 overall = f"⚪ NEUTRAL"
                 consensus_color = 'gray'
+                strength_emoji = '➡️'
             
-            # Create text summary
+            # Calculate strength
+            max_signal = max(buy_count, sell_count, neutral_count)
+            if max_signal >= n_tf * 0.75:
+                strength = 'STRONG'
+            elif max_signal >= n_tf * 0.5:
+                strength = 'MODERATE'
+            else:
+                strength = 'WEAK'
+            
+            # Create TradingView link
+            base_symbol = symbol.replace('USDT', '').replace('BUSD', '').replace('BTC', '')
+            tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}"
+            
+            # Create summary with TradingView info
             summary_text = f"""
-CONSENSUS SUMMARY
+{strength_emoji} SIGNAL CONSENSUS: {overall} ({strength})
 
-Overall: {overall}
+📊 Breakdown: 🟢 {buy_count} BUY  |  🔴 {sell_count} SELL  |  ⚪ {neutral_count} NEUTRAL  (Total: {n_tf} timeframes)
 
-Signals Breakdown:
-🟢 BUY:     {buy_count}/{n_tf} timeframes
-🔴 SELL:    {sell_count}/{n_tf} timeframes
-⚪ NEUTRAL: {neutral_count}/{n_tf} timeframes
+📈 View detailed TradingView chart:
+{tv_link}
 
-Strength: {'Strong' if max(buy_count, sell_count) >= n_tf * 0.75 else 'Moderate' if max(buy_count, sell_count) >= n_tf * 0.5 else 'Weak'}
-
-Generated: {datetime.now().strftime("%H:%M:%S")}
+⏰ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             """
             
-            ax3.text(0.5, 0.5, summary_text.strip(), 
+            ax2.text(0.5, 0.5, summary_text.strip(), 
                     fontsize=10, ha='center', va='center',
                     family='monospace',
-                    bbox=dict(boxstyle='round,pad=1', 
+                    bbox=dict(boxstyle='round,pad=1.2', 
                             facecolor=consensus_color, 
                             edgecolor='black',
-                            alpha=0.3, linewidth=2))
+                            alpha=0.2, linewidth=2))
             
             # Save to BytesIO
             buf = io.BytesIO()

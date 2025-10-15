@@ -43,14 +43,20 @@ class TelegramCommandHandler:
         def check_authorized(message):
             """Check if message is from authorized chat"""
             # Allow both private chat and group chat
-            # Convert both to string for comparison
-            msg_chat_id = str(message.chat.id)
-            bot_chat_id = str(self.chat_id)
-            
-            logger.info(f"Received message from chat_id: {msg_chat_id}, authorized: {bot_chat_id}")
-            
-            # Allow if match or if it's a private message to the bot
-            return msg_chat_id == bot_chat_id or message.chat.type == 'private'
+            # Convert both to int for comparison (Telegram uses integers for chat IDs)
+            try:
+                msg_chat_id = int(message.chat.id)
+                bot_chat_id = int(self.chat_id)
+                
+                logger.info(f"Received message from chat_id: {msg_chat_id}, authorized: {bot_chat_id}, type: {message.chat.type}")
+                
+                # Allow if match or if it's a private message to the bot
+                is_authorized = (msg_chat_id == bot_chat_id) or (message.chat.type == 'private')
+                logger.info(f"Authorization result: {is_authorized}")
+                return is_authorized
+            except (ValueError, TypeError) as e:
+                logger.error(f"Error checking authorization: {e}")
+                return False
         
         @self.telegram_bot.message_handler(commands=['start', 'help'])
         def handle_help(message):
@@ -250,7 +256,7 @@ Example: /BTC or /ETH or /LINK
                                 caption=f"📈 {symbol} - Candlestick Chart ({main_tf.upper()})\nWith RSI & MFI Indicators"
                             )
                     
-                    # Chart 2: Multi-timeframe comparison
+                    # Chart 2: Multi-timeframe comparison with TradingView link
                     chart2_buf = self.chart_gen.create_multi_timeframe_chart(
                         symbol,
                         analysis['timeframes'],
@@ -258,9 +264,12 @@ Example: /BTC or /ETH or /LINK
                     )
                     
                     if chart2_buf:
+                        # Create TradingView link
+                        tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}"
+                        
                         self.bot.send_photo(
                             chart2_buf,
-                            caption=f"📊 {symbol} - Multi-Timeframe Analysis\nAll Timeframes Comparison"
+                            caption=f"📊 {symbol} - Multi-Timeframe Analysis\n\n🔗 View on TradingView:\n{tv_link}"
                         )
                 
                 logger.info(f"Analysis sent for {symbol}")
