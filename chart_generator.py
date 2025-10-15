@@ -262,150 +262,132 @@ class ChartGenerator:
             logger.error(f"Error creating chart: {e}", exc_info=True)
             return None
     
-    def create_multi_timeframe_chart(self, symbol, timeframe_data, price=None):
+    def create_multi_timeframe_chart(self, symbol, timeframe_data, price=None, klines_dict=None):
         """
-        Create an enhanced summary chart showing all timeframes with better visualization
+        Create multi-timeframe candlestick chart (TradingView style)
+        Shows candlestick charts for all timeframes in separate panels
         
         Args:
             symbol: Trading symbol
             timeframe_data: Dictionary of {timeframe: analysis_data}
             price: Current price
+            klines_dict: Dictionary of {timeframe: DataFrame} with OHLCV data
         
         Returns:
             BytesIO object containing PNG image
         """
         try:
-            fig = plt.figure(figsize=(self.width, 6), dpi=self.dpi)
-            gs = GridSpec(2, 1, height_ratios=[3, 1], hspace=0.3)
-            
+            # Get timeframes and OHLCV data
             timeframes = sorted(list(timeframe_data.keys()), 
                               key=lambda x: {'5m': 1, '1h': 2, '3h': 3, '4h': 3.5, '1d': 4}.get(x, 5))
             n_tf = len(timeframes)
             
             if n_tf == 0:
-                plt.close(fig)
                 return None
             
-            # Prepare data
-            rsi_values = [timeframe_data[tf]['rsi'] for tf in timeframes]
-            mfi_values = [timeframe_data[tf]['mfi'] for tf in timeframes]
-            signals = [timeframe_data[tf]['signal'] for tf in timeframes]
-            avg_values = [(rsi_values[i] + mfi_values[i]) / 2 for i in range(n_tf)]
+            # Create figure with subplots for each timeframe
+            fig = plt.figure(figsize=(self.width, n_tf * 3), dpi=self.dpi)
+            gs = GridSpec(n_tf, 1, hspace=0.4)
             
-            # === MAIN CHART: RSI vs MFI Bars ===
-            ax1 = fig.add_subplot(gs[0, :])
-            
-            x = np.arange(n_tf)
-            width = 0.35
-            
-            # Create bars with gradient colors
-            bars_rsi = ax1.bar(x - width/2, rsi_values, width, 
-                             label='RSI', color=self.colors['rsi'], 
-                             alpha=0.8, edgecolor='black', linewidth=0.5)
-            bars_mfi = ax1.bar(x + width/2, mfi_values, width, 
-                             label='MFI', color=self.colors['mfi'], 
-                             alpha=0.8, edgecolor='black', linewidth=0.5)
-            
-            # Add value labels on bars
-            for i, (rsi, mfi) in enumerate(zip(rsi_values, mfi_values)):
-                ax1.text(i - width/2, rsi + 2, f'{rsi:.1f}', 
-                        ha='center', va='bottom', fontsize=9, fontweight='bold')
-                ax1.text(i + width/2, mfi + 2, f'{mfi:.1f}', 
-                        ha='center', va='bottom', fontsize=9, fontweight='bold')
-            
-            # Add signal markers
-            for i, signal in enumerate(signals):
-                if signal == 1:  # BUY
-                    ax1.scatter(i, 10, marker='^', s=200, color='#26A69A', 
-                              edgecolors='black', linewidths=2, zorder=5,
-                              label='BUY Signal' if i == signals.index(1) else '')
-                    ax1.text(i, 5, '🟢', ha='center', fontsize=16)
-                elif signal == -1:  # SELL
-                    ax1.scatter(i, 90, marker='v', s=200, color='#EF5350', 
-                              edgecolors='black', linewidths=2, zorder=5,
-                              label='SELL Signal' if i == signals.index(-1) else '')
-                    ax1.text(i, 95, '🔴', ha='center', fontsize=16)
-            
-            # Reference lines
-            ax1.axhline(y=80, color='#EF5350', linestyle='--', alpha=0.6, 
-                       linewidth=2, label='Overbought (80)')
-            ax1.axhline(y=50, color='gray', linestyle=':', alpha=0.5, linewidth=1.5)
-            ax1.axhline(y=20, color='#26A69A', linestyle='--', alpha=0.6, 
-                       linewidth=2, label='Oversold (20)')
-            
-            # Fill zones
-            ax1.fill_between([-0.5, n_tf-0.5], 80, 100, alpha=0.1, color='#EF5350')
-            ax1.fill_between([-0.5, n_tf-0.5], 0, 20, alpha=0.1, color='#26A69A')
-            
-            # Labels and title
-            ax1.set_ylabel('Indicator Value', fontsize=11, fontweight='bold')
-            title_text = f'{symbol} - Multi-Timeframe Analysis'
-            if price:
-                title_text += f'\nCurrent Price: ${price:,.4f}'
-            ax1.set_title(title_text, fontsize=14, fontweight='bold', pad=15)
-            ax1.set_xticks(x)
-            ax1.set_xticklabels([tf.upper() for tf in timeframes], fontsize=11, fontweight='bold')
-            ax1.legend(loc='upper right', fontsize=9, ncol=2)
-            ax1.set_ylim(0, 105)
-            ax1.grid(True, alpha=0.3, axis='y', color=self.colors['grid'])
-            ax1.set_xlim(-0.5, n_tf - 0.5)
-            
-            # === BOTTOM: TradingView Link Info ===
-            # Instead of Combined Signal chart, show TradingView link info
-            ax2 = fig.add_subplot(gs[1, :])
-            ax2.axis('off')
-            
-            # Count signals for summary
-            buy_count = signals.count(1)
-            sell_count = signals.count(-1)
-            neutral_count = signals.count(0)
-            
-            # Determine overall consensus
-            if buy_count > sell_count and buy_count > neutral_count:
-                overall = f"🟢 BUY"
-                consensus_color = '#26A69A'
-                strength_emoji = '🚀'
-            elif sell_count > buy_count and sell_count > neutral_count:
-                overall = f"🔴 SELL"
-                consensus_color = '#EF5350'
-                strength_emoji = '⚠️'
-            else:
-                overall = f"⚪ NEUTRAL"
-                consensus_color = 'gray'
-                strength_emoji = '➡️'
-            
-            # Calculate strength
-            max_signal = max(buy_count, sell_count, neutral_count)
-            if max_signal >= n_tf * 0.75:
-                strength = 'STRONG'
-            elif max_signal >= n_tf * 0.5:
-                strength = 'MODERATE'
-            else:
-                strength = 'WEAK'
-            
-            # Create TradingView link
-            base_symbol = symbol.replace('USDT', '').replace('BUSD', '').replace('BTC', '')
-            tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}"
-            
-            # Create summary with TradingView info
-            summary_text = f"""
-{strength_emoji} SIGNAL CONSENSUS: {overall} ({strength})
-
-📊 Breakdown: 🟢 {buy_count} BUY  |  🔴 {sell_count} SELL  |  ⚪ {neutral_count} NEUTRAL  (Total: {n_tf} timeframes)
-
-📈 View detailed TradingView chart:
-{tv_link}
-
-⏰ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-            """
-            
-            ax2.text(0.5, 0.5, summary_text.strip(), 
-                    fontsize=10, ha='center', va='center',
-                    family='monospace',
-                    bbox=dict(boxstyle='round,pad=1.2', 
-                            facecolor=consensus_color, 
-                            edgecolor='black',
-                            alpha=0.2, linewidth=2))
+            # Plot candlestick for each timeframe
+            for idx, tf in enumerate(timeframes):
+                ax = fig.add_subplot(gs[idx, 0])
+                
+                # Get OHLCV data from klines_dict
+                df = None
+                if klines_dict and tf in klines_dict:
+                    df = klines_dict[tf]
+                
+                # Get analysis data
+                tf_data = timeframe_data[tf]
+                
+                # Check if we have DataFrame
+                if df is not None and len(df) > 0:
+                    
+                    # Take last 50 candles for better visualization
+                    df_plot = df.tail(50).reset_index(drop=True)
+                    
+                    # Plot candlesticks
+                    self.plot_candlestick(ax, df_plot, width=0.6)
+                    
+                    # Format x-axis with timestamps
+                    n_candles = len(df_plot)
+                    tick_positions = np.linspace(0, n_candles-1, min(8, n_candles), dtype=int)
+                    
+                    ax.set_xticks(tick_positions)
+                    
+                    # Format timestamps
+                    if 'timestamp' in df_plot.columns:
+                        tick_labels = []
+                        for pos in tick_positions:
+                            ts = df_plot.iloc[pos]['timestamp']
+                            if isinstance(ts, (int, float)):
+                                dt = pd.to_datetime(ts, unit='ms')
+                            else:
+                                dt = pd.to_datetime(ts)
+                            
+                            # Format based on timeframe
+                            if tf in ['5m', '15m', '30m', '1h']:
+                                label = dt.strftime('%m/%d %H:%M')
+                            elif tf in ['3h', '4h']:
+                                label = dt.strftime('%m/%d %H:00')
+                            else:  # 1d
+                                label = dt.strftime('%Y-%m-%d')
+                            tick_labels.append(label)
+                        
+                        ax.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=8)
+                    else:
+                        ax.set_xticklabels([f'C{i}' for i in tick_positions], fontsize=8)
+                    
+                    # Get price range for y-axis
+                    high_max = df_plot['high'].max()
+                    low_min = df_plot['low'].min()
+                    price_range = high_max - low_min
+                    
+                    # Set y-axis limits with padding
+                    ax.set_ylim(low_min - price_range * 0.05, high_max + price_range * 0.05)
+                    
+                    # Add current price line if this is the last timeframe
+                    if price and idx == n_tf - 1:
+                        ax.axhline(y=price, color='blue', linestyle='--', 
+                                 linewidth=1.5, alpha=0.7, label=f'Current: ${price:,.2f}')
+                        ax.legend(loc='upper left', fontsize=9)
+                    
+                    # Get signal from analysis
+                    signal = tf_data.get('signal', 0)
+                    rsi = tf_data.get('rsi', 0)
+                    mfi = tf_data.get('mfi', 0)
+                    
+                    # Determine signal text and color
+                    if signal == 1:
+                        signal_text = f'🟢 BUY'
+                        signal_color = '#26A69A'
+                    elif signal == -1:
+                        signal_text = f'🔴 SELL'
+                        signal_color = '#EF5350'
+                    else:
+                        signal_text = f'⚪ NEUTRAL'
+                        signal_color = 'gray'
+                    
+                    # Title with timeframe and signal
+                    title = f'{symbol} - {tf.upper()} | {signal_text} | RSI: {rsi:.1f} | MFI: {mfi:.1f}'
+                    ax.set_title(title, fontsize=11, fontweight='bold', 
+                               bbox=dict(boxstyle='round,pad=0.5', 
+                                       facecolor=signal_color, 
+                                       edgecolor='black',
+                                       alpha=0.3, linewidth=1.5))
+                    
+                    ax.set_ylabel('Price (USDT)', fontsize=10, fontweight='bold')
+                    ax.set_xlabel('Time', fontsize=10, fontweight='bold')
+                    ax.grid(True, alpha=0.3, color=self.colors['grid'], linestyle=':')
+                    
+                else:
+                    # No data available
+                    ax.text(0.5, 0.5, f'No data for {tf.upper()}', 
+                           ha='center', va='center', fontsize=12,
+                           transform=ax.transAxes)
+                    ax.set_title(f'{symbol} - {tf.upper()}', fontsize=11, fontweight='bold')
+                    ax.axis('off')
             
             # Save to BytesIO
             buf = io.BytesIO()

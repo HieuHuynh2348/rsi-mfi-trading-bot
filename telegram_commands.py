@@ -256,20 +256,19 @@ Example: /BTC or /ETH or /LINK
                                 caption=f"📈 {symbol} - Candlestick Chart ({main_tf.upper()})\nWith RSI & MFI Indicators"
                             )
                     
-                    # Chart 2: Multi-timeframe comparison with TradingView link
+                    # Chart 2: Multi-timeframe candlestick charts (TradingView style)
+                    # Pass both analysis and klines_dict for candlestick plotting
                     chart2_buf = self.chart_gen.create_multi_timeframe_chart(
                         symbol,
                         analysis['timeframes'],
-                        price
+                        price,
+                        klines_dict  # Pass the DataFrame dict for candlestick plotting
                     )
                     
                     if chart2_buf:
-                        # Create TradingView link
-                        tv_link = f"https://www.tradingview.com/chart/?symbol=BINANCE:{symbol}"
-                        
                         self.bot.send_photo(
                             chart2_buf,
-                            caption=f"📊 {symbol} - Multi-Timeframe Analysis\n\n🔗 View on TradingView:\n{tv_link}"
+                            caption=f"📊 {symbol} - Multi-Timeframe Candlestick Charts\nAll Timeframes Overview"
                         )
                 
                 logger.info(f"Analysis sent for {symbol}")
