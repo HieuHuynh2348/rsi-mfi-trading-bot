@@ -1,0 +1,13 @@
+{
+  "name": "rsi-mfi-trading-bot",
+  "version": "1.0.0",
+  "description": "RSI + MFI Multi-Timeframe Trading Bot for Vercel",
+  "main": "api/index.py",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["trading", "bot", "binance", "telegram", "rsi", "mfi"],
+  "author": "",
+  "license": "MIT"
+}
