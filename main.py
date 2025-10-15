@@ -45,11 +45,12 @@ class TradingBot:
             height=config.CHART_HEIGHT
         )
         
-        # Initialize command handler
+        # Initialize command handler (pass self for /scan command)
         self.command_handler = TelegramCommandHandler(
             self.telegram,
             self.binance,
-            self.chart_gen
+            self.chart_gen,
+            trading_bot_instance=self  # Pass bot instance for /scan
         )
         
         # Test connections
@@ -73,14 +74,16 @@ class TradingBot:
 
 ✅ All systems operational
 📊 Interactive commands enabled
+⚙️ Mode: <b>Command-Only</b>
 
 <b>Quick Start:</b>
 • Type /<b>BTC</b> for Bitcoin analysis
 • Type /<b>ETH</b> for Ethereum analysis
+• Type /<b>scan</b> to scan entire market
 • Type /<b>help</b> for all commands
 
-<i>💡 Auto-scan runs every {}</i> seconds
-            """.format(config.SCAN_INTERVAL)
+<i>💡 No auto-scan. Use /scan when you need it!</i>
+            """
             self.telegram.send_message(welcome_msg)
             return True
         else:
@@ -210,40 +213,31 @@ class TradingBot:
             time.sleep(1)  # Delay between messages
     
     def run(self):
-        """Main bot loop"""
-        logger.info("Bot is now running...")
-        
-        # Start command handler in separate thread
-        command_thread = threading.Thread(target=self.command_handler.start_polling, daemon=True)
-        command_thread.start()
-        logger.info("Command handler thread started")
+        """Main bot loop - Commands only mode (no auto-scan)"""
+        logger.info("Bot is now running in COMMAND-ONLY mode...")
         
         self.telegram.send_message(
             f"🤖 <b>Bot is now running!</b>\n\n"
-            f"⚙️ Scan Interval: {config.SCAN_INTERVAL}s\n"
+            f"⚙️ Mode: <b>Command-Only</b> (Auto-scan DISABLED)\n"
             f"📊 Monitoring: {config.QUOTE_ASSET} pairs\n"
             f"🎯 Min Consensus: {config.MIN_CONSENSUS_STRENGTH}/4\n\n"
-            f"💬 <b>Commands ready!</b> Type /help for info"
+            f"💬 <b>Available Commands:</b>\n"
+            f"• /scan - Run market scan manually\n"
+            f"• /BTC, /ETH, /LINK - Analyze specific coins\n"
+            f"• /help - Show all commands\n\n"
+            f"<i>💡 Use /scan to scan the market anytime!</i>"
         )
         
-        while True:
-            try:
-                logger.info(f"\n{'='*50}")
-                logger.info(f"Scan started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                logger.info(f"{'='*50}\n")
-                
-                self.scan_market()
-                
-                logger.info(f"\nNext scan in {config.SCAN_INTERVAL} seconds...")
-                time.sleep(config.SCAN_INTERVAL)
-                
-            except KeyboardInterrupt:
-                logger.info("Bot stopped by user")
-                self.telegram.send_message("🛑 <b>Bot stopped by user</b>")
-                break
-            except Exception as e:
-                logger.error(f"Error in main loop: {e}")
-                time.sleep(60)  # Wait a minute before retrying
+        # Start command handler (blocking - this will run forever)
+        try:
+            logger.info("Starting command handler (blocking mode)...")
+            self.command_handler.start_polling()
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user")
+            self.telegram.send_message("🛑 <b>Bot stopped by user</b>")
+        except Exception as e:
+            logger.error(f"Error in command handler: {e}")
+            self.telegram.send_message(f"❌ <b>Bot error:</b> {str(e)}")
 
 
 def main():

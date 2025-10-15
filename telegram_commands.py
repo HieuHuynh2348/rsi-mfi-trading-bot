@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramCommandHandler:
-    def __init__(self, bot, binance_client, chart_generator):
+    def __init__(self, bot, binance_client, chart_generator, trading_bot_instance=None):
         """
         Initialize command handler
         
@@ -19,12 +19,14 @@ class TelegramCommandHandler:
             bot: TelegramBot instance
             binance_client: BinanceClient instance
             chart_generator: ChartGenerator instance
+            trading_bot_instance: TradingBot instance (for /scan command)
         """
         self.bot = bot
         self.binance = binance_client
         self.chart_gen = chart_generator
         self.telegram_bot = bot.bot  # telebot instance
         self.chat_id = bot.chat_id
+        self.trading_bot = trading_bot_instance  # Reference to main bot
         
         # Setup command handlers
         self.setup_handlers()
@@ -392,13 +394,22 @@ Example: /BTC or /ETH or /LINK
                 return
             
             try:
-                self.bot.send_message("🔍 Starting market scan...")
-                # This will be called from main.py
-                # For now, just acknowledge
-                self.bot.send_message("⏳ Scan in progress... Results will appear shortly.")
+                self.bot.send_message("🔍 <b>Starting market scan...</b>\n\n"
+                                    "⏳ This may take a few minutes depending on market conditions.")
+                
+                # Call scan_market from TradingBot instance
+                if self.trading_bot:
+                    logger.info("Manual scan triggered by user")
+                    self.trading_bot.scan_market()
+                    logger.info("Manual scan completed")
+                else:
+                    logger.error("TradingBot instance not available for /scan")
+                    self.bot.send_message("❌ Scan functionality not available. "
+                                        "Please restart the bot.")
+                    
             except Exception as e:
                 logger.error(f"Error in /scan: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                self.bot.send_message(f"❌ Error during scan: {str(e)}")
         
         logger.info("All command handlers registered")
     
