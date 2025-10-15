@@ -39,9 +39,26 @@ class TelegramCommandHandler:
         self._analyze_multi_timeframe = analyze_multi_timeframe
         self._config = config
         
+        # Allow commands from specific chat/group only (for security)
+        def check_authorized(message):
+            """Check if message is from authorized chat"""
+            # Allow both private chat and group chat
+            # Convert both to string for comparison
+            msg_chat_id = str(message.chat.id)
+            bot_chat_id = str(self.chat_id)
+            
+            logger.info(f"Received message from chat_id: {msg_chat_id}, authorized: {bot_chat_id}")
+            
+            # Allow if match or if it's a private message to the bot
+            return msg_chat_id == bot_chat_id or message.chat.type == 'private'
+        
         @self.telegram_bot.message_handler(commands=['start', 'help'])
         def handle_help(message):
             """Show help message"""
+            if not check_authorized(message):
+                logger.warning(f"Unauthorized access attempt from {message.chat.id}")
+                return
+            
             help_text = """
 🤖 <b>RSI+MFI Trading Bot - Commands</b>
 
@@ -80,6 +97,9 @@ Example: /BTC or /ETH or /LINK
         @self.telegram_bot.message_handler(commands=['about'])
         def handle_about(message):
             """Show about message"""
+            if not check_authorized(message):
+                return
+            
             about_text = """
 <b>🤖 RSI+MFI Trading Bot</b>
 
@@ -109,6 +129,9 @@ Example: /BTC or /ETH or /LINK
         @self.telegram_bot.message_handler(commands=['status'])
         def handle_status(message):
             """Show bot status"""
+            if not check_authorized(message):
+                return
+            
             try:
                 # Get config
                 status_text = f"""
@@ -140,6 +163,9 @@ Example: /BTC or /ETH or /LINK
                                           len(m.text) > 1 and m.text[1:].replace('USDT', '').isalpha())
         def handle_symbol_analysis(message):
             """Handle symbol analysis commands like /BTC, /ETH, /LINK"""
+            if not check_authorized(message):
+                return
+            
             try:
                 # Extract symbol from command
                 symbol_raw = message.text[1:].upper().strip()
@@ -191,18 +217,50 @@ Example: /BTC or /ETH or /LINK
                     market_data
                 )
                 
-                # Send chart
+                # Send charts (2 separate charts)
                 if self._config.SEND_CHARTS:
-                    chart_buf = self.chart_gen.create_multi_timeframe_chart(
+                    # Chart 1: Candlestick + Volume + RSI + MFI (single timeframe - 3h default)
+                    main_tf = '3h' if '3h' in self._config.TIMEFRAMES else self._config.TIMEFRAMES[0]
+                    
+                    if main_tf in klines_dict and main_tf in analysis['timeframes']:
+                        from indicators import calculate_rsi, calculate_mfi
+                        
+                        df = klines_dict[main_tf]
+                        tf_analysis = analysis['timeframes'][main_tf]
+                        
+                        # Calculate RSI and MFI series for the chart
+                        rsi_series = calculate_rsi(df, self._config.RSI_PERIOD)
+                        mfi_series = calculate_mfi(df, self._config.MFI_PERIOD)
+                        
+                        chart1_buf = self.chart_gen.create_rsi_mfi_chart(
+                            symbol,
+                            df,
+                            rsi_series,
+                            mfi_series,
+                            self._config.RSI_LOWER,
+                            self._config.RSI_UPPER,
+                            self._config.MFI_LOWER,
+                            self._config.MFI_UPPER,
+                            main_tf
+                        )
+                        
+                        if chart1_buf:
+                            self.bot.send_photo(
+                                chart1_buf,
+                                caption=f"📈 {symbol} - Candlestick Chart ({main_tf.upper()})\nWith RSI & MFI Indicators"
+                            )
+                    
+                    # Chart 2: Multi-timeframe comparison
+                    chart2_buf = self.chart_gen.create_multi_timeframe_chart(
                         symbol,
                         analysis['timeframes'],
                         price
                     )
                     
-                    if chart_buf:
+                    if chart2_buf:
                         self.bot.send_photo(
-                            chart_buf,
-                            caption=f"📊 {symbol} Multi-Timeframe Chart"
+                            chart2_buf,
+                            caption=f"📊 {symbol} - Multi-Timeframe Analysis\nAll Timeframes Comparison"
                         )
                 
                 logger.info(f"Analysis sent for {symbol}")
@@ -214,6 +272,9 @@ Example: /BTC or /ETH or /LINK
         @self.telegram_bot.message_handler(commands=['price'])
         def handle_price(message):
             """Get current price"""
+            if not check_authorized(message):
+                return
+            
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
@@ -240,6 +301,9 @@ Example: /BTC or /ETH or /LINK
         @self.telegram_bot.message_handler(commands=['24h'])
         def handle_24h(message):
             """Get 24h market data"""
+            if not check_authorized(message):
+                return
+            
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
@@ -280,6 +344,9 @@ Example: /BTC or /ETH or /LINK
         @self.telegram_bot.message_handler(commands=['top'])
         def handle_top(message):
             """Get top volume coins"""
+            if not check_authorized(message):
+                return
+            
             try:
                 symbols = self.binance.get_all_symbols(
                     quote_asset=self._config.QUOTE_ASSET,
@@ -313,6 +380,9 @@ Example: /BTC or /ETH or /LINK
         @self.telegram_bot.message_handler(commands=['scan'])
         def handle_scan(message):
             """Force immediate market scan"""
+            if not check_authorized(message):
+                return
+            
             try:
                 self.bot.send_message("🔍 Starting market scan...")
                 # This will be called from main.py
