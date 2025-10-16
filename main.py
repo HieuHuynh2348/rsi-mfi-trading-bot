@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 import sys
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Import modules
 import config
@@ -90,80 +91,170 @@ class TradingBot:
             logger.error("Connection test failed")
             return False
     
-    def scan_market(self):
-        """Scan the market for trading signals"""
-        logger.info("Starting market scan...")
+    def analyze_symbol(self, symbol):
+        """
+        Analyze a single symbol (thread-safe method for concurrent execution)
+        
+        Args:
+            symbol: Trading symbol to analyze
+        
+        Returns:
+            Signal data dict or None if no signal
+        """
+        try:
+            # Get multi-timeframe data
+            klines_dict = self.binance.get_multi_timeframe_data(
+                symbol, 
+                config.TIMEFRAMES,
+                limit=200
+            )
+            
+            if not klines_dict:
+                logger.warning(f"No data for {symbol}")
+                return None
+            
+            # Analyze
+            analysis = analyze_multi_timeframe(
+                klines_dict,
+                config.RSI_PERIOD,
+                config.MFI_PERIOD,
+                config.RSI_LOWER,
+                config.RSI_UPPER,
+                config.MFI_LOWER,
+                config.MFI_UPPER
+            )
+            
+            # Check if signal meets minimum consensus strength
+            if analysis['consensus'] != 'NEUTRAL' and \
+               analysis['consensus_strength'] >= config.MIN_CONSENSUS_STRENGTH:
+                
+                # Get current price and 24h data
+                price = self.binance.get_current_price(symbol)
+                market_data = self.binance.get_24h_data(symbol)
+                
+                signal_data = {
+                    'symbol': symbol,
+                    'timeframe_data': analysis['timeframes'],
+                    'consensus': analysis['consensus'],
+                    'consensus_strength': analysis['consensus_strength'],
+                    'price': price,
+                    'market_data': market_data,
+                    'klines_dict': klines_dict
+                }
+                
+                logger.info(f"✓ Signal found for {symbol}: {analysis['consensus']} "
+                          f"(Strength: {analysis['consensus_strength']})")
+                return signal_data
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error analyzing {symbol}: {e}")
+            return None
+    
+    def scan_market(self, use_fast_scan=True, max_workers=5):
+        """
+        Scan the market for trading signals
+        
+        Args:
+            use_fast_scan: Use parallel processing (default: True)
+            max_workers: Number of concurrent threads (default: 5)
+        """
+        logger.info(f"Starting market scan... (Fast: {use_fast_scan})")
         
         # Get all valid symbols
-        symbols = self.binance.get_all_symbols(
+        symbol_infos = self.binance.get_all_symbols(
             quote_asset=config.QUOTE_ASSET,
             excluded_keywords=config.EXCLUDED_KEYWORDS,
             min_volume=config.MIN_VOLUME_USDT
         )
         
-        if not symbols:
+        if not symbol_infos:
             logger.warning("No symbols found to scan")
             return
         
+        # Extract symbol names
+        symbols = [s['symbol'] for s in symbol_infos]
+        
         logger.info(f"Scanning {len(symbols)} symbols...")
         
+        start_time = time.time()
         signals_found = []
         
-        for i, symbol_info in enumerate(symbols):
-            symbol = symbol_info['symbol']
-            logger.info(f"Analyzing {symbol} ({i+1}/{len(symbols)})...")
+        if use_fast_scan:
+            # FAST SCAN - Parallel processing
+            self.telegram.send_message(
+                f"🔍 <b>Fast Market Scan Started</b>\n\n"
+                f"⚡ Analyzing {len(symbols)} symbols using {max_workers} parallel threads\n"
+                f"⏳ Please wait..."
+            )
             
-            try:
-                # Get multi-timeframe data
-                klines_dict = self.binance.get_multi_timeframe_data(
-                    symbol, 
-                    config.TIMEFRAMES,
-                    limit=200  # Get enough data for indicators
-                )
+            completed_count = 0
+            max_workers = min(max_workers, len(symbols))
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all analysis tasks
+                future_to_symbol = {
+                    executor.submit(self.analyze_symbol, symbol): symbol 
+                    for symbol in symbols
+                }
                 
-                if not klines_dict:
-                    logger.warning(f"No data for {symbol}, skipping")
-                    continue
+                # Process results as they complete
+                for future in as_completed(future_to_symbol):
+                    symbol = future_to_symbol[future]
+                    completed_count += 1
+                    
+                    try:
+                        signal_data = future.result()
+                        
+                        if signal_data:
+                            signals_found.append(signal_data)
+                        
+                        # Send progress update every 20%
+                        progress_pct = (completed_count / len(symbols)) * 100
+                        if completed_count % max(1, len(symbols) // 5) == 0:
+                            elapsed = time.time() - start_time
+                            avg_time = elapsed / completed_count
+                            remaining = (len(symbols) - completed_count) * avg_time
+                            
+                            self.telegram.send_message(
+                                f"⏳ Progress: {completed_count}/{len(symbols)} ({progress_pct:.0f}%)\n"
+                                f"📊 Signals: {len(signals_found)}\n"
+                                f"⏱️ Est. remaining: {remaining:.0f}s"
+                            )
+                    
+                    except Exception as e:
+                        logger.error(f"Error processing result for {symbol}: {e}")
+        
+        else:
+            # NORMAL SCAN - Sequential processing
+            for i, symbol in enumerate(symbols):
+                logger.info(f"Analyzing {symbol} ({i+1}/{len(symbols)})...")
                 
-                # Analyze
-                analysis = analyze_multi_timeframe(
-                    klines_dict,
-                    config.RSI_PERIOD,
-                    config.MFI_PERIOD,
-                    config.RSI_LOWER,
-                    config.RSI_UPPER,
-                    config.MFI_LOWER,
-                    config.MFI_UPPER
-                )
-                
-                # Check if signal meets minimum consensus strength
-                if analysis['consensus'] != 'NEUTRAL' and \
-                   analysis['consensus_strength'] >= config.MIN_CONSENSUS_STRENGTH:
-                    
-                    # Get current price and 24h data
-                    price = self.binance.get_current_price(symbol)
-                    market_data = self.binance.get_24h_data(symbol)
-                    
-                    signal_data = {
-                        'symbol': symbol,
-                        'timeframe_data': analysis['timeframes'],
-                        'consensus': analysis['consensus'],
-                        'consensus_strength': analysis['consensus_strength'],
-                        'price': price,
-                        'market_data': market_data,
-                        'klines_dict': klines_dict
-                    }
-                    
+                signal_data = self.analyze_symbol(symbol)
+                if signal_data:
                     signals_found.append(signal_data)
-                    logger.info(f"Signal found for {symbol}: {analysis['consensus']} "
-                              f"(Strength: {analysis['consensus_strength']})")
                 
-            except Exception as e:
-                logger.error(f"Error analyzing {symbol}: {e}")
-                continue
-            
-            # Small delay to avoid rate limits
-            time.sleep(0.1)
+                # Small delay to avoid rate limits
+                time.sleep(0.1)
+        
+        # Calculate performance
+        total_time = time.time() - start_time
+        avg_per_symbol = total_time / len(symbols) if len(symbols) > 0 else 0
+        
+        # Send results summary
+        scan_mode = "⚡ Fast" if use_fast_scan else "🐌 Normal"
+        summary_msg = (
+            f"✅ <b>{scan_mode} Market Scan Complete!</b>\n\n"
+            f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
+            f"🔍 Scanned: {len(symbols)} symbols\n"
+            f"📊 Signals found: {len(signals_found)}"
+        )
+        
+        if use_fast_scan:
+            summary_msg += f"\n⚡ Threads used: {max_workers}"
+        
+        self.telegram.send_message(summary_msg)
         
         # Send results
         if signals_found:

@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 import time
 from watchlist import WatchlistManager
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +33,76 @@ class TelegramCommandHandler:
         # Initialize watchlist manager
         self.watchlist = WatchlistManager()
         
+        # Import config and indicators early for use in analyze_symbol
+        import config
+        from indicators import analyze_multi_timeframe
+        self._config = config
+        self._analyze_multi_timeframe = analyze_multi_timeframe
+        
         # Setup command handlers
         self.setup_handlers()
         logger.info("Telegram command handler initialized")
+    
+    def analyze_symbol(self, symbol):
+        """
+        Analyze a single symbol (thread-safe method for concurrent execution)
+        
+        Args:
+            symbol: Trading symbol to analyze
+        
+        Returns:
+            Signal data dict or None if no signal
+        """
+        try:
+            # Get multi-timeframe data
+            klines_dict = self.binance.get_multi_timeframe_data(
+                symbol, 
+                self._config.TIMEFRAMES,
+                limit=200
+            )
+            
+            if not klines_dict:
+                logger.warning(f"No data for {symbol}")
+                return None
+            
+            # Analyze
+            analysis = self._analyze_multi_timeframe(
+                klines_dict,
+                self._config.RSI_PERIOD,
+                self._config.MFI_PERIOD,
+                self._config.RSI_LOWER,
+                self._config.RSI_UPPER,
+                self._config.MFI_LOWER,
+                self._config.MFI_UPPER
+            )
+            
+            # Check if signal meets minimum consensus strength
+            if analysis['consensus'] != 'NEUTRAL' and \
+               analysis['consensus_strength'] >= self._config.MIN_CONSENSUS_STRENGTH:
+                
+                # Get current price and 24h data
+                price = self.binance.get_current_price(symbol)
+                market_data = self.binance.get_24h_data(symbol)
+                
+                signal_data = {
+                    'symbol': symbol,
+                    'timeframe_data': analysis['timeframes'],
+                    'consensus': analysis['consensus'],
+                    'consensus_strength': analysis['consensus_strength'],
+                    'price': price,
+                    'market_data': market_data,
+                    'klines_dict': klines_dict
+                }
+                
+                logger.info(f"✓ Signal found for {symbol}: {analysis['consensus']} "
+                          f"(Strength: {analysis['consensus_strength']})")
+                return signal_data
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error analyzing {symbol}: {e}")
+            return None
     
     def setup_handlers(self):
         """Setup all command handlers"""
@@ -312,18 +380,18 @@ Example: /BTC or /ETH or /LINK
         
         @self.telegram_bot.message_handler(commands=['scan'])
         def handle_scan(message):
-            """Force immediate market scan"""
+            """Force immediate market scan (FAST MODE)"""
             if not check_authorized(message):
                 return
             
             try:
-                self.bot.send_message("🔍 <b>Starting market scan...</b>\n\n"
-                                    "⏳ This may take a few minutes depending on market conditions.")
-                
-                # Call scan_market from TradingBot instance
+                # Call scan_market from TradingBot instance with fast scan enabled
                 if self.trading_bot:
-                    logger.info("Manual scan triggered by user")
-                    self.trading_bot.scan_market()
+                    logger.info("Manual FAST scan triggered by user")
+                    self.trading_bot.scan_market(
+                        use_fast_scan=self._config.USE_FAST_SCAN,
+                        max_workers=self._config.MAX_SCAN_WORKERS
+                    )
                     logger.info("Manual scan completed")
                 else:
                     logger.error("TradingBot instance not available for /scan")
@@ -632,7 +700,7 @@ Example: /BTC or /ETH or /LINK
         
         @self.telegram_bot.message_handler(commands=['scanwatch'])
         def handle_scanwatch(message):
-            """Scan watchlist only"""
+            """Scan watchlist only (FAST - using concurrent execution)"""
             if not check_authorized(message):
                 return
             
@@ -644,84 +712,71 @@ Example: /BTC or /ETH or /LINK
                                         "Use /watch SYMBOL to add coins.")
                     return
                 
-                self.bot.send_message(f"🔍 <b>Scanning {len(symbols)} symbols in watchlist...</b>\n\n"
-                                    "⏳ This may take a moment.\n"
+                self.bot.send_message(f"🔍 <b>Fast Scanning {len(symbols)} symbols...</b>\n\n"
+                                    "⚡ Using parallel processing\n"
                                     "💡 All signals will be sent (no limit).")
                 
                 signals_found = []
                 errors_count = 0
+                completed_count = 0
                 
                 # Send progress updates every N symbols
                 progress_interval = 5 if len(symbols) > 10 else len(symbols)
                 
-                for i, symbol in enumerate(symbols):
-                    logger.info(f"Analyzing {symbol} ({i+1}/{len(symbols)})...")
+                start_time = time.time()
+                
+                # Use ThreadPoolExecutor for concurrent analysis
+                max_workers = min(5, len(symbols))  # Max 5 concurrent threads
+                
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    # Submit all analysis tasks
+                    future_to_symbol = {
+                        executor.submit(self.analyze_symbol, symbol): symbol 
+                        for symbol in symbols
+                    }
                     
-                    # Send progress update
-                    if (i + 1) % progress_interval == 0 and i > 0:
-                        self.bot.send_message(f"⏳ Progress: {i+1}/{len(symbols)} analyzed... "
-                                            f"({len(signals_found)} signals found so far)")
-                    
-                    try:
-                        # Get multi-timeframe data
-                        klines_dict = self.binance.get_multi_timeframe_data(
-                            symbol, 
-                            self._config.TIMEFRAMES,
-                            limit=200
-                        )
+                    # Process results as they complete
+                    for future in as_completed(future_to_symbol):
+                        symbol = future_to_symbol[future]
+                        completed_count += 1
                         
-                        if not klines_dict:
-                            logger.warning(f"No data for {symbol}, skipping")
-                            continue
-                        
-                        # Analyze
-                        analysis = self._analyze_multi_timeframe(
-                            klines_dict,
-                            self._config.RSI_PERIOD,
-                            self._config.MFI_PERIOD,
-                            self._config.RSI_LOWER,
-                            self._config.RSI_UPPER,
-                            self._config.MFI_LOWER,
-                            self._config.MFI_UPPER
-                        )
-                        
-                        # Check if signal meets minimum consensus strength
-                        if analysis['consensus'] != 'NEUTRAL' and \
-                           analysis['consensus_strength'] >= self._config.MIN_CONSENSUS_STRENGTH:
+                        try:
+                            signal_data = future.result()
                             
-                            # Get current price and 24h data
-                            price = self.binance.get_current_price(symbol)
-                            market_data = self.binance.get_24h_data(symbol)
+                            if signal_data:
+                                signals_found.append(signal_data)
                             
-                            signal_data = {
-                                'symbol': symbol,
-                                'timeframe_data': analysis['timeframes'],
-                                'consensus': analysis['consensus'],
-                                'consensus_strength': analysis['consensus_strength'],
-                                'price': price,
-                                'market_data': market_data,
-                                'klines_dict': klines_dict
-                            }
-                            
-                            signals_found.append(signal_data)
-                            logger.info(f"Signal found for {symbol}: {analysis['consensus']} "
-                                      f"(Strength: {analysis['consensus_strength']})")
+                            # Send progress update
+                            if completed_count % progress_interval == 0 and completed_count < len(symbols):
+                                elapsed = time.time() - start_time
+                                avg_time = elapsed / completed_count
+                                remaining = (len(symbols) - completed_count) * avg_time
+                                
+                                self.bot.send_message(
+                                    f"⏳ Progress: {completed_count}/{len(symbols)} analyzed\n"
+                                    f"📊 Signals found: {len(signals_found)}\n"
+                                    f"⏱️ Est. time remaining: {remaining:.1f}s"
+                                )
                         
-                    except Exception as e:
-                        logger.error(f"Error analyzing {symbol}: {e}")
-                        errors_count += 1
-                        continue
-                    
-                    # Small delay to avoid rate limits
-                    time.sleep(0.1)
+                        except Exception as e:
+                            logger.error(f"Error processing result for {symbol}: {e}")
+                            errors_count += 1
+                
+                # Calculate total time
+                total_time = time.time() - start_time
+                avg_per_symbol = total_time / len(symbols) if len(symbols) > 0 else 0
                 
                 # Send results
                 if signals_found:
                     logger.info(f"Found {len(signals_found)} signals in watchlist")
                     
                     # Send summary first
-                    self.bot.send_message(f"✅ <b>Watchlist Scan Complete</b>\n\n"
-                                        f"Found {len(signals_found)} signals from {len(symbols)} symbols!")
+                    self.bot.send_message(
+                        f"✅ <b>Fast Scan Complete!</b>\n\n"
+                        f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
+                        f"📊 Found {len(signals_found)} signals from {len(symbols)} symbols!\n"
+                        f"⚡ {max_workers} parallel threads used"
+                    )
                     
                     # Send ALL individual signals (no limit for watchlist)
                     for i, signal in enumerate(signals_found, 1):
@@ -752,7 +807,7 @@ Example: /BTC or /ETH or /LINK
                                     )
                             
                             # Small delay between messages
-                            time.sleep(1)
+                            time.sleep(0.5)
                             
                         except Exception as e:
                             logger.error(f"Error sending signal for {signal['symbol']}: {e}")
@@ -762,9 +817,10 @@ Example: /BTC or /ETH or /LINK
                     
                 else:
                     logger.info("No signals found in watchlist")
-                    msg = f"📊 <b>Watchlist Scan Complete</b>\n\n"
-                    msg += f"Scanned {len(symbols)} symbols.\n"
-                    msg += f"No signals detected at this time."
+                    msg = f"📊 <b>Fast Scan Complete!</b>\n\n"
+                    msg += f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
+                    msg += f"🔍 Scanned {len(symbols)} symbols.\n"
+                    msg += f"📉 No signals detected at this time."
                     
                     if errors_count > 0:
                         msg += f"\n\n⚠️ {errors_count} error(s) occurred during scan."

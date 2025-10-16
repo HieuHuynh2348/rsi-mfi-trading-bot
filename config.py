@@ -64,6 +64,10 @@ MAX_COINS_PER_MESSAGE = 10
 # Auto-add coins to watchlist when signal found
 AUTO_WATCHLIST = False  # If True, automatically track coins with strong signals
 
+# Fast scan settings (parallel processing)
+USE_FAST_SCAN = True  # Enable parallel processing for faster scans
+MAX_SCAN_WORKERS = 5  # Number of concurrent threads (1-10, recommended: 3-7)
+
 # ============================================================================
 # CHART SETTINGS
 # ============================================================================
