@@ -104,6 +104,67 @@ class TelegramCommandHandler:
             logger.error(f"Error analyzing {symbol}: {e}")
             return None
     
+    def _analyze_symbol_full(self, symbol):
+        """
+        Analyze a symbol and return FULL analysis (regardless of signal)
+        
+        Args:
+            symbol: Trading symbol
+        
+        Returns:
+            Full analysis dict or None if error
+        """
+        try:
+            # Get multi-timeframe data
+            klines_dict = self.binance.get_multi_timeframe_data(
+                symbol, 
+                self._config.TIMEFRAMES,
+                limit=200
+            )
+            
+            if not klines_dict:
+                logger.warning(f"No data for {symbol}")
+                return None
+            
+            # Analyze
+            analysis = self._analyze_multi_timeframe(
+                klines_dict,
+                self._config.RSI_PERIOD,
+                self._config.MFI_PERIOD,
+                self._config.RSI_LOWER,
+                self._config.RSI_UPPER,
+                self._config.MFI_LOWER,
+                self._config.MFI_UPPER
+            )
+            
+            # Get current price and 24h data
+            price = self.binance.get_current_price(symbol)
+            market_data = self.binance.get_24h_data(symbol)
+            
+            # Check if has signal
+            has_signal = (analysis['consensus'] != 'NEUTRAL' and 
+                         analysis['consensus_strength'] >= self._config.MIN_CONSENSUS_STRENGTH)
+            
+            result_data = {
+                'symbol': symbol,
+                'timeframe_data': analysis['timeframes'],
+                'consensus': analysis['consensus'],
+                'consensus_strength': analysis['consensus_strength'],
+                'price': price,
+                'market_data': market_data,
+                'klines_dict': klines_dict,
+                'has_signal': has_signal
+            }
+            
+            status = "✓ SIGNAL" if has_signal else "○ Neutral"
+            logger.info(f"{status} - {symbol}: {analysis['consensus']} (Strength: {analysis['consensus_strength']})")
+            
+            return result_data
+            
+        except Exception as e:
+            logger.error(f"Error analyzing {symbol}: {e}")
+            return None
+    
     def setup_handlers(self):
         """Setup all command handlers"""
         from indicators import analyze_multi_timeframe
@@ -772,11 +833,11 @@ Example: /BTC or /ETH or /LINK
                 else:
                     max_workers = 15  # Max for watchlist
                 
-                self.bot.send_message(f"🔍 <b>Fast Scanning {len(symbols)} symbols...</b>\n\n"
+                self.bot.send_message(f"🔍 <b>Scanning ALL {len(symbols)} watchlist symbols...</b>\n\n"
                                     f"⚡ Using {max_workers} parallel threads (auto-scaled)\n"
-                                    "💡 All signals will be sent (no limit).")
+                                    "� Will analyze and send ALL coins (not just signals).")
                 
-                signals_found = []
+                analysis_results = []  # Store ALL analysis results
                 errors_count = 0
                 completed_count = 0
                 
@@ -788,7 +849,7 @@ Example: /BTC or /ETH or /LINK
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     # Submit all analysis tasks
                     future_to_symbol = {
-                        executor.submit(self.analyze_symbol, symbol): symbol 
+                        executor.submit(self._analyze_symbol_full, symbol): symbol 
                         for symbol in symbols
                     }
                     
@@ -798,10 +859,12 @@ Example: /BTC or /ETH or /LINK
                         completed_count += 1
                         
                         try:
-                            signal_data = future.result()
+                            result = future.result()
                             
-                            if signal_data:
-                                signals_found.append(signal_data)
+                            if result:
+                                analysis_results.append(result)
+                            else:
+                                errors_count += 1
                             
                             # Send progress update
                             if completed_count % progress_interval == 0 and completed_count < len(symbols):
@@ -811,7 +874,6 @@ Example: /BTC or /ETH or /LINK
                                 
                                 self.bot.send_message(
                                     f"⏳ Progress: {completed_count}/{len(symbols)} analyzed\n"
-                                    f"📊 Signals found: {len(signals_found)}\n"
                                     f"⏱️ Est. time remaining: {remaining:.1f}s"
                                 )
                         
@@ -823,65 +885,72 @@ Example: /BTC or /ETH or /LINK
                 total_time = time.time() - start_time
                 avg_per_symbol = total_time / len(symbols) if len(symbols) > 0 else 0
                 
-                # Send results
-                if signals_found:
-                    logger.info(f"Found {len(signals_found)} signals in watchlist")
+                # Send results for ALL analyzed coins
+                if analysis_results:
+                    logger.info(f"Analyzed {len(analysis_results)} symbols in watchlist")
+                    
+                    # Count signals
+                    signals_count = sum(1 for r in analysis_results if r['has_signal'])
                     
                     # Send summary first
                     self.bot.send_message(
-                        f"✅ <b>Fast Scan Complete!</b>\n\n"
+                        f"✅ <b>Watchlist Scan Complete!</b>\n\n"
                         f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
-                        f"📊 Found {len(signals_found)} signals from {len(symbols)} symbols!\n"
-                        f"⚡ {max_workers} parallel threads used (auto-scaled)"
+                        f"📊 Analyzed: {len(analysis_results)}/{len(symbols)} symbols\n"
+                        f"🎯 Signals found: {signals_count}\n"
+                        f"⚡ {max_workers} parallel threads used (auto-scaled)\n\n"
+                        f"📤 Sending analysis for ALL {len(analysis_results)} coins..."
                     )
                     
-                    # Send ALL individual signals (no limit for watchlist)
-                    for i, signal in enumerate(signals_found, 1):
+                    # Send ALL analysis results (not just signals)
+                    for i, result in enumerate(analysis_results, 1):
                         try:
-                            # Send text alert
+                            # Send text alert for ALL coins
                             self.bot.send_signal_alert(
-                                signal['symbol'],
-                                signal['timeframe_data'],
-                                signal['consensus'],
-                                signal['consensus_strength'],
-                                signal['price'],
-                                signal.get('market_data')
+                                result['symbol'],
+                                result['timeframe_data'],
+                                result['consensus'],
+                                result['consensus_strength'],
+                                result['price'],
+                                result.get('market_data')
                             )
                             
                             # Send chart if enabled
                             if self._config.SEND_CHARTS:
                                 chart_buf = self.chart_gen.create_multi_timeframe_chart(
-                                    signal['symbol'],
-                                    signal['timeframe_data'],
-                                    signal['price'],
-                                    signal.get('klines_dict')
+                                    result['symbol'],
+                                    result['timeframe_data'],
+                                    result['price'],
+                                    result.get('klines_dict')
                                 )
                                 
                                 if chart_buf:
+                                    signal_tag = "🎯 SIGNAL" if result['has_signal'] else "📊 Analysis"
                                     self.bot.send_photo(
                                         chart_buf,
-                                        caption=f"📊 {signal['symbol']} - Multi-Timeframe Analysis ({i}/{len(signals_found)})"
+                                        caption=f"{signal_tag} - {result['symbol']} ({i}/{len(analysis_results)})"
                                     )
                             
                             # Small delay between messages
                             time.sleep(0.5)
                             
                         except Exception as e:
-                            logger.error(f"Error sending signal for {signal['symbol']}: {e}")
+                            logger.error(f"Error sending analysis for {result['symbol']}: {e}")
                             continue
                     
-                    self.bot.send_message(f"🎯 <b>All {len(signals_found)} watchlist signals sent!</b>")
+                    self.bot.send_message(
+                        f"🎯 <b>All {len(analysis_results)} watchlist analyses sent!</b>\n\n"
+                        f"✅ Signals: {signals_count}\n"
+                        f"📊 Neutral: {len(analysis_results) - signals_count}"
+                    )
                     
                 else:
-                    logger.info("No signals found in watchlist")
-                    msg = f"📊 <b>Fast Scan Complete!</b>\n\n"
-                    msg += f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
-                    msg += f"🔍 Scanned {len(symbols)} symbols.\n"
-                    msg += f"⚡ {max_workers} threads used (auto-scaled)\n"
-                    msg += f"📉 No signals detected at this time."
-                    
-                    if errors_count > 0:
-                        msg += f"\n\n⚠️ {errors_count} error(s) occurred during scan."
+                    logger.info("No analysis results from watchlist")
+                    msg = f"❌ <b>Scan Failed</b>\n\n"
+                    msg += f"⏱️ Time: {total_time:.1f}s\n"
+                    msg += f"🔍 Attempted to scan {len(symbols)} symbols.\n"
+                    msg += f"⚠️ {errors_count} error(s) occurred.\n\n"
+                    msg += f"Please check if symbols are valid."
                     
                     self.bot.send_message(msg)
                 
