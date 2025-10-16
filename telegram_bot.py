@@ -127,11 +127,11 @@ class TelegramBot:
         
         # MFI status emoji
         if main_mfi >= 80:
-            mfi_status = "�"
+            mfi_status = "🔥"
             mfi_alert = f"⚠️ Overbought Alert: {main_mfi:.0f}+ 🔴🔴"
         elif main_mfi <= 20:
             mfi_status = "❄️"
-            mfi_alert = f"� Oversold Alert: {main_mfi:.0f}- 🟢🟢"
+            mfi_alert = f"💎 Oversold Alert: {main_mfi:.0f}- 🟢🟢"
         else:
             mfi_status = "⚖️"
             mfi_alert = None
@@ -212,7 +212,7 @@ class TelegramBot:
             
             change_emoji = "📈" if change_24h >= 0 else "📉"
             change_color = "🟩" if change_24h >= 0 else "🟥"
-            message += f"\n� <b>24h Change:</b> {change_emoji} {change_color} <b>{change_24h:+.2f}%</b>\n"
+            message += f"\n📊 <b>24h Change:</b> {change_emoji} {change_color} <b>{change_24h:+.2f}%</b>\n"
             message += f"💎 <b>Volume:</b> {vol_str}\n"
             
             if price and high_24h > 0:
@@ -244,7 +244,7 @@ class TelegramBot:
         sell_signals = [s for s in signals_list if s['consensus'] == 'SELL']
         
         if buy_signals:
-            message += "<b>� BUY SIGNALS:</b>\n"
+            message += "<b>🚀 BUY SIGNALS:</b>\n"
             for signal in buy_signals:
                 strength_bar = "🟩" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
                 message += f"  ✅ <b>{signal['symbol']}</b>\n"
