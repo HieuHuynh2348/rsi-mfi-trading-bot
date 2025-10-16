@@ -84,9 +84,9 @@ class TelegramBot:
                           key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
         
         # RSI Analysis
-        message += "╔════════════════════╗\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
         message += "<b>📊 RSI ANALYSIS</b>\n"
-        message += "╚════════════════════╝\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
         
         # Find main timeframe (usually first or most important)
         main_tf = timeframes[0] if timeframes else '5m'
@@ -124,9 +124,9 @@ class TelegramBot:
             message += f"  ├─ {tf.upper()}: {rsi_val:.2f} {emoji} <i>{status}</i>\n"
         
         # MFI Analysis
-        message += "\n╔════════════════════╗\n"
+        message += "\n━━━━━━━━━━━━━━━━━━━━\n"
         message += "<b>💰 MFI ANALYSIS</b>\n"
-        message += "╚════════════════════╝\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
         main_mfi = timeframe_data[main_tf]['mfi']
         
         # MFI status emoji
@@ -161,9 +161,9 @@ class TelegramBot:
             message += f"  ├─ {tf.upper()}: {mfi_val:.2f} {emoji} <i>{status}</i>\n"
         
         # Consensus Analysis
-        message += "\n╔════════════════════╗\n"
+        message += "\n━━━━━━━━━━━━━━━━━━━━\n"
         message += "<b>🎯 CONSENSUS SIGNALS</b>\n"
-        message += "╚════════════════════╝\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
         for tf in timeframes:
             data = timeframe_data[tf]
             avg = (data['rsi'] + data['mfi']) / 2
@@ -195,9 +195,9 @@ class TelegramBot:
         message += f"<b>Strength: {consensus_bar} ({consensus_strength}/4)</b>\n"
         
         # Price Information
-        message += "\n╔════════════════════╗\n"
+        message += "\n━━━━━━━━━━━━━━━━━━━━\n"
         message += "<b>💵 PRICE INFO</b>\n"
-        message += "╚════════════════════╝\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
         if price:
             message += f"💲 Current: <b>${price:,.4f}</b>\n"
         
@@ -231,7 +231,7 @@ class TelegramBot:
                 low_diff = ((price - low_24h) / price) * 100
                 message += f"🔻 <b>Low:</b> ${low_24h:,.4f} <i>(+{low_diff:.2f}%)</i>\n"
         
-        message += "╚════════════════════╝\n"
+        message += "━━━━━━━━━━━━━━━━━━━━\n"
         
         return self.send_message(message)
     
@@ -248,9 +248,9 @@ class TelegramBot:
         # Sort by consensus strength
         signals_list = sorted(signals_list, key=lambda x: x['consensus_strength'], reverse=True)
         
-        message = "╔══════════════════════════╗\n"
+        message = "━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         message += "<b>  📊 MARKET SCAN SUMMARY  </b>\n"
-        message += "╚══════════════════════════╝\n\n"
+        message += "━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         
         buy_signals = [s for s in signals_list if s['consensus'] == 'BUY']
         sell_signals = [s for s in signals_list if s['consensus'] == 'SELL']

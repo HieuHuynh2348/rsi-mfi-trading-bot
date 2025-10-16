@@ -213,9 +213,10 @@ class TelegramCommandHandler:
                 return
             
             help_text = """
-╔══════════════════════════╗
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 <b>  🤖 RSI+MFI TRADING BOT  </b>
-╚══════════════════════════╝
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 
 <b>� SYMBOL ANALYSIS:</b>
 /<b>SYMBOL</b> - Analyze any coin
@@ -264,9 +265,9 @@ Example: /BTC /ETH /LINK
                 return
             
             about_text = """
-╔══════════════════════════╗
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 <b>  🚀 RSI+MFI TRADING BOT  </b>
-╚══════════════════════════╝
+━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 <b>📌 Version:</b> 2.0 ULTRA FAST
 <b>☁️ Platform:</b> Railway.app
