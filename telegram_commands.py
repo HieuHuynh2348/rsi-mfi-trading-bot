@@ -209,39 +209,42 @@ class TelegramCommandHandler:
                 return
             
             help_text = """
-🤖 <b>RSI+MFI Trading Bot - Commands</b>
+╔══════════════════════════╗
+<b>  🤖 RSI+MFI TRADING BOT  </b>
+╚══════════════════════════╝
 
-<b>📊 Symbol Analysis:</b>
-/<b>SYMBOL</b> - Analyze any coin (auto-adds USDT)
-Example: /BTC or /ETH or /LINK
+<b>� SYMBOL ANALYSIS:</b>
+/<b>SYMBOL</b> - Analyze any coin
+Example: /BTC /ETH /LINK
 
-<b>🔍 Market Info:</b>
-/price <b>SYMBOL</b> - Get current price
-/24h <b>SYMBOL</b> - Get 24h market data
+<b>🔍 MARKET INFO:</b>
+/price <b>SYMBOL</b> - Current price
+/24h <b>SYMBOL</b> - 24h market data
 /top - Top 10 volume coins
 
-<b>📈 Technical Analysis:</b>
-/rsi <b>SYMBOL</b> - RSI analysis only
-/mfi <b>SYMBOL</b> - MFI analysis only
+<b>📈 TECHNICAL ANALYSIS:</b>
+/rsi <b>SYMBOL</b> - RSI only
+/mfi <b>SYMBOL</b> - MFI only
 /chart <b>SYMBOL</b> - View chart
 
-<b>⚙️ Bot Control:</b>
+<b>⚙️ BOT CONTROL:</b>
 /status - Bot status & settings
-/scan - Force market scan now
-/settings - View current settings
+/scan - Force market scan
+/settings - View settings
+/performance - Scan performance
 
-<b>📋 Watchlist:</b>
+<b>⭐ WATCHLIST:</b>
 /watch <b>SYMBOL</b> - Add to watchlist
-/unwatch <b>SYMBOL</b> - Remove from watchlist
-/watchlist - View your watchlist
-/scanwatch - Scan watchlist only
-/clearwatch - Clear entire watchlist
+/unwatch <b>SYMBOL</b> - Remove coin
+/watchlist - View watchlist
+/scanwatch - Scan watchlist
+/clearwatch - Clear all
 
-<b>ℹ️ Info:</b>
+<b>ℹ️ INFO:</b>
 /help - Show this message
-/about - About this bot
+/about - About bot
 
-<i>💡 Tip: Just type /BTC to get full analysis!</i>
+<i>💡 Tip: Type /BTC for instant analysis!</i>
             """
             self.bot.send_message(help_text)
         
@@ -252,28 +255,39 @@ Example: /BTC or /ETH or /LINK
                 return
             
             about_text = """
-<b>🤖 RSI+MFI Trading Bot</b>
+╔══════════════════════════╗
+<b>  🚀 RSI+MFI TRADING BOT  </b>
+╚══════════════════════════╝
 
-<b>Version:</b> 2.0
-<b>Platform:</b> Railway.app
-<b>Exchange:</b> Binance
+<b>📌 Version:</b> 2.0 ULTRA FAST
+<b>☁️ Platform:</b> Railway.app
+<b>🏦 Exchange:</b> Binance
 
-<b>Features:</b>
-✅ Multi-timeframe RSI+MFI analysis
-✅ Real-time price monitoring
-✅ Automatic signal detection
+<b>✨ FEATURES:</b>
+✅ Multi-timeframe analysis
+✅ RSI + MFI indicators
+✅ Real-time monitoring
+✅ Auto signal detection
 ✅ Interactive commands
 ✅ Custom watchlist
+✅ ⚡ Parallel processing
 ✅ 24/7 cloud operation
 
-<b>Indicators:</b>
+<b>📊 INDICATORS:</b>
 • RSI (Relative Strength Index)
 • MFI (Money Flow Index)
 • Multi-timeframe consensus
 
-<b>Timeframes:</b> 5m, 1h, 3h, 1d
+<b>⏱️ TIMEFRAMES:</b>
+• 5m, 1h, 3h, 1d
 
-<i>⚠️ Not financial advice. DYOR!</i>
+<b>⚡ PERFORMANCE:</b>
+• Auto-scaling: 5-20 workers
+• 3-5x faster scanning
+• Parallel analysis
+
+<i>⚠️ Disclaimer: Not financial advice!</i>
+<i>📚 Always do your own research (DYOR)</i>
             """
             self.bot.send_message(about_text)
         

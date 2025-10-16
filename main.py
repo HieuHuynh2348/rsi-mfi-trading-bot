@@ -71,19 +71,23 @@ class TradingBot:
         if binance_ok and telegram_ok:
             logger.info("All connections successful")
             welcome_msg = """
-🤖 <b>Trading Bot Started!</b>
+╔══════════════════════════╗
+<b>  🤖 TRADING BOT ONLINE!  </b>
+╚══════════════════════════╝
 
-✅ All systems operational
-📊 Interactive commands enabled
-⚙️ Mode: <b>Command-Only</b>
+<b>✅ ALL SYSTEMS OPERATIONAL</b>
 
-<b>Quick Start:</b>
-• Type /<b>BTC</b> for Bitcoin analysis
-• Type /<b>ETH</b> for Ethereum analysis
-• Type /<b>scan</b> to scan entire market
-• Type /<b>help</b> for all commands
+<b>🎮 MODE:</b> Command-Only
+<b>📊 Interactive:</b> Enabled
+<b>⚡ Fast Scan:</b> Active
 
-<i>💡 No auto-scan. Use /scan when you need it!</i>
+<b>🚀 QUICK START:</b>
+• /<b>BTC</b> - Bitcoin analysis
+• /<b>ETH</b> - Ethereum analysis  
+• /<b>scan</b> - Scan entire market
+• /<b>help</b> - All commands
+
+<i>💡 No auto-scan. Use /scan when needed!</i>
             """
             self.telegram.send_message(welcome_msg)
             return True
@@ -330,15 +334,18 @@ class TradingBot:
         logger.info("Bot is now running in COMMAND-ONLY mode...")
         
         self.telegram.send_message(
-            f"🤖 <b>Bot is now running!</b>\n\n"
-            f"⚙️ Mode: <b>Command-Only</b> (Auto-scan DISABLED)\n"
-            f"📊 Monitoring: {config.QUOTE_ASSET} pairs\n"
-            f"🎯 Min Consensus: {config.MIN_CONSENSUS_STRENGTH}/4\n\n"
-            f"💬 <b>Available Commands:</b>\n"
-            f"• /scan - Run market scan manually\n"
-            f"• /BTC, /ETH, /LINK - Analyze specific coins\n"
-            f"• /help - Show all commands\n\n"
-            f"<i>💡 Use /scan to scan the market anytime!</i>"
+            f"╔══════════════════════════╗\n"
+            f"<b>  🤖 BOT NOW RUNNING!  </b>\n"
+            f"╚══════════════════════════╝\n\n"
+            f"<b>⚙️ MODE:</b> Command-Only (Auto-scan OFF)\n"
+            f"<b>📊 Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
+            f"<b>🎯 Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
+            f"<b>⚡ Fast Scan:</b> {'✅ Enabled' if config.USE_FAST_SCAN else '❌ Disabled'}\n\n"
+            f"<b>💬 AVAILABLE COMMANDS:</b>\n"
+            f"• /<b>scan</b> - Run market scan\n"
+            f"• /<b>BTC</b>, /<b>ETH</b> - Analyze coins\n"
+            f"• /<b>help</b> - Show all commands\n\n"
+            f"<i>💡 Use /scan to scan market anytime!</i>"
         )
         
         # Start command handler (blocking - this will run forever)

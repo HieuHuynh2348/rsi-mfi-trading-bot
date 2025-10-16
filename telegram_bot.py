@@ -76,16 +76,17 @@ class TelegramBot:
         current_time = datetime.now().strftime('%H:%M:%S')
         
         # Header with symbol
-        message = f"<b>#{symbol}</b>\n"
-        message += f"⏰ Current Time: {current_time}\n\n"
+        message = f"<b>💎 #{symbol}</b>\n"
+        message += f"🕐 {current_time}\n\n"
         
         # Get timeframe list (sorted)
         timeframes = sorted(timeframe_data.keys(), 
                           key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
         
         # RSI Analysis
-        message += "━━━━━━━━━━━━━━━━━━━━\n"
+        message += "╔════════════════════╗\n"
         message += "<b>📊 RSI ANALYSIS</b>\n"
+        message += "╚════════════════════╝\n"
         
         # Find main timeframe (usually first or most important)
         main_tf = timeframes[0] if timeframes else '5m'
@@ -93,73 +94,112 @@ class TelegramBot:
         
         # RSI status emoji
         if main_rsi >= 80:
-            rsi_status = "�"
-            rsi_alert = f"� High �🔴🔴 RSI Alert {main_rsi:.0f}+"
+            rsi_status = "🔥"
+            rsi_alert = f"⚠️ Overbought Alert: {main_rsi:.0f}+ 🔴🔴"
         elif main_rsi <= 20:
-            rsi_status = "🟢"
-            rsi_alert = f"🔔 Low 🟢🟢 RSI Alert {main_rsi:.0f}-"
+            rsi_status = "❄️"
+            rsi_alert = f"� Oversold Alert: {main_rsi:.0f}- 🟢🟢"
         else:
-            rsi_status = "⚪"
+            rsi_status = "⚖️"
             rsi_alert = None
         
-        message += f"RSI = {main_rsi:.2f} {rsi_status}\n"
+        message += f"📍 Main RSI: {main_rsi:.2f} {rsi_status}\n"
         if rsi_alert:
-            message += f"{rsi_alert}\n"
+            message += f"{rsi_alert}\n\n"
+        else:
+            message += "\n"
         
         # All timeframe RSI values
         for tf in timeframes:
             rsi_val = timeframe_data[tf]['rsi']
-            emoji = "🔴" if rsi_val >= 80 else ("🟢" if rsi_val <= 20 else "⚪")
-            message += f"RSI {tf.upper()}: {rsi_val:.2f} {emoji}\n"
+            if rsi_val >= 80:
+                emoji = "🔴"
+                status = "Overbought"
+            elif rsi_val <= 20:
+                emoji = "🟢"
+                status = "Oversold"
+            else:
+                emoji = "🔵"
+                status = "Normal"
+            message += f"  ├─ {tf.upper()}: {rsi_val:.2f} {emoji} <i>{status}</i>\n"
         
         # MFI Analysis
-        message += "\n<b>� MFI ANALYSIS</b>\n"
+        message += "\n╔════════════════════╗\n"
+        message += "<b>💰 MFI ANALYSIS</b>\n"
+        message += "╚════════════════════╝\n"
         main_mfi = timeframe_data[main_tf]['mfi']
         
         # MFI status emoji
         if main_mfi >= 80:
-            mfi_status = "🔴"
-            mfi_alert = f"🔔 High 🔴🔴 MFI Alert {main_mfi:.0f}+"
+            mfi_status = "�"
+            mfi_alert = f"⚠️ Overbought Alert: {main_mfi:.0f}+ 🔴🔴"
         elif main_mfi <= 20:
-            mfi_status = "🟢"
-            mfi_alert = f"🔔 Low 🟢🟢 MFI Alert {main_mfi:.0f}-"
+            mfi_status = "❄️"
+            mfi_alert = f"� Oversold Alert: {main_mfi:.0f}- 🟢🟢"
         else:
-            mfi_status = "⚪"
+            mfi_status = "⚖️"
             mfi_alert = None
         
-        message += f"MFI = {main_mfi:.2f} {mfi_status}\n"
+        message += f"📍 Main MFI: {main_mfi:.2f} {mfi_status}\n"
         if mfi_alert:
-            message += f"{mfi_alert}\n"
+            message += f"{mfi_alert}\n\n"
+        else:
+            message += "\n"
         
         # All timeframe MFI values
         for tf in timeframes:
             mfi_val = timeframe_data[tf]['mfi']
-            emoji = "🔴" if mfi_val >= 80 else ("🟢" if mfi_val <= 20 else "⚪")
-            message += f"MFI {tf.upper()}: {mfi_val:.2f} {emoji}\n"
+            if mfi_val >= 80:
+                emoji = "🔴"
+                status = "Overbought"
+            elif mfi_val <= 20:
+                emoji = "🟢"
+                status = "Oversold"
+            else:
+                emoji = "🔵"
+                status = "Normal"
+            message += f"  ├─ {tf.upper()}: {mfi_val:.2f} {emoji} <i>{status}</i>\n"
         
         # Consensus Analysis
-        message += "\n<b>🎯 CONSENSUS: RSI + MFI</b>\n"
+        message += "\n╔════════════════════╗\n"
+        message += "<b>🎯 CONSENSUS SIGNALS</b>\n"
+        message += "╚════════════════════╝\n"
         for tf in timeframes:
             data = timeframe_data[tf]
             avg = (data['rsi'] + data['mfi']) / 2
             
             if data['signal'] == 1:
                 signal_text = "🟢 BUY"
+                arrow = "📈"
             elif data['signal'] == -1:
                 signal_text = "🔴 SELL"
+                arrow = "📉"
             else:
                 signal_text = "⚪ NEUTRAL"
+                arrow = "➡️"
             
-            message += f"{tf.upper()}: {avg:.1f} - {signal_text}\n"
+            message += f"  {arrow} {tf.upper()}: {avg:.1f} → {signal_text}\n"
         
         # Overall consensus
-        consensus_icon = "🟢" if consensus == "BUY" else ("🔴" if consensus == "SELL" else "⚪")
-        message += f"\n<b>{consensus_icon} Overall: {consensus} ({consensus_strength}/4)</b>\n"
+        if consensus == "BUY":
+            consensus_icon = "�"
+            consensus_bar = "🟩" * consensus_strength + "⬜" * (4 - consensus_strength)
+        elif consensus == "SELL":
+            consensus_icon = "⚠️"
+            consensus_bar = "🟥" * consensus_strength + "⬜" * (4 - consensus_strength)
+        else:
+            consensus_icon = "💤"
+            consensus_bar = "⬜" * 4
+        
+        message += f"\n<b>{consensus_icon} OVERALL: {consensus}</b>\n"
+        message += f"<b>Strength: {consensus_bar} ({consensus_strength}/4)</b>\n"
         
         # Price Information
-        message += "\n━━━━━━━━━━━━━━━━━━━━\n"
+        message += "\n╔════════════════════╗\n"
+        message += "<b>💵 PRICE INFO</b>\n"
+        message += "╚════════════════════╝\n"
         if price:
-            message += f"🏷️ <b>Price:</b> ${price:,.4f}\n"
+            message += f"💲 Current: <b>${price:,.4f}</b>\n"
         
         # 24h Market Data
         if market_data:
@@ -179,17 +219,19 @@ class TelegramBot:
                 vol_str = f"${volume_24h:.2f}"
             
             change_emoji = "📈" if change_24h >= 0 else "📉"
-            message += f"🕒 <b>24h:</b> {change_emoji} {change_24h:+.2f}% | Vol: {vol_str}\n"
+            change_color = "🟩" if change_24h >= 0 else "🟥"
+            message += f"\n� <b>24h Change:</b> {change_emoji} {change_color} <b>{change_24h:+.2f}%</b>\n"
+            message += f"💎 <b>Volume:</b> {vol_str}\n"
             
             if price and high_24h > 0:
                 high_diff = ((high_24h - price) / price) * 100
-                message += f"⬆️ <b>High:</b> ${high_24h:,.4f} ({high_diff:+.2f}%)\n"
+                message += f"🔺 <b>High:</b> ${high_24h:,.4f} <i>(+{high_diff:.2f}%)</i>\n"
             
             if price and low_24h > 0:
                 low_diff = ((price - low_24h) / price) * 100
-                message += f"⬇️ <b>Low:</b> ${low_24h:,.4f} ({low_diff:+.2f}%)\n"
+                message += f"🔻 <b>Low:</b> ${low_24h:,.4f} <i>(+{low_diff:.2f}%)</i>\n"
         
-        message += "━━━━━━━━━━━━━━━━━━━━\n"
+        message += "╚════════════════════╝\n"
         
         return self.send_message(message)
     
@@ -201,31 +243,37 @@ class TelegramBot:
             signals_list: List of signal dictionaries
         """
         if not signals_list:
-            return self.send_message("No signals detected at this time.")
+            return self.send_message("💤 No signals detected at this time.")
         
         # Sort by consensus strength
         signals_list = sorted(signals_list, key=lambda x: x['consensus_strength'], reverse=True)
         
-        message = "<b>📊 Market Scan Summary</b>\n"
-        message += "=" * 40 + "\n\n"
+        message = "╔══════════════════════════╗\n"
+        message += "<b>  📊 MARKET SCAN SUMMARY  </b>\n"
+        message += "╚══════════════════════════╝\n\n"
         
         buy_signals = [s for s in signals_list if s['consensus'] == 'BUY']
         sell_signals = [s for s in signals_list if s['consensus'] == 'SELL']
         
         if buy_signals:
-            message += "<b>🟢 BUY Signals:</b>\n"
+            message += "<b>� BUY SIGNALS:</b>\n"
             for signal in buy_signals:
-                message += f"  • {signal['symbol']} (Strength: {signal['consensus_strength']}/4)\n"
+                strength_bar = "🟩" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
+                message += f"  ✅ <b>{signal['symbol']}</b>\n"
+                message += f"     {strength_bar} {signal['consensus_strength']}/4\n"
             message += "\n"
         
         if sell_signals:
-            message += "<b>🔴 SELL Signals:</b>\n"
+            message += "<b>⚠️ SELL SIGNALS:</b>\n"
             for signal in sell_signals:
-                message += f"  • {signal['symbol']} (Strength: {signal['consensus_strength']}/4)\n"
+                strength_bar = "🟥" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
+                message += f"  ⛔ <b>{signal['symbol']}</b>\n"
+                message += f"     {strength_bar} {signal['consensus_strength']}/4\n"
             message += "\n"
         
-        message += f"<b>Total Signals:</b> {len(signals_list)}\n"
-        message += f"⏰ <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+        message += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
+        message += f"   🟢 Buy: {len(buy_signals)} | 🔴 Sell: {len(sell_signals)}\n"
+        message += f"\n🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
         
         return self.send_message(message)
     
