@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 import time
 from watchlist import WatchlistManager
+from watchlist_monitor import WatchlistMonitor
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,9 @@ class TelegramCommandHandler:
         
         # Initialize watchlist manager
         self.watchlist = WatchlistManager()
+        
+        # Initialize watchlist monitor (auto-notification)
+        self.monitor = WatchlistMonitor(self, check_interval=300)  # 5 minutes
         
         # Import config and indicators early for use in analyze_symbol
         import config
@@ -179,7 +183,7 @@ class TelegramCommandHandler:
             'start', 'help', 'about', 'status', 'price', '24h', 'top',
             'rsi', 'mfi', 'chart', 'scan', 'settings',
             'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch',
-            'performance'
+            'performance', 'startmonitor', 'stopmonitor', 'monitorstatus'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -239,6 +243,11 @@ Example: /BTC /ETH /LINK
 /watchlist - View watchlist
 /scanwatch - Scan watchlist
 /clearwatch - Clear all
+
+<b>🔔 AUTO-MONITOR:</b>
+/startmonitor - Start auto-notify
+/stopmonitor - Stop auto-notify
+/monitorstatus - Monitor status
 
 <b>ℹ️ INFO:</b>
 /help - Show this message
@@ -994,6 +1003,86 @@ Example: /BTC /ETH /LINK
                 
             except Exception as e:
                 logger.error(f"Error in /clearwatch: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['startmonitor'])
+        def handle_startmonitor(message):
+            """Start auto-monitoring watchlist"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                if self.monitor.running:
+                    self.bot.send_message("ℹ️ <b>Monitor already running!</b>\n\n"
+                                        f"⏱️ Check interval: {self.monitor.check_interval//60} min\n"
+                                        f"📊 Watchlist: {self.watchlist.count()} coins")
+                    return
+                
+                count = self.watchlist.count()
+                if count == 0:
+                    self.bot.send_message("⚠️ <b>Watchlist is empty!</b>\n\n"
+                                        "Add coins first with /watch SYMBOL")
+                    return
+                
+                self.monitor.start()
+                
+                self.bot.send_message(f"✅ <b>Watchlist Monitor Started!</b>\n\n"
+                                    f"⏱️ Check interval: {self.monitor.check_interval//60} min\n"
+                                    f"📊 Monitoring: {count} coins\n"
+                                    f"🔔 Will auto-notify when signals appear\n\n"
+                                    f"💡 Use /stopmonitor to stop")
+                
+            except Exception as e:
+                logger.error(f"Error in /startmonitor: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['stopmonitor'])
+        def handle_stopmonitor(message):
+            """Stop auto-monitoring watchlist"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                if not self.monitor.running:
+                    self.bot.send_message("ℹ️ Monitor is not running.")
+                    return
+                
+                self.monitor.stop()
+                
+                self.bot.send_message(f"⏸️ <b>Watchlist Monitor Stopped</b>\n\n"
+                                    f"🔕 Auto-notifications disabled\n\n"
+                                    f"💡 Use /startmonitor to resume")
+                
+            except Exception as e:
+                logger.error(f"Error in /stopmonitor: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['monitorstatus'])
+        def handle_monitorstatus(message):
+            """Show monitor status"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                status_icon = "🟢" if self.monitor.running else "🔴"
+                status_text = "RUNNING" if self.monitor.running else "STOPPED"
+                
+                msg = f"{status_icon} <b>Monitor Status: {status_text}</b>\n\n"
+                msg += f"⏱️ Check interval: {self.monitor.check_interval//60} min ({self.monitor.check_interval}s)\n"
+                msg += f"📊 Watchlist: {self.watchlist.count()} coins\n"
+                msg += f"💾 Signal history: {len(self.monitor.last_signals)} records\n\n"
+                
+                if self.monitor.running:
+                    msg += "🔔 Auto-notifications: ON\n"
+                    msg += "💡 Use /stopmonitor to pause"
+                else:
+                    msg += "🔕 Auto-notifications: OFF\n"
+                    msg += "💡 Use /startmonitor to resume"
+                
+                self.bot.send_message(msg)
+                
+            except Exception as e:
+                logger.error(f"Error in /monitorstatus: {e}")
                 self.bot.send_message(f"❌ Error: {str(e)}")
         
         # ===== SYMBOL ANALYSIS HANDLER (MUST BE LAST) =====
