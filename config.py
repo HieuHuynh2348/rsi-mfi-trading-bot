@@ -66,7 +66,7 @@ AUTO_WATCHLIST = False  # If True, automatically track coins with strong signals
 
 # Fast scan settings (parallel processing)
 USE_FAST_SCAN = True  # Enable parallel processing for faster scans
-MAX_SCAN_WORKERS = 5  # Number of concurrent threads (1-10, recommended: 3-7)
+MAX_SCAN_WORKERS = 0  # Number of concurrent threads (0 = auto-scale based on symbols, max 20)
 
 # ============================================================================
 # CHART SETTINGS

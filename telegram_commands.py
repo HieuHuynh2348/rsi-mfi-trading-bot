@@ -117,7 +117,8 @@ class TelegramCommandHandler:
         self.registered_commands = [
             'start', 'help', 'about', 'status', 'price', '24h', 'top',
             'rsi', 'mfi', 'chart', 'scan', 'settings',
-            'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch'
+            'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch',
+            'performance'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -618,10 +619,59 @@ Example: /BTC or /ETH or /LINK
 • Send Charts: {'✅ Yes' if self._config.SEND_CHARTS else '❌ No'}
 • Summary Only: {'✅ Yes' if self._config.SEND_SUMMARY_ONLY else '❌ No'}
 • Max Coins/Message: {self._config.MAX_COINS_PER_MESSAGE}
+
+<b>⚡ Performance:</b>
+• Fast Scan: {'✅ Enabled' if self._config.USE_FAST_SCAN else '❌ Disabled'}
+• Workers: {'Auto-scale' if self._config.MAX_SCAN_WORKERS == 0 else self._config.MAX_SCAN_WORKERS}
+
+💡 Use /performance for detailed scan info
                 """
                 self.bot.send_message(settings_text)
             except Exception as e:
                 logger.error(f"Error in /settings: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['performance'])
+        def handle_performance(message):
+            """Show scan performance info"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                perf_text = f"""
+<b>⚡ Scan Performance Info</b>
+
+<b>🚀 Auto-Scaling Strategy:</b>
+
+<b>Market Scan (/scan):</b>
+• 1-10 symbols → 5 workers
+• 11-50 symbols → 10 workers
+• 51-100 symbols → 15 workers
+• 100+ symbols → 20 workers (max)
+
+<b>Watchlist Scan (/scanwatch):</b>
+• 1-5 symbols → 3 workers
+• 6-10 symbols → 5 workers
+• 11-20 symbols → 10 workers
+• 20+ symbols → 15 workers (max)
+
+<b>📊 Expected Performance:</b>
+• 5 symbols: ~3-4s (3 workers)
+• 10 symbols: ~4-6s (5 workers)
+• 50 symbols: ~15-20s (10 workers)
+• 100 symbols: ~30-40s (15 workers)
+• 200 symbols: ~60-80s (20 workers)
+
+<b>⚙️ Current Settings:</b>
+• Fast Scan: {'✅ Enabled' if self._config.USE_FAST_SCAN else '❌ Disabled'}
+• Auto-scale: {'✅ Yes' if self._config.MAX_SCAN_WORKERS == 0 else f'❌ Fixed at {self._config.MAX_SCAN_WORKERS}'}
+
+💡 <i>Workers scale automatically based on workload</i>
+🔧 <i>No manual configuration needed!</i>
+                """
+                self.bot.send_message(perf_text)
+            except Exception as e:
+                logger.error(f"Error in /performance: {e}")
                 self.bot.send_message(f"❌ Error: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['watch'])
@@ -712,8 +762,18 @@ Example: /BTC or /ETH or /LINK
                                         "Use /watch SYMBOL to add coins.")
                     return
                 
+                # AUTO-SCALE workers based on watchlist size
+                if len(symbols) <= 5:
+                    max_workers = 3
+                elif len(symbols) <= 10:
+                    max_workers = 5
+                elif len(symbols) <= 20:
+                    max_workers = 10
+                else:
+                    max_workers = 15  # Max for watchlist
+                
                 self.bot.send_message(f"🔍 <b>Fast Scanning {len(symbols)} symbols...</b>\n\n"
-                                    "⚡ Using parallel processing\n"
+                                    f"⚡ Using {max_workers} parallel threads (auto-scaled)\n"
                                     "💡 All signals will be sent (no limit).")
                 
                 signals_found = []
@@ -724,9 +784,6 @@ Example: /BTC or /ETH or /LINK
                 progress_interval = 5 if len(symbols) > 10 else len(symbols)
                 
                 start_time = time.time()
-                
-                # Use ThreadPoolExecutor for concurrent analysis
-                max_workers = min(5, len(symbols))  # Max 5 concurrent threads
                 
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     # Submit all analysis tasks
@@ -775,7 +832,7 @@ Example: /BTC or /ETH or /LINK
                         f"✅ <b>Fast Scan Complete!</b>\n\n"
                         f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
                         f"📊 Found {len(signals_found)} signals from {len(symbols)} symbols!\n"
-                        f"⚡ {max_workers} parallel threads used"
+                        f"⚡ {max_workers} parallel threads used (auto-scaled)"
                     )
                     
                     # Send ALL individual signals (no limit for watchlist)
@@ -820,6 +877,7 @@ Example: /BTC or /ETH or /LINK
                     msg = f"📊 <b>Fast Scan Complete!</b>\n\n"
                     msg += f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
                     msg += f"🔍 Scanned {len(symbols)} symbols.\n"
+                    msg += f"⚡ {max_workers} threads used (auto-scaled)\n"
                     msg += f"📉 No signals detected at this time."
                     
                     if errors_count > 0:

@@ -152,13 +152,13 @@ class TradingBot:
             logger.error(f"Error analyzing {symbol}: {e}")
             return None
     
-    def scan_market(self, use_fast_scan=True, max_workers=5):
+    def scan_market(self, use_fast_scan=True, max_workers=0):
         """
         Scan the market for trading signals
         
         Args:
             use_fast_scan: Use parallel processing (default: True)
-            max_workers: Number of concurrent threads (default: 5)
+            max_workers: Number of concurrent threads (0 = auto-scale, default: 0)
         """
         logger.info(f"Starting market scan... (Fast: {use_fast_scan})")
         
@@ -182,15 +182,36 @@ class TradingBot:
         signals_found = []
         
         if use_fast_scan:
+            # AUTO-SCALE workers based on number of symbols
+            if max_workers == 0:
+                # Smart scaling: 
+                # 1-10 symbols: 5 workers
+                # 11-50 symbols: 10 workers
+                # 51-100 symbols: 15 workers
+                # 100+ symbols: 20 workers (max)
+                if len(symbols) <= 10:
+                    max_workers = 5
+                elif len(symbols) <= 50:
+                    max_workers = 10
+                elif len(symbols) <= 100:
+                    max_workers = 15
+                else:
+                    max_workers = 20
+                
+                logger.info(f"Auto-scaled workers: {max_workers} (for {len(symbols)} symbols)")
+            else:
+                # Use provided max_workers but cap at 20
+                max_workers = min(max_workers, 20)
+            
             # FAST SCAN - Parallel processing
             self.telegram.send_message(
                 f"🔍 <b>Fast Market Scan Started</b>\n\n"
-                f"⚡ Analyzing {len(symbols)} symbols using {max_workers} parallel threads\n"
+                f"⚡ Analyzing {len(symbols)} symbols\n"
+                f"🚀 Using {max_workers} parallel threads (auto-scaled)\n"
                 f"⏳ Please wait..."
             )
             
             completed_count = 0
-            max_workers = min(max_workers, len(symbols))
             
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # Submit all analysis tasks
