@@ -71,9 +71,7 @@ class TradingBot:
         if binance_ok and telegram_ok:
             logger.info("All connections successful")
             welcome_msg = """
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-<b>  🤖 TRADING BOT ONLINE!  </b>
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+<b>🤖 TRADING BOT ONLINE!</b>
 
 <b>✅ ALL SYSTEMS OPERATIONAL</b>
 
@@ -334,9 +332,7 @@ class TradingBot:
         logger.info("Bot is now running in COMMAND-ONLY mode...")
         
         self.telegram.send_message(
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"<b>  🤖 BOT NOW RUNNING!  </b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"<b>🤖 BOT NOW RUNNING!</b>\n\n"
             f"<b>⚙️ MODE:</b> Command-Only (Auto-scan OFF)\n"
             f"<b>📊 Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
             f"<b>🎯 Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
@@ -363,10 +359,8 @@ class TradingBot:
 def main():
     """Main entry point"""
     print("""
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-       RSI + MFI Multi-Timeframe Trading Bot
-           Binance + Telegram Integration
-    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    RSI + MFI Multi-Timeframe Trading Bot
+        Binance + Telegram Integration
     """)
     
     # Check if config is set
