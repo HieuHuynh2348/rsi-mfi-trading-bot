@@ -645,12 +645,22 @@ Example: /BTC or /ETH or /LINK
                     return
                 
                 self.bot.send_message(f"🔍 <b>Scanning {len(symbols)} symbols in watchlist...</b>\n\n"
-                                    "⏳ This may take a moment.")
+                                    "⏳ This may take a moment.\n"
+                                    "💡 All signals will be sent (no limit).")
                 
                 signals_found = []
+                errors_count = 0
+                
+                # Send progress updates every N symbols
+                progress_interval = 5 if len(symbols) > 10 else len(symbols)
                 
                 for i, symbol in enumerate(symbols):
                     logger.info(f"Analyzing {symbol} ({i+1}/{len(symbols)})...")
+                    
+                    # Send progress update
+                    if (i + 1) % progress_interval == 0 and i > 0:
+                        self.bot.send_message(f"⏳ Progress: {i+1}/{len(symbols)} analyzed... "
+                                            f"({len(signals_found)} signals found so far)")
                     
                     try:
                         # Get multi-timeframe data
@@ -699,6 +709,7 @@ Example: /BTC or /ETH or /LINK
                         
                     except Exception as e:
                         logger.error(f"Error analyzing {symbol}: {e}")
+                        errors_count += 1
                         continue
                     
                     # Small delay to avoid rate limits
@@ -708,18 +719,57 @@ Example: /BTC or /ETH or /LINK
                 if signals_found:
                     logger.info(f"Found {len(signals_found)} signals in watchlist")
                     
-                    # Use trading_bot's send_signals method if available
-                    if self.trading_bot:
-                        self.trading_bot.send_signals(signals_found)
-                    else:
-                        # Send summary
-                        self.bot.send_message(f"✅ <b>Watchlist Scan Complete</b>\n\n"
-                                            f"Found {len(signals_found)} signals!")
+                    # Send summary first
+                    self.bot.send_message(f"✅ <b>Watchlist Scan Complete</b>\n\n"
+                                        f"Found {len(signals_found)} signals from {len(symbols)} symbols!")
+                    
+                    # Send ALL individual signals (no limit for watchlist)
+                    for i, signal in enumerate(signals_found, 1):
+                        try:
+                            # Send text alert
+                            self.bot.send_signal_alert(
+                                signal['symbol'],
+                                signal['timeframe_data'],
+                                signal['consensus'],
+                                signal['consensus_strength'],
+                                signal['price'],
+                                signal.get('market_data')
+                            )
+                            
+                            # Send chart if enabled
+                            if self._config.SEND_CHARTS:
+                                chart_buf = self.chart_gen.create_multi_timeframe_chart(
+                                    signal['symbol'],
+                                    signal['timeframe_data'],
+                                    signal['price'],
+                                    signal.get('klines_dict')
+                                )
+                                
+                                if chart_buf:
+                                    self.bot.send_photo(
+                                        chart_buf,
+                                        caption=f"📊 {signal['symbol']} - Multi-Timeframe Analysis ({i}/{len(signals_found)})"
+                                    )
+                            
+                            # Small delay between messages
+                            time.sleep(1)
+                            
+                        except Exception as e:
+                            logger.error(f"Error sending signal for {signal['symbol']}: {e}")
+                            continue
+                    
+                    self.bot.send_message(f"🎯 <b>All {len(signals_found)} watchlist signals sent!</b>")
+                    
                 else:
                     logger.info("No signals found in watchlist")
-                    self.bot.send_message(f"📊 <b>Watchlist Scan Complete</b>\n\n"
-                                        f"Scanned {len(symbols)} symbols.\n"
-                                        f"No signals detected at this time.")
+                    msg = f"📊 <b>Watchlist Scan Complete</b>\n\n"
+                    msg += f"Scanned {len(symbols)} symbols.\n"
+                    msg += f"No signals detected at this time."
+                    
+                    if errors_count > 0:
+                        msg += f"\n\n⚠️ {errors_count} error(s) occurred during scan."
+                    
+                    self.bot.send_message(msg)
                 
             except Exception as e:
                 logger.error(f"Error in /scanwatch: {e}")
