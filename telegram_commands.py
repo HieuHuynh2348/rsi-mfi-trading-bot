@@ -183,7 +183,8 @@ class TelegramCommandHandler:
             'start', 'help', 'about', 'status', 'price', '24h', 'top',
             'rsi', 'mfi', 'chart', 'scan', 'settings',
             'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch',
-            'performance', 'startmonitor', 'stopmonitor', 'monitorstatus'
+            'performance', 'startmonitor', 'stopmonitor', 'monitorstatus',
+            'volumescan', 'volumesensitivity'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -246,6 +247,10 @@ Example: /BTC /ETH /LINK
 /startmonitor - Start auto-notify
 /stopmonitor - Stop auto-notify
 /monitorstatus - Monitor status
+
+<b>🔥 VOLUME ALERTS:</b>
+/volumescan - Scan volume spikes
+/volumesensitivity - Set sensitivity
 
 <b>ℹ️ INFO:</b>
 /help - Show this message
@@ -1070,6 +1075,8 @@ Example: /BTC /ETH /LINK
                 
                 if self.monitor.running:
                     msg += "🔔 Auto-notifications: ON\n"
+                    msg += f"📊 Volume monitoring: {self.monitor.volume_check_interval//60} min interval\n"
+                    msg += f"🎯 Volume sensitivity: {self.monitor.volume_detector.sensitivity.upper()}\n\n"
                     msg += "💡 Use /stopmonitor to pause"
                 else:
                     msg += "🔕 Auto-notifications: OFF\n"
@@ -1079,6 +1086,122 @@ Example: /BTC /ETH /LINK
                 
             except Exception as e:
                 logger.error(f"Error in /monitorstatus: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['volumescan'])
+        def handle_volumescan(message):
+            """Scan watchlist for volume spikes (manual)"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                symbols = self.watchlist.get_all()
+                
+                if not symbols:
+                    self.bot.send_message("⚠️ <b>Watchlist is empty!</b>\n\n"
+                                        "Add coins first with /watch SYMBOL")
+                    return
+                
+                self.bot.send_message(f"🔍 <b>Scanning {len(symbols)} coins for volume spikes...</b>\n\n"
+                                    f"⏳ This may take a moment...")
+                
+                # Scan for volume spikes
+                spike_alerts = self.monitor.volume_detector.scan_watchlist_volumes(
+                    symbols,
+                    timeframes=['5m', '1h', '4h']
+                )
+                
+                if not spike_alerts:
+                    self.bot.send_message("ℹ️ <b>No volume spikes detected</b>\n\n"
+                                        f"All {len(symbols)} coins have normal volume.\n\n"
+                                        f"Current sensitivity: {self.monitor.volume_detector.sensitivity.upper()}")
+                    return
+                
+                # Send summary
+                summary = self.monitor.volume_detector.get_watchlist_spike_summary(spike_alerts)
+                self.bot.send_message(summary)
+                
+                # Send detailed analysis for each spike
+                for i, alert in enumerate(spike_alerts, 1):
+                    # Get volume details
+                    strongest_tf = None
+                    max_ratio = 0
+                    for tf, tf_result in alert['timeframe_results'].items():
+                        if tf_result['is_spike'] and tf_result['volume_ratio'] > max_ratio:
+                            max_ratio = tf_result['volume_ratio']
+                            strongest_tf = tf
+                    
+                    if strongest_tf:
+                        tf_data = alert['timeframe_results'][strongest_tf]
+                        vol_text = self.monitor.volume_detector.get_volume_analysis_text(tf_data)
+                        self.bot.send_message(f"<b>📊 {alert['symbol']}</b> ({i}/{len(spike_alerts)})\n\n{vol_text}")
+                    
+                    time.sleep(0.5)
+                
+                self.bot.send_message(f"✅ <b>Volume scan complete!</b>\n\n"
+                                    f"Found {len(spike_alerts)} spike(s)")
+                
+            except Exception as e:
+                logger.error(f"Error in /volumescan: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['volumesensitivity'])
+        def handle_volumesensitivity(message):
+            """Change volume detection sensitivity"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                # Parse sensitivity from command
+                parts = message.text.split()
+                
+                if len(parts) < 2:
+                    # Show current sensitivity
+                    current = self.monitor.volume_detector.sensitivity
+                    config = self.monitor.volume_detector.config
+                    
+                    msg = f"<b>🎯 Volume Detection Sensitivity</b>\n\n"
+                    msg += f"<b>Current:</b> {current.upper()}\n\n"
+                    msg += f"<b>Settings:</b>\n"
+                    msg += f"• Volume multiplier: {config['volume_multiplier']}x\n"
+                    msg += f"• Min increase: {config['min_increase_percent']}%\n"
+                    msg += f"• Lookback period: {config['lookback_periods']} candles\n\n"
+                    msg += f"<b>Available levels:</b>\n"
+                    msg += f"• <b>low</b> - Only extreme spikes (3x volume)\n"
+                    msg += f"• <b>medium</b> - Moderate spikes (2.5x volume)\n"
+                    msg += f"• <b>high</b> - Sensitive (2x volume)\n\n"
+                    msg += f"💡 Usage: /volumesensitivity <level>"
+                    
+                    self.bot.send_message(msg)
+                    return
+                
+                new_sensitivity = parts[1].lower()
+                
+                if new_sensitivity not in ['low', 'medium', 'high']:
+                    self.bot.send_message("❌ <b>Invalid sensitivity!</b>\n\n"
+                                        "Choose: <b>low</b>, <b>medium</b>, or <b>high</b>")
+                    return
+                
+                # Update sensitivity
+                old_sensitivity = self.monitor.volume_detector.sensitivity
+                self.monitor.volume_detector.sensitivity = new_sensitivity
+                self.monitor.volume_detector.config = self.monitor.volume_detector.thresholds[new_sensitivity]
+                
+                new_config = self.monitor.volume_detector.config
+                
+                self.bot.send_message(
+                    f"✅ <b>Sensitivity updated!</b>\n\n"
+                    f"<b>Changed from:</b> {old_sensitivity.upper()}\n"
+                    f"<b>Changed to:</b> {new_sensitivity.upper()}\n\n"
+                    f"<b>New settings:</b>\n"
+                    f"• Volume multiplier: {new_config['volume_multiplier']}x\n"
+                    f"• Min increase: {new_config['min_increase_percent']}%\n"
+                    f"• Lookback: {new_config['lookback_periods']} candles\n\n"
+                    f"💡 Test with /volumescan"
+                )
+                
+            except Exception as e:
+                logger.error(f"Error in /volumesensitivity: {e}")
                 self.bot.send_message(f"❌ Error: {str(e)}")
         
         # ===== SYMBOL ANALYSIS HANDLER (MUST BE LAST) =====
