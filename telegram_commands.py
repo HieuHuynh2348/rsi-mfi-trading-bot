@@ -6,6 +6,7 @@ Handles user commands from Telegram
 import logging
 from datetime import datetime
 import time
+from watchlist import WatchlistManager
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,9 @@ class TelegramCommandHandler:
         self.chat_id = bot.chat_id
         self.trading_bot = trading_bot_instance  # Reference to main bot
         
+        # Initialize watchlist manager
+        self.watchlist = WatchlistManager()
+        
         # Setup command handlers
         self.setup_handlers()
         logger.info("Telegram command handler initialized")
@@ -45,7 +49,7 @@ class TelegramCommandHandler:
         self.registered_commands = [
             'start', 'help', 'about', 'status', 'price', '24h', 'top',
             'rsi', 'mfi', 'chart', 'scan', 'settings',
-            'watch', 'unwatch', 'watchlist'
+            'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -99,7 +103,9 @@ Example: /BTC or /ETH or /LINK
 <b>📋 Watchlist:</b>
 /watch <b>SYMBOL</b> - Add to watchlist
 /unwatch <b>SYMBOL</b> - Remove from watchlist
-/watchlist - View watchlist
+/watchlist - View your watchlist
+/scanwatch - Scan watchlist only
+/clearwatch - Clear entire watchlist
 
 <b>ℹ️ Info:</b>
 /help - Show this message
@@ -556,8 +562,28 @@ Example: /BTC or /ETH or /LINK
             if not check_authorized(message):
                 return
             
-            self.bot.send_message("⚠️ Watchlist feature coming soon!\n\n"
-                                "For now, use /SYMBOL to analyze specific coins.")
+            try:
+                parts = message.text.split()
+                if len(parts) < 2:
+                    self.bot.send_message("❌ Usage: /watch SYMBOL\nExample: /watch BTC")
+                    return
+                
+                symbol_raw = parts[1].upper()
+                
+                # Add to watchlist
+                success, msg = self.watchlist.add(symbol_raw)
+                
+                if success:
+                    # Also show current count
+                    count = self.watchlist.count()
+                    msg += f"\n\n📊 Total watched: {count} symbols"
+                    msg += f"\n💡 Use /watchlist to view all"
+                
+                self.bot.send_message(msg)
+                
+            except Exception as e:
+                logger.error(f"Error in /watch: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['unwatch'])
         def handle_unwatch(message):
@@ -565,8 +591,29 @@ Example: /BTC or /ETH or /LINK
             if not check_authorized(message):
                 return
             
-            self.bot.send_message("⚠️ Watchlist feature coming soon!\n\n"
-                                "For now, use /SYMBOL to analyze specific coins.")
+            try:
+                parts = message.text.split()
+                if len(parts) < 2:
+                    self.bot.send_message("❌ Usage: /unwatch SYMBOL\nExample: /unwatch BTC")
+                    return
+                
+                symbol_raw = parts[1].upper()
+                
+                # Remove from watchlist
+                success, msg = self.watchlist.remove(symbol_raw)
+                
+                if success:
+                    # Also show current count
+                    count = self.watchlist.count()
+                    msg += f"\n\n📊 Remaining: {count} symbols"
+                    if count > 0:
+                        msg += f"\n💡 Use /watchlist to view all"
+                
+                self.bot.send_message(msg)
+                
+            except Exception as e:
+                logger.error(f"Error in /unwatch: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['watchlist'])
         def handle_watchlist(message):
@@ -574,8 +621,133 @@ Example: /BTC or /ETH or /LINK
             if not check_authorized(message):
                 return
             
-            self.bot.send_message("⚠️ Watchlist feature coming soon!\n\n"
-                                "For now, use /scan to scan all markets or /SYMBOL for specific coins.")
+            try:
+                # Get formatted watchlist
+                msg = self.watchlist.get_formatted_list()
+                self.bot.send_message(msg)
+                
+            except Exception as e:
+                logger.error(f"Error in /watchlist: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['scanwatch'])
+        def handle_scanwatch(message):
+            """Scan watchlist only"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                symbols = self.watchlist.get_all()
+                
+                if not symbols:
+                    self.bot.send_message("❌ Your watchlist is empty!\n\n"
+                                        "Use /watch SYMBOL to add coins.")
+                    return
+                
+                self.bot.send_message(f"🔍 <b>Scanning {len(symbols)} symbols in watchlist...</b>\n\n"
+                                    "⏳ This may take a moment.")
+                
+                signals_found = []
+                
+                for i, symbol in enumerate(symbols):
+                    logger.info(f"Analyzing {symbol} ({i+1}/{len(symbols)})...")
+                    
+                    try:
+                        # Get multi-timeframe data
+                        klines_dict = self.binance.get_multi_timeframe_data(
+                            symbol, 
+                            self._config.TIMEFRAMES,
+                            limit=200
+                        )
+                        
+                        if not klines_dict:
+                            logger.warning(f"No data for {symbol}, skipping")
+                            continue
+                        
+                        # Analyze
+                        analysis = self._analyze_multi_timeframe(
+                            klines_dict,
+                            self._config.RSI_PERIOD,
+                            self._config.MFI_PERIOD,
+                            self._config.RSI_LOWER,
+                            self._config.RSI_UPPER,
+                            self._config.MFI_LOWER,
+                            self._config.MFI_UPPER
+                        )
+                        
+                        # Check if signal meets minimum consensus strength
+                        if analysis['consensus'] != 'NEUTRAL' and \
+                           analysis['consensus_strength'] >= self._config.MIN_CONSENSUS_STRENGTH:
+                            
+                            # Get current price and 24h data
+                            price = self.binance.get_current_price(symbol)
+                            market_data = self.binance.get_24h_data(symbol)
+                            
+                            signal_data = {
+                                'symbol': symbol,
+                                'timeframe_data': analysis['timeframes'],
+                                'consensus': analysis['consensus'],
+                                'consensus_strength': analysis['consensus_strength'],
+                                'price': price,
+                                'market_data': market_data,
+                                'klines_dict': klines_dict
+                            }
+                            
+                            signals_found.append(signal_data)
+                            logger.info(f"Signal found for {symbol}: {analysis['consensus']} "
+                                      f"(Strength: {analysis['consensus_strength']})")
+                        
+                    except Exception as e:
+                        logger.error(f"Error analyzing {symbol}: {e}")
+                        continue
+                    
+                    # Small delay to avoid rate limits
+                    time.sleep(0.1)
+                
+                # Send results
+                if signals_found:
+                    logger.info(f"Found {len(signals_found)} signals in watchlist")
+                    
+                    # Use trading_bot's send_signals method if available
+                    if self.trading_bot:
+                        self.trading_bot.send_signals(signals_found)
+                    else:
+                        # Send summary
+                        self.bot.send_message(f"✅ <b>Watchlist Scan Complete</b>\n\n"
+                                            f"Found {len(signals_found)} signals!")
+                else:
+                    logger.info("No signals found in watchlist")
+                    self.bot.send_message(f"📊 <b>Watchlist Scan Complete</b>\n\n"
+                                        f"Scanned {len(symbols)} symbols.\n"
+                                        f"No signals detected at this time.")
+                
+            except Exception as e:
+                logger.error(f"Error in /scanwatch: {e}")
+                self.bot.send_message(f"❌ Error during watchlist scan: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['clearwatch'])
+        def handle_clearwatch(message):
+            """Clear entire watchlist"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                count = self.watchlist.count()
+                
+                if count == 0:
+                    self.bot.send_message("ℹ️ Your watchlist is already empty.")
+                    return
+                
+                # Clear watchlist
+                cleared = self.watchlist.clear()
+                
+                self.bot.send_message(f"🗑️ <b>Watchlist Cleared</b>\n\n"
+                                    f"Removed {cleared} symbols.\n\n"
+                                    f"💡 Use /watch SYMBOL to add coins again.")
+                
+            except Exception as e:
+                logger.error(f"Error in /clearwatch: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
         
         # ===== SYMBOL ANALYSIS HANDLER (MUST BE LAST) =====
         @self.telegram_bot.message_handler(func=lambda m: m.text and m.text.startswith('/') and 
