@@ -6,12 +6,12 @@ indicator("RSI + MFI Multi-Timeframe Consensus", overlay=false)
 // ============================================================================
 
 // RSI Settings
-rsi_period = input.int(144, "RSI Period", minval=1)
+rsi_period = input.int(6, "RSI Period", minval=1)
 rsi_lower = input.int(20, "RSI Lower Level", minval=0, maxval=100)
 rsi_upper = input.int(80, "RSI Upper Level", minval=0, maxval=100)
 
 // MFI Settings
-mfi_period = input.int(144, "MFI Period", minval=1)
+mfi_period = input.int(6, "MFI Period", minval=1)
 mfi_lower = input.int(20, "MFI Lower Level", minval=0, maxval=100)
 mfi_upper = input.int(80, "MFI Upper Level", minval=0, maxval=100)
 
@@ -70,7 +70,9 @@ f_format_timeframe(tf) =>
 // CUSTOM RSI CALCULATION (HLCC/4)
 // ============================================================================
 
-hlcc4 = (high + low + close + close) / 4
+// Function to calculate HLCC/4
+f_hlcc4() =>
+    (high + low + close + close) / 4
 
 f_custom_rsi(src, len) =>
     delta = ta.change(src)
@@ -118,22 +120,22 @@ f_get_signal(rsi_val, mfi_val, rsi_low, rsi_high, mfi_low, mfi_high) =>
 // ============================================================================
 
 // Current Timeframe (or TF1)
-rsi_tf1 = tf1 == "" ? f_custom_rsi(hlcc4, rsi_period) : request.security(syminfo.tickerid, tf1, f_custom_rsi(hlcc4, rsi_period))
+rsi_tf1 = tf1 == "" ? f_custom_rsi(f_hlcc4(), rsi_period) : request.security(syminfo.tickerid, tf1, f_custom_rsi(f_hlcc4(), rsi_period))
 mfi_tf1 = tf1 == "" ? f_mfi(mfi_period) : request.security(syminfo.tickerid, tf1, f_mfi(mfi_period))
 signal_tf1 = f_get_signal(rsi_tf1, mfi_tf1, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
 // Timeframe 2
-rsi_tf2 = request.security(syminfo.tickerid, tf2, f_custom_rsi(hlcc4, rsi_period))
+rsi_tf2 = request.security(syminfo.tickerid, tf2, f_custom_rsi(f_hlcc4(), rsi_period))
 mfi_tf2 = request.security(syminfo.tickerid, tf2, f_mfi(mfi_period))
 signal_tf2 = f_get_signal(rsi_tf2, mfi_tf2, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
 // Timeframe 3
-rsi_tf3 = request.security(syminfo.tickerid, tf3, f_custom_rsi(hlcc4, rsi_period))
+rsi_tf3 = request.security(syminfo.tickerid, tf3, f_custom_rsi(f_hlcc4(), rsi_period))
 mfi_tf3 = request.security(syminfo.tickerid, tf3, f_mfi(mfi_period))
 signal_tf3 = f_get_signal(rsi_tf3, mfi_tf3, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
 // Timeframe 4
-rsi_tf4 = request.security(syminfo.tickerid, tf4, f_custom_rsi(hlcc4, rsi_period))
+rsi_tf4 = request.security(syminfo.tickerid, tf4, f_custom_rsi(f_hlcc4(), rsi_period))
 mfi_tf4 = request.security(syminfo.tickerid, tf4, f_mfi(mfi_period))
 signal_tf4 = f_get_signal(rsi_tf4, mfi_tf4, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
@@ -163,12 +165,11 @@ hline(0, "Min Level", color=color.new(color.gray, 80), linestyle=hline.style_sol
 // Background coloring based on consensus
 bgcolor(signal_tf1 == 1 ? color.new(color.green, 90) : signal_tf1 == -1 ? color.new(color.red, 90) : na)
 
-// Create labels for BUY/SELL signals on every bar
-if signal_tf1 == 1
-    label.new(bar_index, rsi_lower, "🔼 BUY", color=color.new(color.green, 0), textcolor=color.white, style=label.style_label_up, size=size.small, yloc=yloc.price)
-
-if signal_tf1 == -1
-    label.new(bar_index, rsi_upper, "🔽 SELL", color=color.new(color.red, 0), textcolor=color.white, style=label.style_label_down, size=size.small, yloc=yloc.price)
+// Use plotshape with dynamic series values to allow zooming
+// BUY signals plotted slightly below the actual RSI value
+plotshape(signal_tf1 == 1 ? rsi_tf1 - 3 : na, title="BUY Signal", text="BUY", textcolor=color.white, style=shape.labelup, location=location.absolute, color=color.new(color.green, 0), size=size.small)
+// SELL signals plotted slightly above the actual RSI value
+plotshape(signal_tf1 == -1 ? rsi_tf1 + 3 : na, title="SELL Signal", text="SELL", textcolor=color.white, style=shape.labeldown, location=location.absolute, color=color.new(color.red, 0), size=size.small)
 
 // Plot lines connecting consecutive BUY and SELL signals (only adjacent candles)
 // Use plot.style_linebr to break the line when signal changes
@@ -177,6 +178,12 @@ sell_zone = signal_tf1 == -1 ? rsi_upper : na
 
 plot(buy_zone, "BUY Zone", color=color.new(color.green, 0), linewidth=3, style=plot.style_linebr)
 plot(sell_zone, "SELL Zone", color=color.new(color.red, 0), linewidth=3, style=plot.style_linebr)
+
+// Additional visual enhancement - plot arrows at actual RSI values for better visibility
+// BUY arrows slightly below the RSI value (same concept as text)
+plotchar(signal_tf1 == 1 ? rsi_tf1 - 5 : na, title="BUY Arrow", char="▲", location=location.absolute, color=color.new(color.lime, 0), size=size.tiny)
+// SELL arrows slightly above the RSI value (same concept as text)
+plotchar(signal_tf1 == -1 ? rsi_tf1 + 5 : na, title="SELL Arrow", char="▼", location=location.absolute, color=color.new(color.red, 0), size=size.tiny)
 
 // ============================================================================
 // CONSENSUS TABLE

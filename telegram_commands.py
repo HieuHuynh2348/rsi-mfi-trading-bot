@@ -41,6 +41,13 @@ class TelegramCommandHandler:
         self._analyze_multi_timeframe = analyze_multi_timeframe
         self._config = config
         
+        # List of registered commands (to exclude from symbol handler)
+        self.registered_commands = [
+            'start', 'help', 'about', 'status', 'price', '24h', 'top',
+            'rsi', 'mfi', 'chart', 'scan', 'settings',
+            'watch', 'unwatch', 'watchlist'
+        ]
+        
         # Allow commands from specific chat/group only (for security)
         def check_authorized(message):
             """Check if message is from authorized chat"""
@@ -166,118 +173,6 @@ Example: /BTC or /ETH or /LINK
             except Exception as e:
                 logger.error(f"Error in /status: {e}")
                 self.bot.send_message(f"❌ Error: {str(e)}")
-        
-        @self.telegram_bot.message_handler(func=lambda m: m.text and m.text.startswith('/') and 
-                                          len(m.text) > 1 and m.text[1:].replace('USDT', '').isalnum())
-        def handle_symbol_analysis(message):
-            """Handle symbol analysis commands like /BTC, /ETH, /LINK"""
-            if not check_authorized(message):
-                return
-            
-            try:
-                # Extract symbol from command
-                symbol_raw = message.text[1:].upper().strip()
-                
-                # Auto-add USDT if not present
-                if not symbol_raw.endswith('USDT'):
-                    symbol = symbol_raw + 'USDT'
-                else:
-                    symbol = symbol_raw
-                
-                logger.info(f"Analyzing {symbol} on demand...")
-                
-                # Send processing message
-                processing_msg = self.bot.send_message(f"🔍 Analyzing {symbol}...")
-                
-                # Get multi-timeframe data
-                klines_dict = self.binance.get_multi_timeframe_data(
-                    symbol,
-                    self._config.TIMEFRAMES,
-                    limit=200
-                )
-                
-                if not klines_dict:
-                    self.bot.send_message(f"❌ No data found for {symbol}. Symbol may not exist or be delisted.")
-                    return
-                
-                # Analyze
-                analysis = self._analyze_multi_timeframe(
-                    klines_dict,
-                    self._config.RSI_PERIOD,
-                    self._config.MFI_PERIOD,
-                    self._config.RSI_LOWER,
-                    self._config.RSI_UPPER,
-                    self._config.MFI_LOWER,
-                    self._config.MFI_UPPER
-                )
-                
-                # Get price and market data
-                price = self.binance.get_current_price(symbol)
-                market_data = self.binance.get_24h_data(symbol)
-                
-                # Send analysis
-                self.bot.send_signal_alert(
-                    symbol,
-                    analysis['timeframes'],
-                    analysis['consensus'],
-                    analysis['consensus_strength'],
-                    price,
-                    market_data
-                )
-                
-                # Send charts (2 separate charts)
-                if self._config.SEND_CHARTS:
-                    # Chart 1: Candlestick + Volume + RSI + MFI (single timeframe - 3h default)
-                    main_tf = '3h' if '3h' in self._config.TIMEFRAMES else self._config.TIMEFRAMES[0]
-                    
-                    if main_tf in klines_dict and main_tf in analysis['timeframes']:
-                        from indicators import calculate_rsi, calculate_mfi
-                        
-                        df = klines_dict[main_tf]
-                        tf_analysis = analysis['timeframes'][main_tf]
-                        
-                        # Calculate RSI and MFI series for the chart
-                        rsi_series = calculate_rsi(df, self._config.RSI_PERIOD)
-                        mfi_series = calculate_mfi(df, self._config.MFI_PERIOD)
-                        
-                        chart1_buf = self.chart_gen.create_rsi_mfi_chart(
-                            symbol,
-                            df,
-                            rsi_series,
-                            mfi_series,
-                            self._config.RSI_LOWER,
-                            self._config.RSI_UPPER,
-                            self._config.MFI_LOWER,
-                            self._config.MFI_UPPER,
-                            main_tf
-                        )
-                        
-                        if chart1_buf:
-                            self.bot.send_photo(
-                                chart1_buf,
-                                caption=f"📈 {symbol} - Candlestick Chart ({main_tf.upper()})\nWith RSI & MFI Indicators"
-                            )
-                    
-                    # Chart 2: Multi-timeframe candlestick charts (TradingView style)
-                    # Pass both analysis and klines_dict for candlestick plotting
-                    chart2_buf = self.chart_gen.create_multi_timeframe_chart(
-                        symbol,
-                        analysis['timeframes'],
-                        price,
-                        klines_dict  # Pass the DataFrame dict for candlestick plotting
-                    )
-                    
-                    if chart2_buf:
-                        self.bot.send_photo(
-                            chart2_buf,
-                            caption=f"📊 {symbol} - Multi-Timeframe Candlestick Charts\nAll Timeframes Overview"
-                        )
-                
-                logger.info(f"Analysis sent for {symbol}")
-                
-            except Exception as e:
-                logger.error(f"Error analyzing symbol: {e}")
-                self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['price'])
         def handle_price(message):
@@ -432,6 +327,370 @@ Example: /BTC or /ETH or /LINK
             except Exception as e:
                 logger.error(f"Error in /scan: {e}")
                 self.bot.send_message(f"❌ Error during scan: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['rsi'])
+        def handle_rsi(message):
+            """Get RSI analysis only"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                parts = message.text.split()
+                if len(parts) < 2:
+                    self.bot.send_message("❌ Usage: /rsi SYMBOL\nExample: /rsi BTC")
+                    return
+                
+                symbol_raw = parts[1].upper()
+                if not symbol_raw.endswith('USDT'):
+                    symbol = symbol_raw + 'USDT'
+                else:
+                    symbol = symbol_raw
+                
+                logger.info(f"Getting RSI for {symbol}...")
+                
+                # Get multi-timeframe data
+                klines_dict = self.binance.get_multi_timeframe_data(
+                    symbol,
+                    self._config.TIMEFRAMES,
+                    limit=200
+                )
+                
+                if not klines_dict:
+                    self.bot.send_message(f"❌ No data found for {symbol}")
+                    return
+                
+                # Analyze
+                analysis = self._analyze_multi_timeframe(
+                    klines_dict,
+                    self._config.RSI_PERIOD,
+                    self._config.MFI_PERIOD,
+                    self._config.RSI_LOWER,
+                    self._config.RSI_UPPER,
+                    self._config.MFI_LOWER,
+                    self._config.MFI_UPPER
+                )
+                
+                # Build RSI-only message
+                msg = f"<b>📊 RSI Analysis - {symbol}</b>\n\n"
+                
+                timeframes = sorted(analysis['timeframes'].keys(), 
+                                  key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
+                
+                for tf in timeframes:
+                    rsi_val = analysis['timeframes'][tf]['rsi']
+                    emoji = "🔴" if rsi_val >= 80 else ("🟢" if rsi_val <= 20 else "⚪")
+                    msg += f"RSI {tf.upper()}: {rsi_val:.2f} {emoji}\n"
+                
+                msg += f"\n⏰ {datetime.now().strftime('%H:%M:%S')}"
+                self.bot.send_message(msg)
+                
+            except Exception as e:
+                logger.error(f"Error in /rsi: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['mfi'])
+        def handle_mfi(message):
+            """Get MFI analysis only"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                parts = message.text.split()
+                if len(parts) < 2:
+                    self.bot.send_message("❌ Usage: /mfi SYMBOL\nExample: /mfi BTC")
+                    return
+                
+                symbol_raw = parts[1].upper()
+                if not symbol_raw.endswith('USDT'):
+                    symbol = symbol_raw + 'USDT'
+                else:
+                    symbol = symbol_raw
+                
+                logger.info(f"Getting MFI for {symbol}...")
+                
+                # Get multi-timeframe data
+                klines_dict = self.binance.get_multi_timeframe_data(
+                    symbol,
+                    self._config.TIMEFRAMES,
+                    limit=200
+                )
+                
+                if not klines_dict:
+                    self.bot.send_message(f"❌ No data found for {symbol}")
+                    return
+                
+                # Analyze
+                analysis = self._analyze_multi_timeframe(
+                    klines_dict,
+                    self._config.RSI_PERIOD,
+                    self._config.MFI_PERIOD,
+                    self._config.RSI_LOWER,
+                    self._config.RSI_UPPER,
+                    self._config.MFI_LOWER,
+                    self._config.MFI_UPPER
+                )
+                
+                # Build MFI-only message
+                msg = f"<b>💰 MFI Analysis - {symbol}</b>\n\n"
+                
+                timeframes = sorted(analysis['timeframes'].keys(), 
+                                  key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
+                
+                for tf in timeframes:
+                    mfi_val = analysis['timeframes'][tf]['mfi']
+                    emoji = "🔴" if mfi_val >= 80 else ("🟢" if mfi_val <= 20 else "⚪")
+                    msg += f"MFI {tf.upper()}: {mfi_val:.2f} {emoji}\n"
+                
+                msg += f"\n⏰ {datetime.now().strftime('%H:%M:%S')}"
+                self.bot.send_message(msg)
+                
+            except Exception as e:
+                logger.error(f"Error in /mfi: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['chart'])
+        def handle_chart(message):
+            """View chart for a symbol"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                parts = message.text.split()
+                if len(parts) < 2:
+                    self.bot.send_message("❌ Usage: /chart SYMBOL\nExample: /chart BTC")
+                    return
+                
+                symbol_raw = parts[1].upper()
+                if not symbol_raw.endswith('USDT'):
+                    symbol = symbol_raw + 'USDT'
+                else:
+                    symbol = symbol_raw
+                
+                logger.info(f"Generating chart for {symbol}...")
+                
+                # Get multi-timeframe data
+                klines_dict = self.binance.get_multi_timeframe_data(
+                    symbol,
+                    self._config.TIMEFRAMES,
+                    limit=200
+                )
+                
+                if not klines_dict:
+                    self.bot.send_message(f"❌ No data found for {symbol}")
+                    return
+                
+                # Analyze
+                analysis = self._analyze_multi_timeframe(
+                    klines_dict,
+                    self._config.RSI_PERIOD,
+                    self._config.MFI_PERIOD,
+                    self._config.RSI_LOWER,
+                    self._config.RSI_UPPER,
+                    self._config.MFI_LOWER,
+                    self._config.MFI_UPPER
+                )
+                
+                price = self.binance.get_current_price(symbol)
+                
+                # Generate chart
+                chart_buf = self.chart_gen.create_multi_timeframe_chart(
+                    symbol,
+                    analysis['timeframes'],
+                    price,
+                    klines_dict
+                )
+                
+                if chart_buf:
+                    self.bot.send_photo(
+                        chart_buf,
+                        caption=f"📊 {symbol} - Multi-Timeframe Chart"
+                    )
+                else:
+                    self.bot.send_message(f"❌ Failed to generate chart for {symbol}")
+                
+            except Exception as e:
+                logger.error(f"Error in /chart: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['settings'])
+        def handle_settings(message):
+            """View current settings"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                settings_text = f"""
+<b>⚙️ Bot Settings</b>
+
+<b>📊 Indicators:</b>
+• RSI Period: {self._config.RSI_PERIOD}
+• RSI Levels: {self._config.RSI_LOWER} / {self._config.RSI_UPPER}
+• MFI Period: {self._config.MFI_PERIOD}
+• MFI Levels: {self._config.MFI_LOWER} / {self._config.MFI_UPPER}
+
+<b>⏱️ Timeframes:</b>
+• {', '.join(self._config.TIMEFRAMES)}
+
+<b>🎯 Signal Criteria:</b>
+• Min Consensus: {self._config.MIN_CONSENSUS_STRENGTH}/4
+• Scan Interval: {self._config.SCAN_INTERVAL}s
+
+<b>💹 Market Filters:</b>
+• Quote Asset: {self._config.QUOTE_ASSET}
+• Min Volume: ${self._config.MIN_VOLUME_USDT:,.0f}
+• Excluded: {', '.join(self._config.EXCLUDED_KEYWORDS) if self._config.EXCLUDED_KEYWORDS else 'None'}
+
+<b>📈 Display:</b>
+• Send Charts: {'✅ Yes' if self._config.SEND_CHARTS else '❌ No'}
+• Summary Only: {'✅ Yes' if self._config.SEND_SUMMARY_ONLY else '❌ No'}
+• Max Coins/Message: {self._config.MAX_COINS_PER_MESSAGE}
+                """
+                self.bot.send_message(settings_text)
+            except Exception as e:
+                logger.error(f"Error in /settings: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
+        
+        @self.telegram_bot.message_handler(commands=['watch'])
+        def handle_watch(message):
+            """Add symbol to watchlist"""
+            if not check_authorized(message):
+                return
+            
+            self.bot.send_message("⚠️ Watchlist feature coming soon!\n\n"
+                                "For now, use /SYMBOL to analyze specific coins.")
+        
+        @self.telegram_bot.message_handler(commands=['unwatch'])
+        def handle_unwatch(message):
+            """Remove symbol from watchlist"""
+            if not check_authorized(message):
+                return
+            
+            self.bot.send_message("⚠️ Watchlist feature coming soon!\n\n"
+                                "For now, use /SYMBOL to analyze specific coins.")
+        
+        @self.telegram_bot.message_handler(commands=['watchlist'])
+        def handle_watchlist(message):
+            """View watchlist"""
+            if not check_authorized(message):
+                return
+            
+            self.bot.send_message("⚠️ Watchlist feature coming soon!\n\n"
+                                "For now, use /scan to scan all markets or /SYMBOL for specific coins.")
+        
+        # ===== SYMBOL ANALYSIS HANDLER (MUST BE LAST) =====
+        @self.telegram_bot.message_handler(func=lambda m: m.text and m.text.startswith('/') and 
+                                          len(m.text) > 1 and m.text[1:].split()[0].upper() not in 
+                                          [cmd.upper() for cmd in self.registered_commands] and
+                                          m.text[1:].replace('USDT', '').replace('usdt', '').isalnum())
+        def handle_symbol_analysis(message):
+            """Handle symbol analysis commands like /BTC, /ETH, /LINK"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                # Extract symbol from command
+                symbol_raw = message.text[1:].upper().strip()
+                
+                # Auto-add USDT if not present
+                if not symbol_raw.endswith('USDT'):
+                    symbol = symbol_raw + 'USDT'
+                else:
+                    symbol = symbol_raw
+                
+                logger.info(f"Analyzing {symbol} on demand...")
+                
+                # Send processing message
+                processing_msg = self.bot.send_message(f"🔍 Analyzing {symbol}...")
+                
+                # Get multi-timeframe data
+                klines_dict = self.binance.get_multi_timeframe_data(
+                    symbol,
+                    self._config.TIMEFRAMES,
+                    limit=200
+                )
+                
+                if not klines_dict:
+                    self.bot.send_message(f"❌ No data found for {symbol}. Symbol may not exist or be delisted.")
+                    return
+                
+                # Analyze
+                analysis = self._analyze_multi_timeframe(
+                    klines_dict,
+                    self._config.RSI_PERIOD,
+                    self._config.MFI_PERIOD,
+                    self._config.RSI_LOWER,
+                    self._config.RSI_UPPER,
+                    self._config.MFI_LOWER,
+                    self._config.MFI_UPPER
+                )
+                
+                # Get price and market data
+                price = self.binance.get_current_price(symbol)
+                market_data = self.binance.get_24h_data(symbol)
+                
+                # Send analysis
+                self.bot.send_signal_alert(
+                    symbol,
+                    analysis['timeframes'],
+                    analysis['consensus'],
+                    analysis['consensus_strength'],
+                    price,
+                    market_data
+                )
+                
+                # Send charts (2 separate charts)
+                if self._config.SEND_CHARTS:
+                    # Chart 1: Candlestick + Volume + RSI + MFI (single timeframe - 3h default)
+                    main_tf = '3h' if '3h' in self._config.TIMEFRAMES else self._config.TIMEFRAMES[0]
+                    
+                    if main_tf in klines_dict and main_tf in analysis['timeframes']:
+                        from indicators import calculate_rsi, calculate_mfi
+                        
+                        df = klines_dict[main_tf]
+                        tf_analysis = analysis['timeframes'][main_tf]
+                        
+                        # Calculate RSI and MFI series for the chart
+                        rsi_series = calculate_rsi(df, self._config.RSI_PERIOD)
+                        mfi_series = calculate_mfi(df, self._config.MFI_PERIOD)
+                        
+                        chart1_buf = self.chart_gen.create_rsi_mfi_chart(
+                            symbol,
+                            df,
+                            rsi_series,
+                            mfi_series,
+                            self._config.RSI_LOWER,
+                            self._config.RSI_UPPER,
+                            self._config.MFI_LOWER,
+                            self._config.MFI_UPPER,
+                            main_tf
+                        )
+                        
+                        if chart1_buf:
+                            self.bot.send_photo(
+                                chart1_buf,
+                                caption=f"📈 {symbol} - Candlestick Chart ({main_tf.upper()})\nWith RSI & MFI Indicators"
+                            )
+                    
+                    # Chart 2: Multi-timeframe candlestick charts (TradingView style)
+                    # Pass both analysis and klines_dict for candlestick plotting
+                    chart2_buf = self.chart_gen.create_multi_timeframe_chart(
+                        symbol,
+                        analysis['timeframes'],
+                        price,
+                        klines_dict  # Pass the DataFrame dict for candlestick plotting
+                    )
+                    
+                    if chart2_buf:
+                        self.bot.send_photo(
+                            chart2_buf,
+                            caption=f"📊 {symbol} - Multi-Timeframe Candlestick Charts\nAll Timeframes Overview"
+                        )
+                
+                logger.info(f"Analysis sent for {symbol}")
+                
+            except Exception as e:
+                logger.error(f"Error analyzing symbol: {e}")
+                self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
         
         logger.info("All command handlers registered")
     
