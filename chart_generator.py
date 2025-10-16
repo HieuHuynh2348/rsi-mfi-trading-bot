@@ -101,7 +101,13 @@ class ChartGenerator:
             
             # Limit to last 100 candles for better visibility
             display_length = min(100, len(df))
-            df_display = df.iloc[-display_length:].reset_index(drop=True)
+            df_display = df.iloc[-display_length:].copy()
+            
+            # Reset index but keep timestamp as column
+            if df_display.index.name == 'timestamp' or 'timestamp' in str(type(df_display.index)):
+                df_display = df_display.reset_index()
+            
+            df_display = df_display.reset_index(drop=True)
             rsi_display = rsi_series.iloc[-display_length:].reset_index(drop=True)
             mfi_display = mfi_series.iloc[-display_length:].reset_index(drop=True)
             
@@ -208,16 +214,39 @@ class ChartGenerator:
             
             ax3.set_ylabel(f'MFI: {current_mfi:.1f}\n{mfi_status.split()[1]}', 
                           fontsize=9, fontweight='bold')
-            ax3.set_xlabel('Candles (Most Recent →)', fontsize=10)
+            ax3.set_xlabel('Time', fontsize=10)
             ax3.set_ylim(0, 100)
             ax3.legend(loc='upper left', fontsize=8, ncol=3)
             ax3.grid(True, alpha=0.3, color=self.colors['grid'])
             
-            # X-axis: Show only a few labels
-            tick_spacing = max(1, len(df_display) // 6)
-            ax3.set_xticks(range(0, len(df_display), tick_spacing))
-            ax3.set_xticklabels([f'{i}' for i in range(0, len(df_display), tick_spacing)], 
-                               rotation=0, fontsize=8)
+            # X-axis: Format with timestamps
+            tick_spacing = max(1, len(df_display) // 8)
+            tick_positions = range(0, len(df_display), tick_spacing)
+            ax3.set_xticks(tick_positions)
+            
+            # Format timestamps if available
+            if 'timestamp' in df_display.columns:
+                tick_labels = []
+                for pos in tick_positions:
+                    ts = df_display.iloc[pos]['timestamp']
+                    if isinstance(ts, (int, float)):
+                        dt = pd.to_datetime(ts, unit='ms')
+                    else:
+                        dt = pd.to_datetime(ts)
+                    
+                    # Format based on timeframe
+                    if timeframe in ['5m', '15m', '30m', '1h']:
+                        label = dt.strftime('%m/%d %H:%M')
+                    elif timeframe in ['3h', '4h']:
+                        label = dt.strftime('%m/%d %H:00')
+                    else:  # 1d
+                        label = dt.strftime('%Y-%m-%d')
+                    tick_labels.append(label)
+                
+                ax3.set_xticklabels(tick_labels, rotation=45, ha='right', fontsize=8)
+            else:
+                # Fallback to index if no timestamp
+                ax3.set_xticklabels([f'{i}' for i in tick_positions], fontsize=8)
             
             # Add consensus indicator
             avg_indicator = (current_rsi + current_mfi) / 2
@@ -304,8 +333,14 @@ class ChartGenerator:
                 # Check if we have DataFrame
                 if df is not None and len(df) > 0:
                     
-                    # Take last 50 candles for better visualization
-                    df_plot = df.tail(50).reset_index(drop=True)
+                    # Take last 100 candles for better visualization
+                    df_plot = df.tail(100).copy()
+                    
+                    # Reset index but keep timestamp as column
+                    if df_plot.index.name == 'timestamp' or 'timestamp' in str(type(df_plot.index)):
+                        df_plot = df_plot.reset_index()
+                    
+                    df_plot = df_plot.reset_index(drop=True)
                     
                     # Plot candlesticks
                     self.plot_candlestick(ax, df_plot, width=0.6)
