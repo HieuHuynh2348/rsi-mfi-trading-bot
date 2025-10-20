@@ -156,7 +156,7 @@ class TelegramCommandHandler:
                     # Use main timeframe (5m) for volume analysis
                     main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
                     if main_tf in klines_dict:
-                        volume_result = self.volume_detector.detect(klines_dict[main_tf])
+                        volume_result = self.volume_detector.detect(klines_dict[main_tf], symbol)
                         if volume_result:  # ✅ Always get volume data, not just anomalies
                             volume_data = volume_result
                             logger.info(f"Volume analysis for {symbol}: Current={volume_result.get('current_volume', 0):.0f}, Last={volume_result.get('last_volume', 0):.0f}, Anomaly={volume_result.get('is_anomaly', False)}")
@@ -1471,7 +1471,7 @@ Example: /BTC /ETH /LINK
                     try:
                         main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
                         if main_tf in klines_dict:
-                            volume_result = self.volume_detector.detect(klines_dict[main_tf])
+                            volume_result = self.volume_detector.detect(klines_dict[main_tf], symbol)
                             if volume_result:  # ✅ Always get volume data
                                 volume_data = volume_result
                                 logger.info(f"Volume analysis for {symbol}: Current={volume_result.get('current_volume', 0):.0f}, Last={volume_result.get('last_volume', 0):.0f}, Anomaly={volume_result.get('is_anomaly', False)}")

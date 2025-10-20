@@ -142,6 +142,91 @@ class VolumeDetector:
             logger.error(f"Error detecting volume spike for {symbol}: {e}")
             return None
     
+    def detect(self, df, symbol='UNKNOWN'):
+        """
+        Detect volume anomaly from existing DataFrame (optimized for reusing klines data)
+        
+        Args:
+            df: DataFrame with OHLCV data (must have 'volume', 'open', 'close' columns)
+            symbol: Symbol name (for logging)
+        
+        Returns:
+            dict with detection results or None
+        """
+        try:
+            if df is None or len(df) < self.config['lookback_periods']:
+                logger.warning(f"Insufficient data for {symbol} (need {self.config['lookback_periods']}, got {len(df) if df is not None else 0})")
+                return None
+            
+            # Calculate volume statistics
+            current_volume = df['volume'].iloc[-1]
+            last_volume = df['volume'].iloc[-2]  # Volume of previous candle
+            
+            # Average volume (excluding current candle)
+            avg_volume = df['volume'].iloc[:-1].tail(self.config['lookback_periods']).mean()
+            
+            # Standard deviation
+            std_volume = df['volume'].iloc[:-1].tail(self.config['lookback_periods']).std()
+            
+            # Volume ratio (current / average)
+            volume_ratio = current_volume / avg_volume if avg_volume > 0 else 0
+            
+            # Last candle ratio (current / last)
+            last_candle_ratio = current_volume / last_volume if last_volume > 0 else 0
+            
+            # Percent increase from average
+            volume_increase = ((current_volume - avg_volume) / avg_volume * 100) if avg_volume > 0 else 0
+            
+            # Percent increase from last candle
+            last_candle_increase = ((current_volume - last_volume) / last_volume * 100) if last_volume > 0 else 0
+            
+            # Z-score (how many standard deviations from mean)
+            z_score = (current_volume - avg_volume) / std_volume if std_volume > 0 else 0
+            
+            # Detect anomaly (using 'is_anomaly' instead of 'is_spike')
+            is_anomaly = (
+                volume_ratio >= self.config['volume_multiplier'] and
+                volume_increase >= self.config['min_increase_percent'] and
+                z_score >= 2.0  # At least 2 standard deviations
+            )
+            
+            # Get price change
+            price_change = ((df['close'].iloc[-1] - df['open'].iloc[-1]) / df['open'].iloc[-1] * 100)
+            
+            # Classify spike type
+            spike_type = None
+            if is_anomaly:
+                if price_change > 2:
+                    spike_type = "BULLISH_BREAKOUT"
+                elif price_change < -2:
+                    spike_type = "BEARISH_BREAKDOWN"
+                else:
+                    spike_type = "NEUTRAL_SPIKE"
+            
+            result = {
+                'symbol': symbol,
+                'is_anomaly': is_anomaly,
+                'spike_type': spike_type,
+                'current_volume': current_volume,
+                'last_volume': last_volume,
+                'avg_volume': avg_volume,
+                'avg_ratio': volume_ratio,
+                'last_candle_ratio': last_candle_ratio,
+                'avg_increase_percent': volume_increase,
+                'last_candle_increase_percent': last_candle_increase,
+                'z_score': z_score,
+                'price_change_percent': price_change,
+                'current_price': df['close'].iloc[-1],
+                'timestamp': datetime.now(),
+                'sensitivity': self.sensitivity
+            }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error detecting volume anomaly for {symbol}: {e}")
+            return None
+    
     def detect_multi_timeframe_spike(self, symbol, timeframes=['5m', '1h', '4h']):
         """
         Detect volume spikes across multiple timeframes
