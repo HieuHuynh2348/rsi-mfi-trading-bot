@@ -497,13 +497,16 @@ Example: /BTC /ETH /LINK
                 price = self.binance.get_current_price(symbol)
                 
                 if price:
-                    self.bot.send_message(f"💰 <b>{symbol}</b>\nPrice: ${price:,.4f}")
+                    keyboard = self.bot.create_quick_analysis_keyboard()
+                    self.bot.send_message(f"💰 <b>{symbol}</b>\nPrice: ${price:,.4f}", reply_markup=keyboard)
                 else:
-                    self.bot.send_message(f"❌ Could not get price for {symbol}")
+                    keyboard = self.bot.create_main_menu_keyboard()
+                    self.bot.send_message(f"❌ Could not get price for {symbol}", reply_markup=keyboard)
                     
             except Exception as e:
                 logger.error(f"Error in /price: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['24h'])
         def handle_24h(message):
@@ -551,13 +554,16 @@ Example: /BTC /ETH /LINK
 
 💵 <b>Volume:</b> {vol_str}
                     """
-                    self.bot.send_message(msg)
+                    keyboard = self.bot.create_quick_analysis_keyboard()
+                    self.bot.send_message(msg, reply_markup=keyboard)
                 else:
-                    self.bot.send_message(f"❌ Could not get 24h data for {symbol}")
+                    keyboard = self.bot.create_main_menu_keyboard()
+                    self.bot.send_message(f"❌ Could not get 24h data for {symbol}", reply_markup=keyboard)
                     
             except Exception as e:
                 logger.error(f"Error in /24h: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['top'])
         def handle_top(message):
@@ -687,11 +693,13 @@ Example: /BTC /ETH /LINK
                     msg += f"RSI {tf.upper()}: {rsi_val:.2f} {emoji}\n"
                 
                 msg += f"\n⏰ {datetime.now().strftime('%H:%M:%S')}"
-                self.bot.send_message(msg)
+                keyboard = self.bot.create_quick_analysis_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /rsi: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['mfi'])
         def handle_mfi(message):
@@ -747,11 +755,13 @@ Example: /BTC /ETH /LINK
                     msg += f"MFI {tf.upper()}: {mfi_val:.2f} {emoji}\n"
                 
                 msg += f"\n⏰ {datetime.now().strftime('%H:%M:%S')}"
-                self.bot.send_message(msg)
+                keyboard = self.bot.create_quick_analysis_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /mfi: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['chart'])
         def handle_chart(message):
@@ -931,11 +941,14 @@ Example: /BTC /ETH /LINK
                     msg += f"\n\n📊 Total watched: {count} symbols"
                     msg += f"\n💡 Use /watchlist to view all"
                 
-                self.bot.send_message(msg)
+                # Send with watchlist keyboard
+                keyboard = self.bot.create_watchlist_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /watch: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['unwatch'])
         def handle_unwatch(message):
@@ -961,11 +974,14 @@ Example: /BTC /ETH /LINK
                     if count > 0:
                         msg += f"\n💡 Use /watchlist to view all"
                 
-                self.bot.send_message(msg)
+                # Send with watchlist keyboard
+                keyboard = self.bot.create_watchlist_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /unwatch: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['watchlist'])
         def handle_watchlist(message):
@@ -1113,10 +1129,12 @@ Example: /BTC /ETH /LINK
                             logger.error(f"Error sending analysis for {result['symbol']}: {e}")
                             continue
                     
+                    keyboard = self.bot.create_action_keyboard()
                     self.bot.send_message(
                         f"🎯 <b>All {len(analysis_results)} watchlist analyses sent!</b>\n\n"
                         f"✅ Signals: {signals_count}\n"
-                        f"📊 Neutral: {len(analysis_results) - signals_count}"
+                        f"📊 Neutral: {len(analysis_results) - signals_count}",
+                        reply_markup=keyboard
                     )
                     
                 else:
@@ -1127,11 +1145,13 @@ Example: /BTC /ETH /LINK
                     msg += f"⚠️ {errors_count} error(s) occurred.\n\n"
                     msg += f"Please check if symbols are valid."
                     
-                    self.bot.send_message(msg)
+                    keyboard = self.bot.create_main_menu_keyboard()
+                    self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /scanwatch: {e}")
-                self.bot.send_message(f"❌ Error during watchlist scan: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error during watchlist scan: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['clearwatch'])
         def handle_clearwatch(message):
@@ -1149,13 +1169,16 @@ Example: /BTC /ETH /LINK
                 # Clear watchlist
                 cleared = self.watchlist.clear()
                 
+                keyboard = self.bot.create_watchlist_keyboard()
                 self.bot.send_message(f"🗑️ <b>Watchlist Cleared</b>\n\n"
                                     f"Removed {cleared} symbols.\n\n"
-                                    f"💡 Use /watch SYMBOL to add coins again.")
+                                    f"💡 Use /watch SYMBOL to add coins again.",
+                                    reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /clearwatch: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['startmonitor'])
         def handle_startmonitor(message):
