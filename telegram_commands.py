@@ -291,6 +291,14 @@ class TelegramCommandHandler:
                             parse_mode='HTML',
                             reply_markup=keyboard
                         )
+                    elif cmd == "quickanalysis":
+                        keyboard = self.bot.create_quick_analysis_keyboard()
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text="<b>🔍 Quick Analysis</b>\n\nSelect a coin to analyze:",
+                            parse_mode='HTML',
+                            reply_markup=keyboard
+                        )
                     elif cmd == "startmonitor":
                         handle_startmonitor(fake_msg)
                     elif cmd == "stopmonitor":
@@ -299,6 +307,8 @@ class TelegramCommandHandler:
                         handle_monitorstatus(fake_msg)
                     elif cmd == "top":
                         handle_top(fake_msg)
+                    elif cmd == "status":
+                        handle_status(fake_msg)
                     elif cmd == "settings":
                         handle_settings(fake_msg)
                     elif cmd == "performance":
@@ -322,7 +332,10 @@ class TelegramCommandHandler:
             help_text = """
 <b>🤖 RSI+MFI TRADING BOT</b>
 
-<b>� SYMBOL ANALYSIS:</b>
+<b>🎛️ INTERACTIVE MENU:</b>
+/menu - Open button menu (recommended!)
+
+<b>📊 SYMBOL ANALYSIS:</b>
 /<b>SYMBOL</b> - Analyze any coin
 Example: /BTC /ETH /LINK
 
@@ -359,11 +372,10 @@ Example: /BTC /ETH /LINK
 /volumesensitivity - Set sensitivity
 
 <b>ℹ️ INFO:</b>
-/menu - Interactive menu 🎛️
 /help - Show this message
 /about - About bot
 
-<i>💡 Tip: Type /BTC for instant analysis or /menu for buttons!</i>
+<i>💡 Tip: Use /menu for easy-to-use buttons! 🎯</i>
             """
             self.bot.send_message(help_text)
         
