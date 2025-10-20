@@ -8,6 +8,7 @@ from datetime import datetime
 import time
 from watchlist import WatchlistManager
 from watchlist_monitor import WatchlistMonitor
+from volume_detector import VolumeDetector
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,9 @@ class TelegramCommandHandler:
         
         # Initialize watchlist monitor (auto-notification)
         self.monitor = WatchlistMonitor(self, check_interval=300)  # 5 minutes
+        
+        # Use monitor's volume detector for signal alerts (shared instance)
+        self.volume_detector = self.monitor.volume_detector
         
         # Import config and indicators early for use in analyze_symbol
         import config
@@ -147,16 +151,17 @@ class TelegramCommandHandler:
             
             # Get volume analysis
             volume_data = None
-            if self.monitor and self.monitor.volume_detector:
+            if self.volume_detector:
                 try:
                     # Use main timeframe (5m) for volume analysis
                     main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
                     if main_tf in klines_dict:
-                        volume_result = self.monitor.volume_detector.detect(klines_dict[main_tf])
+                        volume_result = self.volume_detector.detect(klines_dict[main_tf])
                         if volume_result:  # ✅ Always get volume data, not just anomalies
                             volume_data = volume_result
+                            logger.info(f"Volume analysis for {symbol}: Current={volume_result.get('current_volume', 0):.0f}, Last={volume_result.get('last_volume', 0):.0f}, Anomaly={volume_result.get('is_anomaly', False)}")
                 except Exception as e:
-                    logger.warning(f"Volume analysis failed for {symbol}: {e}")
+                    logger.error(f"Volume analysis failed for {symbol}: {e}")
             
             # Check if has signal
             has_signal = (analysis['consensus'] != 'NEUTRAL' and 
@@ -1462,15 +1467,16 @@ Example: /BTC /ETH /LINK
                 
                 # Get volume analysis
                 volume_data = None
-                if self.monitor and self.monitor.volume_detector:
+                if self.volume_detector:
                     try:
                         main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
                         if main_tf in klines_dict:
-                            volume_result = self.monitor.volume_detector.detect(klines_dict[main_tf])
+                            volume_result = self.volume_detector.detect(klines_dict[main_tf])
                             if volume_result:  # ✅ Always get volume data
                                 volume_data = volume_result
+                                logger.info(f"Volume analysis for {symbol}: Current={volume_result.get('current_volume', 0):.0f}, Last={volume_result.get('last_volume', 0):.0f}, Anomaly={volume_result.get('is_anomaly', False)}")
                     except Exception as e:
-                        logger.warning(f"Volume analysis failed for {symbol}: {e}")
+                        logger.error(f"Volume analysis failed for {symbol}: {e}")
                 
                 # Send analysis
                 self.bot.send_signal_alert(
