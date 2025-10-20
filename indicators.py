@@ -132,9 +132,17 @@ def analyze_symbol(df, rsi_period, mfi_period, rsi_lower, rsi_upper, mfi_lower, 
     rsi = calculate_rsi(hlcc4, rsi_period)
     mfi = calculate_mfi(df, mfi_period)
     
-    # Get latest values
+    # Get latest values (current)
     latest_rsi = rsi.iloc[-1]
     latest_mfi = mfi.iloc[-1]
+    
+    # Get previous values (last candle)
+    last_rsi = rsi.iloc[-2] if len(rsi) >= 2 else latest_rsi
+    last_mfi = mfi.iloc[-2] if len(mfi) >= 2 else latest_mfi
+    
+    # Calculate changes
+    rsi_change = latest_rsi - last_rsi
+    mfi_change = latest_mfi - last_mfi
     
     # Get signal
     signal = get_signal(latest_rsi, latest_mfi, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
@@ -142,6 +150,10 @@ def analyze_symbol(df, rsi_period, mfi_period, rsi_lower, rsi_upper, mfi_lower, 
     return {
         'rsi': round(latest_rsi, 2),
         'mfi': round(latest_mfi, 2),
+        'last_rsi': round(last_rsi, 2),
+        'last_mfi': round(last_mfi, 2),
+        'rsi_change': round(rsi_change, 2),
+        'mfi_change': round(mfi_change, 2),
         'signal': signal,
         'rsi_series': rsi,
         'mfi_series': mfi

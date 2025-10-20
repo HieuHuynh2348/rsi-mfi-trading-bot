@@ -241,6 +241,8 @@ class TelegramBot:
         # Find main timeframe (usually first or most important)
         main_tf = timeframes[0] if timeframes else '5m'
         main_rsi = timeframe_data[main_tf]['rsi']
+        last_rsi = timeframe_data[main_tf].get('last_rsi', main_rsi)
+        rsi_change = timeframe_data[main_tf].get('rsi_change', 0)
         
         # RSI status emoji
         if main_rsi >= 80:
@@ -248,12 +250,16 @@ class TelegramBot:
             rsi_alert = f"⚠️ Overbought Alert: {main_rsi:.0f}+ 🔴🔴"
         elif main_rsi <= 20:
             rsi_status = "❄️"
-            rsi_alert = f"� Oversold Alert: {main_rsi:.0f}- 🟢🟢"
+            rsi_alert = f"💎 Oversold Alert: {main_rsi:.0f}- 🟢🟢"
         else:
             rsi_status = "⚖️"
             rsi_alert = None
         
-        message += f"📍 Main RSI: {main_rsi:.2f} {rsi_status}\n"
+        # RSI trend indicator
+        rsi_trend = "📈" if rsi_change > 0 else ("📉" if rsi_change < 0 else "➡️")
+        
+        message += f"📍 <b>Main RSI:</b> {main_rsi:.2f} {rsi_status}\n"
+        message += f"⏮️ <b>Last RSI:</b> {last_rsi:.2f} {rsi_trend} <i>({rsi_change:+.2f})</i>\n"
         if rsi_alert:
             message += f"{rsi_alert}\n\n"
         else:
@@ -262,6 +268,9 @@ class TelegramBot:
         # All timeframe RSI values
         for tf in timeframes:
             rsi_val = timeframe_data[tf]['rsi']
+            last_val = timeframe_data[tf].get('last_rsi', rsi_val)
+            change = timeframe_data[tf].get('rsi_change', 0)
+            
             if rsi_val >= 80:
                 emoji = "🔴"
                 status = "Overbought"
@@ -271,11 +280,15 @@ class TelegramBot:
             else:
                 emoji = "🔵"
                 status = "Normal"
-            message += f"  ├─ {tf.upper()}: {rsi_val:.2f} {emoji} <i>{status}</i>\n"
+            
+            trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
+            message += f"  ├─ {tf.upper()}: {rsi_val:.2f} {emoji} <i>{status}</i> {trend}\n"
         
         # MFI Analysis
         message += "\n<b>💰 MFI ANALYSIS</b>\n"
         main_mfi = timeframe_data[main_tf]['mfi']
+        last_mfi = timeframe_data[main_tf].get('last_mfi', main_mfi)
+        mfi_change = timeframe_data[main_tf].get('mfi_change', 0)
         
         # MFI status emoji
         if main_mfi >= 80:
@@ -288,7 +301,11 @@ class TelegramBot:
             mfi_status = "⚖️"
             mfi_alert = None
         
-        message += f"📍 Main MFI: {main_mfi:.2f} {mfi_status}\n"
+        # MFI trend indicator
+        mfi_trend = "📈" if mfi_change > 0 else ("📉" if mfi_change < 0 else "➡️")
+        
+        message += f"📍 <b>Main MFI:</b> {main_mfi:.2f} {mfi_status}\n"
+        message += f"⏮️ <b>Last MFI:</b> {last_mfi:.2f} {mfi_trend} <i>({mfi_change:+.2f})</i>\n"
         if mfi_alert:
             message += f"{mfi_alert}\n\n"
         else:
@@ -297,6 +314,9 @@ class TelegramBot:
         # All timeframe MFI values
         for tf in timeframes:
             mfi_val = timeframe_data[tf]['mfi']
+            last_val = timeframe_data[tf].get('last_mfi', mfi_val)
+            change = timeframe_data[tf].get('mfi_change', 0)
+            
             if mfi_val >= 80:
                 emoji = "🔴"
                 status = "Overbought"
@@ -306,7 +326,9 @@ class TelegramBot:
             else:
                 emoji = "🔵"
                 status = "Normal"
-            message += f"  ├─ {tf.upper()}: {mfi_val:.2f} {emoji} <i>{status}</i>\n"
+            
+            trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
+            message += f"  ├─ {tf.upper()}: {mfi_val:.2f} {emoji} <i>{status}</i> {trend}\n"
         
         # Consensus Analysis
         message += "\n<b>🎯 CONSENSUS SIGNALS</b>\n"
