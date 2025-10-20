@@ -377,7 +377,9 @@ Example: /BTC /ETH /LINK
 
 <i>💡 Tip: Use /menu for easy-to-use buttons! 🎯</i>
             """
-            self.bot.send_message(help_text)
+            # Send with main menu keyboard
+            keyboard = self.bot.create_main_menu_keyboard()
+            self.bot.send_message(help_text, reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['menu'])
         def handle_menu(message):
@@ -435,7 +437,9 @@ Example: /BTC /ETH /LINK
 <i>⚠️ Disclaimer: Not financial advice!</i>
 <i>📚 Always do your own research (DYOR)</i>
             """
-            self.bot.send_message(about_text)
+            # Send with main menu keyboard
+            keyboard = self.bot.create_main_menu_keyboard()
+            self.bot.send_message(about_text, reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['status'])
         def handle_status(message):
@@ -465,10 +469,12 @@ Example: /BTC /ETH /LINK
 
 <b>🕐 Current Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 """
-                self.bot.send_message(status_text)
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(status_text, reply_markup=keyboard)
             except Exception as e:
                 logger.error(f"Error in /status: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['price'])
         def handle_price(message):
@@ -594,11 +600,14 @@ Example: /BTC /ETH /LINK
                     msg += f"{i}. <b>{symbol}</b>\n"
                     msg += f"   {vol_str} | {emoji} {change:+.2f}%\n\n"
                 
-                self.bot.send_message(msg)
+                # Send with action keyboard
+                keyboard = self.bot.create_action_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /top: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['scan'])
         def handle_scan(message):
@@ -847,10 +856,12 @@ Example: /BTC /ETH /LINK
 
 💡 Use /performance for detailed scan info
                 """
-                self.bot.send_message(settings_text)
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(settings_text, reply_markup=keyboard)
             except Exception as e:
                 logger.error(f"Error in /settings: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['performance'])
         def handle_performance(message):
@@ -890,10 +901,12 @@ Example: /BTC /ETH /LINK
 💡 <i>Workers scale automatically based on workload</i>
 🔧 <i>No manual configuration needed!</i>
                 """
-                self.bot.send_message(perf_text)
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(perf_text, reply_markup=keyboard)
             except Exception as e:
                 logger.error(f"Error in /performance: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['watch'])
         def handle_watch(message):
@@ -963,11 +976,13 @@ Example: /BTC /ETH /LINK
             try:
                 # Get formatted watchlist
                 msg = self.watchlist.get_formatted_list()
-                self.bot.send_message(msg)
+                keyboard = self.bot.create_watchlist_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /watchlist: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['scanwatch'])
         def handle_scanwatch(message):
@@ -1163,15 +1178,18 @@ Example: /BTC /ETH /LINK
                 
                 self.monitor.start()
                 
+                keyboard = self.bot.create_monitor_keyboard()
                 self.bot.send_message(f"✅ <b>Watchlist Monitor Started!</b>\n\n"
                                     f"⏱️ Check interval: {self.monitor.check_interval//60} min\n"
                                     f"📊 Monitoring: {count} coins\n"
                                     f"🔔 Will auto-notify when signals appear\n\n"
-                                    f"💡 Use /stopmonitor to stop")
+                                    f"💡 Use /stopmonitor to stop",
+                                    reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /startmonitor: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['stopmonitor'])
         def handle_stopmonitor(message):
@@ -1186,13 +1204,16 @@ Example: /BTC /ETH /LINK
                 
                 self.monitor.stop()
                 
+                keyboard = self.bot.create_monitor_keyboard()
                 self.bot.send_message(f"⏸️ <b>Watchlist Monitor Stopped</b>\n\n"
                                     f"🔕 Auto-notifications disabled\n\n"
-                                    f"💡 Use /startmonitor to resume")
+                                    f"💡 Use /startmonitor to resume",
+                                    reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /stopmonitor: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['monitorstatus'])
         def handle_monitorstatus(message):
@@ -1218,11 +1239,13 @@ Example: /BTC /ETH /LINK
                     msg += "🔕 Auto-notifications: OFF\n"
                     msg += "💡 Use /startmonitor to resume"
                 
-                self.bot.send_message(msg)
+                keyboard = self.bot.create_monitor_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /monitorstatus: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['volumescan'])
         def handle_volumescan(message):
@@ -1274,12 +1297,15 @@ Example: /BTC /ETH /LINK
                     
                     time.sleep(0.5)
                 
+                keyboard = self.bot.create_volume_keyboard()
                 self.bot.send_message(f"✅ <b>Volume scan complete!</b>\n\n"
-                                    f"Found {len(spike_alerts)} spike(s)")
+                                    f"Found {len(spike_alerts)} spike(s)",
+                                    reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /volumescan: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['volumesensitivity'])
         def handle_volumesensitivity(message):
@@ -1308,7 +1334,8 @@ Example: /BTC /ETH /LINK
                     msg += f"• <b>high</b> - Sensitive (2x volume)\n\n"
                     msg += f"💡 Usage: /volumesensitivity <level>"
                     
-                    self.bot.send_message(msg)
+                    keyboard = self.bot.create_volume_keyboard()
+                    self.bot.send_message(msg, reply_markup=keyboard)
                     return
                 
                 new_sensitivity = parts[1].lower()
@@ -1325,6 +1352,7 @@ Example: /BTC /ETH /LINK
                 
                 new_config = self.monitor.volume_detector.config
                 
+                keyboard = self.bot.create_volume_keyboard()
                 self.bot.send_message(
                     f"✅ <b>Sensitivity updated!</b>\n\n"
                     f"<b>Changed from:</b> {old_sensitivity.upper()}\n"
@@ -1333,12 +1361,14 @@ Example: /BTC /ETH /LINK
                     f"• Volume multiplier: {new_config['volume_multiplier']}x\n"
                     f"• Min increase: {new_config['min_increase_percent']}%\n"
                     f"• Lookback: {new_config['lookback_periods']} candles\n\n"
-                    f"💡 Test with /volumescan"
+                    f"💡 Test with /volumescan",
+                    reply_markup=keyboard
                 )
                 
             except Exception as e:
                 logger.error(f"Error in /volumesensitivity: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
         # ===== SYMBOL ANALYSIS HANDLER (MUST BE LAST) =====
         @self.telegram_bot.message_handler(func=lambda m: m.text and m.text.startswith('/') and 

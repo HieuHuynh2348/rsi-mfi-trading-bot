@@ -173,6 +173,24 @@ class TelegramBot:
         
         return keyboard
     
+    def create_action_keyboard(self):
+        """Create action keyboard for commands that completed an action"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Scan Market", callback_data="cmd_scan"),
+            types.InlineKeyboardButton("⭐ Scan Watchlist", callback_data="cmd_scanwatch")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("📝 View Watchlist", callback_data="cmd_watchlist"),
+            types.InlineKeyboardButton("🔥 Volume Scan", callback_data="cmd_volumescan")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+        )
+        
+        return keyboard
+    
     def send_photo(self, photo_bytes, caption=''):
         """
         Send a photo
