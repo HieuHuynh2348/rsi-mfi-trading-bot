@@ -71,6 +71,7 @@ class VolumeDetector:
             
             # Calculate volume statistics
             current_volume = df['volume'].iloc[-1]
+            last_volume = df['volume'].iloc[-2]  # Volume of previous candle
             
             # Average volume (excluding current candle)
             avg_volume = df['volume'].iloc[:-1].tail(self.config['lookback_periods']).mean()
@@ -81,8 +82,14 @@ class VolumeDetector:
             # Volume ratio (current / average)
             volume_ratio = current_volume / avg_volume if avg_volume > 0 else 0
             
+            # Last candle ratio (current / last)
+            last_candle_ratio = current_volume / last_volume if last_volume > 0 else 0
+            
             # Percent increase from average
             volume_increase = ((current_volume - avg_volume) / avg_volume * 100) if avg_volume > 0 else 0
+            
+            # Percent increase from last candle
+            last_candle_increase = ((current_volume - last_volume) / last_volume * 100) if last_volume > 0 else 0
             
             # Z-score (how many standard deviations from mean)
             z_score = (current_volume - avg_volume) / std_volume if std_volume > 0 else 0
@@ -113,9 +120,12 @@ class VolumeDetector:
                 'is_spike': is_spike,
                 'spike_type': spike_type,
                 'current_volume': current_volume,
+                'last_volume': last_volume,
                 'avg_volume': avg_volume,
                 'volume_ratio': volume_ratio,
+                'last_candle_ratio': last_candle_ratio,
                 'volume_increase_percent': volume_increase,
+                'last_candle_increase_percent': last_candle_increase,
                 'z_score': z_score,
                 'price_change_percent': price_change,
                 'current_price': df['close'].iloc[-1],
@@ -220,18 +230,31 @@ class VolumeDetector:
         
         # Current volume
         if result['current_volume'] >= 1e9:
-            vol_str = f"${result['current_volume']/1e9:.2f}B"
+            curr_vol_str = f"${result['current_volume']/1e9:.2f}B"
         elif result['current_volume'] >= 1e6:
-            vol_str = f"${result['current_volume']/1e6:.2f}M"
+            curr_vol_str = f"${result['current_volume']/1e6:.2f}M"
         elif result['current_volume'] >= 1e3:
-            vol_str = f"${result['current_volume']/1e3:.2f}K"
+            curr_vol_str = f"${result['current_volume']/1e3:.2f}K"
         else:
-            vol_str = f"${result['current_volume']:.2f}"
+            curr_vol_str = f"${result['current_volume']:.2f}"
         
-        text += f"<b>Current Volume:</b> {vol_str}\n"
-        text += f"<b>Volume Ratio:</b> {result['volume_ratio']:.2f}x average\n"
-        text += f"<b>Increase:</b> +{result['volume_increase_percent']:.1f}%\n"
-        text += f"<b>Z-Score:</b> {result['z_score']:.2f}σ\n\n"
+        # Last volume
+        if result['last_volume'] >= 1e9:
+            last_vol_str = f"${result['last_volume']/1e9:.2f}B"
+        elif result['last_volume'] >= 1e6:
+            last_vol_str = f"${result['last_volume']/1e6:.2f}M"
+        elif result['last_volume'] >= 1e3:
+            last_vol_str = f"${result['last_volume']/1e3:.2f}K"
+        else:
+            last_vol_str = f"${result['last_volume']:.2f}"
+        
+        text += f"<b>💹 Current Volume:</b> {curr_vol_str}\n"
+        text += f"<b>⏮️ Last Volume:</b> {last_vol_str}\n"
+        text += f"<b>📊 Avg Volume:</b> {result.get('avg_volume', 0)/1e6:.2f}M\n\n"
+        
+        text += f"<b>📈 vs Average:</b> {result['volume_ratio']:.2f}x (+{result['volume_increase_percent']:.1f}%)\n"
+        text += f"<b>📊 vs Last Candle:</b> {result['last_candle_ratio']:.2f}x ({result['last_candle_increase_percent']:+.1f}%)\n"
+        text += f"<b>📉 Z-Score:</b> {result['z_score']:.2f}σ\n\n"
         
         # Spike status
         if result['is_spike']:
