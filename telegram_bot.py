@@ -447,6 +447,15 @@ class TelegramBot:
                 # Calculate contribution percentage
                 contribution_pct = (current_vol / volume_24h) * 100
                 
+                # Smart formatting for contribution percentage
+                if contribution_pct >= 0.001:
+                    contribution_str = f"{contribution_pct:.3f}%"
+                elif contribution_pct >= 0.00001:
+                    contribution_str = f"{contribution_pct:.5f}%"
+                else:
+                    # Use scientific notation for very small values
+                    contribution_str = f"{contribution_pct:.2e}%"
+                
                 # Calculate trend (current vs last)
                 if last_vol > 0:
                     vol_change = current_vol - last_vol
@@ -474,7 +483,7 @@ class TelegramBot:
                     
                     message += f"\n<b>📈 24h IMPACT ANALYSIS</b>\n"
                     message += f"💎 <b>Current 24h Volume:</b> {format_volume(volume_24h)}\n"
-                    message += f"📊 <b>Candle Contribution:</b> {contribution_pct:.3f}% of 24h\n"
+                    message += f"📊 <b>Candle Contribution:</b> {contribution_str} of 24h\n"
                     message += f"{trend_emoji} <b>Trend:</b> {trend_text} <i>({vol_change_pct:+.1f}%)</i>\n"
                     
                     if abs(predicted_impact_pct) > 0.1:  # Only show if significant
