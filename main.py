@@ -306,7 +306,8 @@ class TradingBot:
                 signal['consensus'],
                 signal['consensus_strength'],
                 signal['price'],
-                signal.get('market_data')
+                signal.get('market_data'),
+                signal.get('volume_data')
             )
             
             # Send chart if enabled

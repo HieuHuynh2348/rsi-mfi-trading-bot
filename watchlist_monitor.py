@@ -208,7 +208,8 @@ class WatchlistMonitor:
                         result['consensus'],
                         result['consensus_strength'],
                         result['price'],
-                        result.get('market_data')
+                        result.get('market_data'),
+                        result.get('volume_data')
                     )
                     
                     # Send chart if enabled
@@ -350,7 +351,8 @@ class WatchlistMonitor:
                         result['consensus'],
                         result['consensus_strength'],
                         result['price'],
-                        result.get('market_data')
+                        result.get('market_data'),
+                        result.get('volume_data')
                     )
                     
                     # Send chart if enabled

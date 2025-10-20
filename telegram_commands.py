@@ -145,6 +145,19 @@ class TelegramCommandHandler:
             price = self.binance.get_current_price(symbol)
             market_data = self.binance.get_24h_data(symbol)
             
+            # Get volume analysis
+            volume_data = None
+            if self.monitor and self.monitor.volume_detector:
+                try:
+                    # Use main timeframe (5m) for volume analysis
+                    main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
+                    if main_tf in klines_dict:
+                        volume_result = self.monitor.volume_detector.detect(klines_dict[main_tf])
+                        if volume_result:  # ✅ Always get volume data, not just anomalies
+                            volume_data = volume_result
+                except Exception as e:
+                    logger.warning(f"Volume analysis failed for {symbol}: {e}")
+            
             # Check if has signal
             has_signal = (analysis['consensus'] != 'NEUTRAL' and 
                          analysis['consensus_strength'] >= self._config.MIN_CONSENSUS_STRENGTH)
@@ -156,6 +169,7 @@ class TelegramCommandHandler:
                 'consensus_strength': analysis['consensus_strength'],
                 'price': price,
                 'market_data': market_data,
+                'volume_data': volume_data,
                 'klines_dict': klines_dict,
                 'has_signal': has_signal
             }
@@ -245,7 +259,8 @@ class TelegramCommandHandler:
                             result['consensus'],
                             result['consensus_strength'],
                             result['price'],
-                            result.get('market_data')
+                            result.get('market_data'),
+                            result.get('volume_data')
                         )
                 
                 # Volume sensitivity
@@ -1103,7 +1118,8 @@ Example: /BTC /ETH /LINK
                                 result['consensus'],
                                 result['consensus_strength'],
                                 result['price'],
-                                result.get('market_data')
+                                result.get('market_data'),
+                                result.get('volume_data')
                             )
                             
                             # Send chart if enabled
@@ -1444,6 +1460,18 @@ Example: /BTC /ETH /LINK
                 price = self.binance.get_current_price(symbol)
                 market_data = self.binance.get_24h_data(symbol)
                 
+                # Get volume analysis
+                volume_data = None
+                if self.monitor and self.monitor.volume_detector:
+                    try:
+                        main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
+                        if main_tf in klines_dict:
+                            volume_result = self.monitor.volume_detector.detect(klines_dict[main_tf])
+                            if volume_result:  # ✅ Always get volume data
+                                volume_data = volume_result
+                    except Exception as e:
+                        logger.warning(f"Volume analysis failed for {symbol}: {e}")
+                
                 # Send analysis
                 self.bot.send_signal_alert(
                     symbol,
@@ -1451,7 +1479,8 @@ Example: /BTC /ETH /LINK
                     analysis['consensus'],
                     analysis['consensus_strength'],
                     price,
-                    market_data
+                    market_data,
+                    volume_data
                 )
                 
                 # Send charts (2 separate charts)
