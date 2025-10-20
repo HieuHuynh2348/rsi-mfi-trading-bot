@@ -181,7 +181,7 @@ class TelegramCommandHandler:
         # List of registered commands (to exclude from symbol handler)
         self.registered_commands = [
             'start', 'help', 'about', 'status', 'price', '24h', 'top',
-            'rsi', 'mfi', 'chart', 'scan', 'settings',
+            'rsi', 'mfi', 'chart', 'scan', 'settings', 'menu',
             'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch',
             'performance', 'startmonitor', 'stopmonitor', 'monitorstatus',
             'volumescan', 'volumesensitivity'
@@ -205,6 +205,112 @@ class TelegramCommandHandler:
             except (ValueError, TypeError) as e:
                 logger.error(f"Error checking authorization: {e}")
                 return False
+        
+        # ===== CALLBACK QUERY HANDLER =====
+        @self.telegram_bot.callback_query_handler(func=lambda call: True)
+        def handle_callback(call):
+            """Handle inline keyboard button presses"""
+            if not check_authorized(call.message):
+                return
+            
+            try:
+                # Answer callback to remove loading state
+                self.telegram_bot.answer_callback_query(call.id)
+                
+                data = call.data
+                
+                # Main menu
+                if data == "cmd_menu":
+                    keyboard = self.bot.create_main_menu_keyboard()
+                    self.telegram_bot.edit_message_text(
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        text="<b>🤖 MAIN MENU</b>\n\nChoose an option:",
+                        parse_mode='HTML',
+                        reply_markup=keyboard
+                    )
+                
+                # Quick analysis
+                elif data.startswith("analyze_"):
+                    symbol = data.replace("analyze_", "")
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=f"🔍 Analyzing {symbol}..."
+                    )
+                    result = self._analyze_symbol_full(symbol)
+                    if result:
+                        self.bot.send_signal_alert(
+                            result['symbol'],
+                            result['timeframe_data'],
+                            result['consensus'],
+                            result['consensus_strength'],
+                            result['price'],
+                            result.get('market_data')
+                        )
+                
+                # Volume sensitivity
+                elif data.startswith("vol_"):
+                    sensitivity = data.replace("vol_", "")
+                    old = self.monitor.volume_detector.sensitivity
+                    self.monitor.volume_detector.sensitivity = sensitivity
+                    self.monitor.volume_detector.config = self.monitor.volume_detector.thresholds[sensitivity]
+                    
+                    keyboard = self.bot.create_volume_keyboard()
+                    self.telegram_bot.edit_message_text(
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id,
+                        text=f"✅ Sensitivity updated: {old.upper()} → {sensitivity.upper()}",
+                        parse_mode='HTML',
+                        reply_markup=keyboard
+                    )
+                
+                # Command callbacks - use simplified approach
+                elif data.startswith("cmd_"):
+                    cmd = data.replace("cmd_", "")
+                    # Create a fake message object to reuse handlers
+                    fake_msg = call.message
+                    fake_msg.text = f"/{cmd}"
+                    
+                    # Route to appropriate handler
+                    if cmd == "scan":
+                        handle_scan(fake_msg)
+                    elif cmd == "scanwatch":
+                        handle_scanwatch(fake_msg)
+                    elif cmd == "watchlist":
+                        handle_watchlist(fake_msg)
+                    elif cmd == "clearwatch":
+                        handle_clearwatch(fake_msg)
+                    elif cmd == "volumescan":
+                        handle_volumescan(fake_msg)
+                    elif cmd == "volumesensitivity":
+                        current = self.monitor.volume_detector.sensitivity
+                        keyboard = self.bot.create_volume_keyboard()
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"<b>🎯 Volume Sensitivity</b>\n\nCurrent: <b>{current.upper()}</b>\n\nSelect level:",
+                            parse_mode='HTML',
+                            reply_markup=keyboard
+                        )
+                    elif cmd == "startmonitor":
+                        handle_startmonitor(fake_msg)
+                    elif cmd == "stopmonitor":
+                        handle_stopmonitor(fake_msg)
+                    elif cmd == "monitorstatus":
+                        handle_monitorstatus(fake_msg)
+                    elif cmd == "top":
+                        handle_top(fake_msg)
+                    elif cmd == "settings":
+                        handle_settings(fake_msg)
+                    elif cmd == "performance":
+                        handle_performance(fake_msg)
+                    elif cmd == "help":
+                        handle_help(fake_msg)
+                    elif cmd == "about":
+                        handle_about(fake_msg)
+                
+            except Exception as e:
+                logger.error(f"Error handling callback: {e}")
+                self.telegram_bot.answer_callback_query(call.id, text=f"Error: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['start', 'help'])
         def handle_help(message):
@@ -253,12 +359,30 @@ Example: /BTC /ETH /LINK
 /volumesensitivity - Set sensitivity
 
 <b>ℹ️ INFO:</b>
+/menu - Interactive menu 🎛️
 /help - Show this message
 /about - About bot
 
-<i>💡 Tip: Type /BTC for instant analysis!</i>
+<i>💡 Tip: Type /BTC for instant analysis or /menu for buttons!</i>
             """
             self.bot.send_message(help_text)
+        
+        @self.telegram_bot.message_handler(commands=['menu'])
+        def handle_menu(message):
+            """Show interactive menu with buttons"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(
+                    "<b>🤖 MAIN MENU</b>\n\n"
+                    "Choose an option below or use /help for text commands:",
+                    reply_markup=keyboard
+                )
+            except Exception as e:
+                logger.error(f"Error in /menu: {e}")
+                self.bot.send_message(f"❌ Error: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['about'])
         def handle_about(message):

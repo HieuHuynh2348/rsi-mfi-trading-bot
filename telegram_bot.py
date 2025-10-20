@@ -19,25 +19,153 @@ class TelegramBot:
         self.chat_id = chat_id
         logger.info("Telegram bot initialized")
     
-    def send_message(self, message, parse_mode='HTML'):
+    def send_message(self, message, parse_mode='HTML', reply_markup=None):
         """
         Send a text message
         
         Args:
             message: Message text
             parse_mode: 'HTML' or 'Markdown'
+            reply_markup: Optional keyboard markup
         """
         try:
             self.bot.send_message(
                 chat_id=self.chat_id,
                 text=message,
-                parse_mode=parse_mode
+                parse_mode=parse_mode,
+                reply_markup=reply_markup
             )
             logger.info("Message sent successfully")
             return True
         except Exception as e:
             logger.error(f"Error sending message: {e}")
             return False
+    
+    def create_main_menu_keyboard(self):
+        """Create main menu inline keyboard"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Row 1: Analysis
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Scan Market", callback_data="cmd_scan"),
+            types.InlineKeyboardButton("⭐ Scan Watchlist", callback_data="cmd_scanwatch")
+        )
+        
+        # Row 2: Watchlist
+        keyboard.row(
+            types.InlineKeyboardButton("📝 View Watchlist", callback_data="cmd_watchlist"),
+            types.InlineKeyboardButton("🗑️ Clear Watchlist", callback_data="cmd_clearwatch")
+        )
+        
+        # Row 3: Volume
+        keyboard.row(
+            types.InlineKeyboardButton("🔥 Volume Scan", callback_data="cmd_volumescan"),
+            types.InlineKeyboardButton("🎯 Volume Settings", callback_data="cmd_volumesensitivity")
+        )
+        
+        # Row 4: Monitor
+        keyboard.row(
+            types.InlineKeyboardButton("🔔 Start Monitor", callback_data="cmd_startmonitor"),
+            types.InlineKeyboardButton("⏸️ Stop Monitor", callback_data="cmd_stopmonitor")
+        )
+        
+        # Row 5: Info
+        keyboard.row(
+            types.InlineKeyboardButton("📈 Top Coins", callback_data="cmd_top"),
+            types.InlineKeyboardButton("⚙️ Settings", callback_data="cmd_settings")
+        )
+        
+        # Row 6: Status
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Monitor Status", callback_data="cmd_monitorstatus"),
+            types.InlineKeyboardButton("⚡ Performance", callback_data="cmd_performance")
+        )
+        
+        # Row 7: Help
+        keyboard.row(
+            types.InlineKeyboardButton("ℹ️ Help", callback_data="cmd_help"),
+            types.InlineKeyboardButton("ℹ️ About", callback_data="cmd_about")
+        )
+        
+        return keyboard
+    
+    def create_watchlist_keyboard(self):
+        """Create watchlist management keyboard"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("📝 View List", callback_data="cmd_watchlist"),
+            types.InlineKeyboardButton("⭐ Scan All", callback_data="cmd_scanwatch")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔥 Volume Scan", callback_data="cmd_volumescan"),
+            types.InlineKeyboardButton("🗑️ Clear All", callback_data="cmd_clearwatch")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+        )
+        
+        return keyboard
+    
+    def create_monitor_keyboard(self):
+        """Create monitor control keyboard"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("🔔 Start", callback_data="cmd_startmonitor"),
+            types.InlineKeyboardButton("⏸️ Stop", callback_data="cmd_stopmonitor")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Status", callback_data="cmd_monitorstatus")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+        )
+        
+        return keyboard
+    
+    def create_volume_keyboard(self):
+        """Create volume settings keyboard"""
+        keyboard = types.InlineKeyboardMarkup(row_width=3)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("🔥 Scan Now", callback_data="cmd_volumescan")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔴 Low", callback_data="vol_low"),
+            types.InlineKeyboardButton("🟡 Medium", callback_data="vol_medium"),
+            types.InlineKeyboardButton("🟢 High", callback_data="vol_high")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+        )
+        
+        return keyboard
+    
+    def create_quick_analysis_keyboard(self):
+        """Create quick analysis keyboard for popular coins"""
+        keyboard = types.InlineKeyboardMarkup(row_width=3)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("₿ BTC", callback_data="analyze_BTCUSDT"),
+            types.InlineKeyboardButton("Ξ ETH", callback_data="analyze_ETHUSDT"),
+            types.InlineKeyboardButton("₿ BNB", callback_data="analyze_BNBUSDT")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔗 LINK", callback_data="analyze_LINKUSDT"),
+            types.InlineKeyboardButton("⚪ DOT", callback_data="analyze_DOTUSDT"),
+            types.InlineKeyboardButton("🔵 ADA", callback_data="analyze_ADAUSDT")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🟣 SOL", callback_data="analyze_SOLUSDT"),
+            types.InlineKeyboardButton("⚫ AVAX", callback_data="analyze_AVAXUSDT"),
+            types.InlineKeyboardButton("🔴 MATIC", callback_data="analyze_MATICUSDT")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+        )
+        
+        return keyboard
     
     def send_photo(self, photo_bytes, caption=''):
         """
