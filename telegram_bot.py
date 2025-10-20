@@ -405,6 +405,9 @@ class TelegramBot:
             avg_vol = volume_data.get('avg_volume', 0)
             is_anomaly = volume_data.get('is_anomaly', False)
             
+            # Get 24h volume for comparison
+            volume_24h = market_data.get('volume', 0) if market_data else 0
+            
             # Format volumes intelligently
             def format_volume(vol):
                 if vol >= 1e9:
@@ -422,9 +425,9 @@ class TelegramBot:
             if is_anomaly:
                 message += f"⚡ <b>VOLUME SPIKE DETECTED!</b> ⚡\n"
             
-            message += f"💹 <b>Current:</b> {format_volume(current_vol)}\n"
-            message += f"⏮️ <b>Last:</b> {format_volume(last_vol)}\n"
-            message += f"📊 <b>Average:</b> {format_volume(avg_vol)}\n"
+            message += f"💹 <b>Current Candle:</b> {format_volume(current_vol)}\n"
+            message += f"⏮️ <b>Last Candle:</b> {format_volume(last_vol)}\n"
+            message += f"📊 <b>Average Candle:</b> {format_volume(avg_vol)}\n"
             
             # Show ratios
             if last_vol > 0:
@@ -438,6 +441,44 @@ class TelegramBot:
                 avg_increase = volume_data.get('avg_increase_percent', 0)
                 avg_emoji = "📈" if avg_ratio > 1 else ("📉" if avg_ratio < 1 else "➡️")
                 message += f"🔄 <b>vs Avg:</b> {avg_ratio:.2f}x {avg_emoji} <i>({avg_increase:+.1f}%)</i>\n"
+            
+            # 24h Volume Impact Analysis
+            if volume_24h > 0 and current_vol > 0:
+                # Calculate contribution percentage
+                contribution_pct = (current_vol / volume_24h) * 100
+                
+                # Calculate trend (current vs last)
+                if last_vol > 0:
+                    vol_change = current_vol - last_vol
+                    vol_change_pct = ((current_vol - last_vol) / last_vol) * 100
+                    
+                    # Predict 24h impact if trend continues
+                    # Assume 288 candles per day (5-min timeframe)
+                    candles_per_day = 288
+                    predicted_impact = vol_change * candles_per_day
+                    predicted_impact_pct = (predicted_impact / volume_24h) * 100
+                    
+                    # Determine trend
+                    if vol_change > 0:
+                        trend_emoji = "🔥"
+                        trend_text = "Increasing"
+                        impact_sign = "+"
+                    elif vol_change < 0:
+                        trend_emoji = "❄️"
+                        trend_text = "Decreasing"
+                        impact_sign = ""
+                    else:
+                        trend_emoji = "➡️"
+                        trend_text = "Stable"
+                        impact_sign = ""
+                    
+                    message += f"\n<b>📈 24h IMPACT ANALYSIS</b>\n"
+                    message += f"💎 <b>Current 24h Volume:</b> {format_volume(volume_24h)}\n"
+                    message += f"📊 <b>Candle Contribution:</b> {contribution_pct:.3f}% of 24h\n"
+                    message += f"{trend_emoji} <b>Trend:</b> {trend_text} <i>({vol_change_pct:+.1f}%)</i>\n"
+                    
+                    if abs(predicted_impact_pct) > 0.1:  # Only show if significant
+                        message += f"🔮 <b>Projected 24h Impact:</b> {impact_sign}{format_volume(abs(predicted_impact))} <i>({predicted_impact_pct:+.1f}%)</i>\n"
         
         return self.send_message(message)
     
