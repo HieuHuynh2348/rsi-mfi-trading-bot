@@ -501,7 +501,7 @@ class TelegramBot:
             # Add action keyboard for quick analysis
             keyboard = self.create_action_keyboard()
             logger.info(f"✅ Sending signal alert for {symbol} ({len(message)} chars)")
-            result = self.send_message(message, keyboard)
+            result = self.send_message(message, reply_markup=keyboard)
             if result:
                 logger.info(f"✅ Signal alert sent successfully for {symbol}")
             else:
