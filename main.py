@@ -325,11 +325,54 @@ class TradingBot:
                 logger.error(f"Error sending overview charts: {e}")
         
         # Send notification before detailed analysis
-        self.telegram.send_message(f"📤 <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
+        total_signals = len(signals_list)
+        
+        # Sort signals by priority: lowest RSI/MFI first (best buy opportunities)
+        def get_signal_priority(signal):
+            """
+            Calculate priority score for signal
+            Lower score = higher priority (better buy opportunity)
+            """
+            timeframe_data = signal.get('timeframe_data', {})
+            
+            # Get RSI and MFI from important timeframes
+            important_tfs = ['1h', '4h', '1d']
+            rsi_values = []
+            mfi_values = []
+            
+            for tf in important_tfs:
+                if tf in timeframe_data:
+                    rsi = timeframe_data[tf].get('rsi', 100)
+                    mfi = timeframe_data[tf].get('mfi', 100)
+                    rsi_values.append(rsi)
+                    mfi_values.append(mfi)
+            
+            if not rsi_values:
+                return 999  # No data = lowest priority
+            
+            # Use minimum RSI/MFI across timeframes (most oversold)
+            min_rsi = min(rsi_values)
+            min_mfi = min(mfi_values)
+            min_indicator = min(min_rsi, min_mfi)
+            
+            # Priority scoring:
+            # < 20 = 0-19 (highest priority)
+            # 20-30 = 20-29
+            # 30-40 = 30-39
+            # etc.
+            return min_indicator
+        
+        # Sort by priority (lowest RSI/MFI first)
+        signals_list_sorted = sorted(signals_list, key=get_signal_priority)
+        
+        self.telegram.send_message(
+            f"📤 <b>Sending detailed analysis for {total_signals} signals...</b>\n"
+            f"<i>Sorted by RSI/MFI (lowest first - best opportunities)</i>"
+        )
         time.sleep(1)
         
-        # Send individual signals WITHOUT charts (already have overview)
-        for signal in signals_list[:config.MAX_COINS_PER_MESSAGE]:
+        # Send ALL signals (no limit) - sorted by priority
+        for i, signal in enumerate(signals_list_sorted, 1):
             # Send text alert only
             self.telegram.send_signal_alert(
                 signal['symbol'],
@@ -341,7 +384,18 @@ class TradingBot:
                 signal.get('volume_data')
             )
             
+            # Add progress indicator every 10 coins
+            if i % 10 == 0 and i < total_signals:
+                remaining = total_signals - i
+                self.telegram.send_message(f"⏳ Progress: {i}/{total_signals} sent, {remaining} remaining...")
+            
             time.sleep(1)  # Delay between messages
+        
+        # Send completion message
+        self.telegram.send_message(
+            f"✅ <b>Analysis Complete!</b>\n"
+            f"Sent detailed analysis for all {total_signals} signals"
+        )
     
     def run(self):
         """Main bot loop - Commands only mode (no auto-scan)"""
