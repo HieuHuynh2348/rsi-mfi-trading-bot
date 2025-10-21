@@ -1696,18 +1696,58 @@ Example: /BTC /ETH /LINK
     def start_polling(self):
         """Start polling for commands"""
         logger.info("Starting command polling...")
-        try:
-            # Use infinity_polling with better error handling
-            self.telegram_bot.infinity_polling(
-                timeout=30,  # Increased timeout
-                long_polling_timeout=20,  # Increased long polling
-                skip_pending=True,  # Skip old messages on restart
-                allowed_updates=['message', 'callback_query']  # Only handle relevant updates
-            )
-        except KeyboardInterrupt:
-            logger.info("Polling stopped by user")
-        except Exception as e:
-            logger.error(f"Polling error: {e}", exc_info=True)
+        
+        # Wait a bit to ensure any previous instance has released the connection
+        import time
+        time.sleep(2)
+        
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                logger.info(f"Attempting to start polling (attempt {retry_count + 1}/{max_retries})...")
+                
+                # Use infinity_polling with better error handling
+                self.telegram_bot.infinity_polling(
+                    timeout=30,  # Increased timeout
+                    long_polling_timeout=20,  # Increased long polling
+                    skip_pending=True,  # Skip old messages on restart
+                    allowed_updates=['message', 'callback_query']  # Only handle relevant updates
+                )
+                break  # If successful, exit loop
+                
+            except KeyboardInterrupt:
+                logger.info("Polling stopped by user")
+                break
+                
+            except Exception as e:
+                error_msg = str(e)
+                
+                # Check if it's a conflict error (409)
+                if "409" in error_msg or "Conflict" in error_msg:
+                    retry_count += 1
+                    logger.warning(f"Bot instance conflict detected (attempt {retry_count}/{max_retries})")
+                    
+                    if retry_count < max_retries:
+                        wait_time = 5 * retry_count  # Exponential backoff
+                        logger.info(f"Waiting {wait_time} seconds before retry...")
+                        time.sleep(wait_time)
+                        
+                        # Try to clear the webhook (in case it's set)
+                        try:
+                            logger.info("Attempting to delete webhook...")
+                            self.telegram_bot.delete_webhook(drop_pending_updates=True)
+                            time.sleep(2)
+                        except Exception as webhook_error:
+                            logger.error(f"Failed to delete webhook: {webhook_error}")
+                    else:
+                        logger.error("Max retries reached. Another bot instance may be running.")
+                        logger.error("Please kill all Python processes and try again.")
+                        raise
+                else:
+                    logger.error(f"Polling error: {e}", exc_info=True)
+                    raise
     
     def process_commands_non_blocking(self):
         """Process commands without blocking (for use in main loop)"""
