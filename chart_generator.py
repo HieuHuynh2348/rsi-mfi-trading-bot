@@ -442,7 +442,8 @@ class ChartGenerator:
     def create_rsi_mfi_overview_charts(self, signals_list):
         """
         Create overview charts showing all coins grouped by RSI/MFI levels
-        Returns tuple: (rsi_chart_buf, mfi_chart_buf)
+        Separated by timeframe (1H, 4H, 1D) for clarity
+        Returns list of chart buffers
         
         Args:
             signals_list: List of signal dictionaries with timeframe_data
@@ -451,79 +452,200 @@ class ChartGenerator:
             logger.info(f"Creating RSI/MFI overview charts for {len(signals_list)} signals")
             
             if not signals_list:
-                return None, None
+                return []
             
-            # Define timeframes and levels
-            timeframes = ['1H', '4H', '1D']
+            # Define timeframes
+            timeframes = ['1h', '4h', '1d']
             
-            # RSI levels: <20 (Oversold), 20-40 (Low), 40-60 (Neutral), 60-80 (High), >80 (Overbought)
-            rsi_levels = {
-                'Overbought (>80)': [],
-                'High (60-80)': [],
-                'Neutral (40-60)': [],
-                'Low (20-40)': [],
-                'Oversold (<20)': []
-            }
+            # Collect data by timeframe
+            rsi_data_by_tf = {tf: [] for tf in timeframes}
+            mfi_data_by_tf = {tf: [] for tf in timeframes}
             
-            # MFI levels: same as RSI
-            mfi_levels = {
-                'Overbought (>80)': [],
-                'High (60-80)': [],
-                'Neutral (40-60)': [],
-                'Low (20-40)': [],
-                'Oversold (<20)': []
-            }
-            
-            # Collect data for each timeframe
             for signal in signals_list:
                 symbol = signal.get('symbol', 'UNKNOWN')
                 timeframe_data = signal.get('timeframe_data', {})
                 
                 for tf in timeframes:
-                    tf_key = tf.lower()
-                    if tf_key in timeframe_data:
-                        data = timeframe_data[tf_key]
+                    if tf in timeframe_data:
+                        data = timeframe_data[tf]
                         rsi = data.get('rsi', 0)
                         mfi = data.get('mfi', 0)
                         
-                        # Format: "SYMBOL (TF): value"
-                        coin_label = f"{symbol} ({tf})"
-                        
-                        # Categorize RSI
-                        if rsi >= 80:
-                            rsi_levels['Overbought (>80)'].append((coin_label, rsi))
-                        elif rsi >= 60:
-                            rsi_levels['High (60-80)'].append((coin_label, rsi))
-                        elif rsi >= 40:
-                            rsi_levels['Neutral (40-60)'].append((coin_label, rsi))
-                        elif rsi >= 20:
-                            rsi_levels['Low (20-40)'].append((coin_label, rsi))
-                        else:
-                            rsi_levels['Oversold (<20)'].append((coin_label, rsi))
-                        
-                        # Categorize MFI
-                        if mfi >= 80:
-                            mfi_levels['Overbought (>80)'].append((coin_label, mfi))
-                        elif mfi >= 60:
-                            mfi_levels['High (60-80)'].append((coin_label, mfi))
-                        elif mfi >= 40:
-                            mfi_levels['Neutral (40-60)'].append((coin_label, mfi))
-                        elif mfi >= 20:
-                            mfi_levels['Low (20-40)'].append((coin_label, mfi))
-                        else:
-                            mfi_levels['Oversold (<20)'].append((coin_label, mfi))
+                        rsi_data_by_tf[tf].append((symbol, rsi))
+                        mfi_data_by_tf[tf].append((symbol, mfi))
             
-            # Create RSI overview chart
-            rsi_buf = self._create_level_overview_chart(rsi_levels, 'RSI', '#2962FF')
+            # Create charts for each timeframe
+            chart_buffers = []
             
-            # Create MFI overview chart
-            mfi_buf = self._create_level_overview_chart(mfi_levels, 'MFI', '#FF6D00')
+            for tf in timeframes:
+                # RSI chart for this timeframe
+                rsi_buf = self._create_timeframe_chart(
+                    rsi_data_by_tf[tf], 
+                    'RSI', 
+                    tf.upper(),
+                    '#2962FF'
+                )
+                if rsi_buf:
+                    chart_buffers.append(('RSI', tf.upper(), rsi_buf))
+                
+                # MFI chart for this timeframe
+                mfi_buf = self._create_timeframe_chart(
+                    mfi_data_by_tf[tf], 
+                    'MFI', 
+                    tf.upper(),
+                    '#FF6D00'
+                )
+                if mfi_buf:
+                    chart_buffers.append(('MFI', tf.upper(), mfi_buf))
             
-            return rsi_buf, mfi_buf
+            logger.info(f"Created {len(chart_buffers)} overview charts")
+            return chart_buffers
             
         except Exception as e:
             logger.error(f"Error creating overview charts: {e}", exc_info=True)
-            return None, None
+            return []
+    
+    def _create_timeframe_chart(self, data, indicator_name, timeframe, base_color):
+        """
+        Create a chart for one indicator (RSI/MFI) at one timeframe
+        
+        Args:
+            data: List of (symbol, value) tuples
+            indicator_name: 'RSI' or 'MFI'
+            timeframe: '1H', '4H', or '1D'
+            base_color: Base color for the indicator
+        """
+        try:
+            if not data:
+                return None
+            
+            # Sort by value descending
+            data.sort(key=lambda x: x[1], reverse=True)
+            
+            # Categorize into levels
+            levels = {
+                'Overbought (>80)': [],
+                'High (60-80)': [],
+                'Neutral (40-60)': [],
+                'Low (20-40)': [],
+                'Oversold (<20)': []
+            }
+            
+            for symbol, value in data:
+                if value >= 80:
+                    levels['Overbought (>80)'].append((symbol, value))
+                elif value >= 60:
+                    levels['High (60-80)'].append((symbol, value))
+                elif value >= 40:
+                    levels['Neutral (40-60)'].append((symbol, value))
+                elif value >= 20:
+                    levels['Low (20-40)'].append((symbol, value))
+                else:
+                    levels['Oversold (<20)'].append((symbol, value))
+            
+            # Create figure with better sizing
+            fig, ax = plt.subplots(figsize=(16, 12), dpi=self.dpi)
+            
+            # Colors for levels
+            level_colors = {
+                'Overbought (>80)': '#D32F2F',   # Dark red
+                'High (60-80)': '#FF6F00',        # Dark orange
+                'Neutral (40-60)': '#FBC02D',     # Yellow
+                'Low (20-40)': '#689F38',         # Light green
+                'Oversold (<20)': '#388E3C'       # Dark green
+            }
+            
+            y_pos = 0
+            y_positions = []
+            y_labels = []
+            colors = []
+            values = []
+            
+            # Build chart data
+            for level_name in levels.keys():
+                coins = levels[level_name]
+                if not coins:
+                    continue
+                
+                # Add level header
+                y_labels.append(f"╔═══ {level_name} ({len(coins)} coins) ═══╗")
+                y_positions.append(y_pos)
+                colors.append('#FFFFFF')
+                values.append(0)
+                y_pos += 1
+                
+                # Add coins (limit to 15 per level for readability)
+                for symbol, value in coins[:15]:
+                    y_labels.append(f"  {symbol}")
+                    y_positions.append(y_pos)
+                    colors.append(level_colors[level_name])
+                    values.append(value)
+                    y_pos += 1
+                
+                # Show "..." if more coins
+                if len(coins) > 15:
+                    y_labels.append(f"  ... and {len(coins)-15} more")
+                    y_positions.append(y_pos)
+                    colors.append('#CCCCCC')
+                    values.append(0)
+                    y_pos += 1
+                
+                # Add spacing
+                y_pos += 0.5
+            
+            # Create horizontal bar chart
+            bars = ax.barh(y_positions, values, height=0.8, color=colors, 
+                          edgecolor='black', linewidth=0.5, alpha=0.85)
+            
+            # Add value labels
+            for i, (yp, val, col) in enumerate(zip(y_positions, values, colors)):
+                if val > 0:  # Only for actual data, not headers
+                    # Bold text for extreme values
+                    weight = 'bold' if val >= 80 or val <= 20 else 'normal'
+                    ax.text(val + 2, yp, f'{val:.1f}', 
+                           va='center', fontsize=10, fontweight=weight)
+            
+            # Customize axes
+            ax.set_yticks(y_positions)
+            ax.set_yticklabels(y_labels, fontsize=10, family='monospace')
+            ax.set_xlabel(f'{indicator_name} Value', fontsize=13, fontweight='bold')
+            ax.set_title(f'📊 {indicator_name} Overview - {timeframe} Timeframe\n'
+                        f'Total: {len(data)} coins', 
+                        fontsize=16, fontweight='bold', pad=20)
+            
+            # Reference lines with labels
+            ax.axvline(x=20, color='green', linestyle='--', linewidth=2, alpha=0.6, label='Oversold (20)')
+            ax.axvline(x=80, color='red', linestyle='--', linewidth=2, alpha=0.6, label='Overbought (80)')
+            ax.axvline(x=50, color='gray', linestyle=':', linewidth=1.5, alpha=0.4, label='Neutral (50)')
+            
+            # Highlight zones
+            ax.axvspan(0, 20, alpha=0.1, color='green', label='Oversold Zone')
+            ax.axvspan(80, 100, alpha=0.1, color='red', label='Overbought Zone')
+            
+            ax.set_xlim(0, 105)
+            ax.grid(axis='x', alpha=0.3, linestyle='--')
+            ax.legend(loc='lower right', fontsize=10, framealpha=0.9)
+            
+            # Add timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ax.text(0.01, 0.01, f'Generated: {timestamp}', 
+                   transform=ax.transAxes, fontsize=9, 
+                   ha='left', va='bottom', alpha=0.6, style='italic')
+            
+            # Save to buffer
+            buf = io.BytesIO()
+            plt.tight_layout()
+            plt.savefig(buf, format='png', dpi=self.dpi, bbox_inches='tight',
+                       facecolor='white', edgecolor='none')
+            buf.seek(0)
+            plt.close(fig)
+            
+            logger.info(f"{indicator_name} {timeframe} chart created successfully")
+            return buf
+            
+        except Exception as e:
+            logger.error(f"Error creating {indicator_name} {timeframe} chart: {e}", exc_info=True)
+            return None
     
     def _create_level_overview_chart(self, levels_data, indicator_name, color):
         """

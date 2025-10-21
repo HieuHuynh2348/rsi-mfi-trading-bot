@@ -1,4 +1,4 @@
-"""
+﻿"""
 Main Bot Script
 RSI + MFI Multi-Timeframe Analysis Bot
 Scans Binance markets and sends alerts to Telegram
@@ -71,21 +71,21 @@ class TradingBot:
         if binance_ok and telegram_ok:
             logger.info("All connections successful")
             welcome_msg = """
-<b>🤖 TRADING BOT ONLINE!</b>
+<b>ðŸ¤– TRADING BOT ONLINE!</b>
 
-<b>✅ ALL SYSTEMS OPERATIONAL</b>
+<b>âœ… ALL SYSTEMS OPERATIONAL</b>
 
-<b>🎮 MODE:</b> Command-Only
-<b>📊 Interactive:</b> Enabled
-<b>⚡ Fast Scan:</b> Active
+<b>ðŸŽ® MODE:</b> Command-Only
+<b>ðŸ“Š Interactive:</b> Enabled
+<b>âš¡ Fast Scan:</b> Active
 
-<b>🚀 QUICK START:</b>
-• /<b>BTC</b> - Bitcoin analysis
-• /<b>ETH</b> - Ethereum analysis  
-• /<b>scan</b> - Scan entire market
-• /<b>help</b> - All commands
+<b>ðŸš€ QUICK START:</b>
+â€¢ /<b>BTC</b> - Bitcoin analysis
+â€¢ /<b>ETH</b> - Ethereum analysis  
+â€¢ /<b>scan</b> - Scan entire market
+â€¢ /<b>help</b> - All commands
 
-<i>💡 No auto-scan. Use /scan when needed!</i>
+<i>ðŸ’¡ No auto-scan. Use /scan when needed!</i>
             """
             self.telegram.send_message(welcome_msg)
             return True
@@ -144,7 +144,7 @@ class TradingBot:
                     'klines_dict': klines_dict
                 }
                 
-                logger.info(f"✓ Signal found for {symbol}: {analysis['consensus']} "
+                logger.info(f"âœ“ Signal found for {symbol}: {analysis['consensus']} "
                           f"(Strength: {analysis['consensus_strength']})")
                 return signal_data
             
@@ -207,10 +207,10 @@ class TradingBot:
             
             # FAST SCAN - Parallel processing
             self.telegram.send_message(
-                f"🔍 <b>Fast Market Scan Started</b>\n\n"
-                f"⚡ Analyzing {len(symbols)} symbols\n"
-                f"🚀 Using {max_workers} parallel threads (auto-scaled)\n"
-                f"⏳ Please wait..."
+                f"ðŸ” <b>Fast Market Scan Started</b>\n\n"
+                f"âš¡ Analyzing {len(symbols)} symbols\n"
+                f"ðŸš€ Using {max_workers} parallel threads (auto-scaled)\n"
+                f"â³ Please wait..."
             )
             
             completed_count = 0
@@ -241,9 +241,9 @@ class TradingBot:
                             remaining = (len(symbols) - completed_count) * avg_time
                             
                             self.telegram.send_message(
-                                f"⏳ Progress: {completed_count}/{len(symbols)} ({progress_pct:.0f}%)\n"
-                                f"📊 Signals: {len(signals_found)}\n"
-                                f"⏱️ Est. remaining: {remaining:.0f}s"
+                                f"â³ Progress: {completed_count}/{len(symbols)} ({progress_pct:.0f}%)\n"
+                                f"ðŸ“Š Signals: {len(signals_found)}\n"
+                                f"â±ï¸ Est. remaining: {remaining:.0f}s"
                             )
                     
                     except Exception as e:
@@ -266,16 +266,16 @@ class TradingBot:
         avg_per_symbol = total_time / len(symbols) if len(symbols) > 0 else 0
         
         # Send results summary
-        scan_mode = "⚡ Fast" if use_fast_scan else "🐌 Normal"
+        scan_mode = "âš¡ Fast" if use_fast_scan else "ðŸŒ Normal"
         summary_msg = (
-            f"✅ <b>{scan_mode} Market Scan Complete!</b>\n\n"
-            f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
-            f"🔍 Scanned: {len(symbols)} symbols\n"
-            f"📊 Signals found: {len(signals_found)}"
+            f"âœ… <b>{scan_mode} Market Scan Complete!</b>\n\n"
+            f"â±ï¸ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
+            f"ðŸ” Scanned: {len(symbols)} symbols\n"
+            f"ðŸ“Š Signals found: {len(signals_found)}"
         )
         
         if use_fast_scan:
-            summary_msg += f"\n⚡ Threads used: {max_workers}"
+            summary_msg += f"\nâš¡ Threads used: {max_workers}"
         
         self.telegram.send_message(summary_msg)
         
@@ -286,7 +286,7 @@ class TradingBot:
         else:
             logger.info("No signals found")
             if not config.SEND_SUMMARY_ONLY:
-                self.telegram.send_message("📊 Market scan complete. No signals detected.")
+                self.telegram.send_message("ðŸ“Š Market scan complete. No signals detected.")
     
     def send_signals(self, signals_list):
         """Send signals to Telegram"""
@@ -302,31 +302,30 @@ class TradingBot:
         
         # Send RSI/MFI overview charts (for /scan command)
         if config.SEND_CHARTS and len(signals_list) > 0:
-            self.telegram.send_message(f"� <b>Generating RSI/MFI overview charts...</b>")
+            self.telegram.send_message(f"📊 <b>Generating RSI/MFI overview charts by timeframe...</b>")
             
             try:
-                rsi_chart, mfi_chart = self.chart_gen.create_rsi_mfi_overview_charts(signals_list)
+                chart_buffers = self.chart_gen.create_rsi_mfi_overview_charts(signals_list)
                 
-                if rsi_chart:
-                    self.telegram.send_photo(
-                        rsi_chart,
-                        caption=f"📊 <b>RSI Overview</b>\n{len(signals_list)} signals grouped by RSI levels (1H, 4H, 1D)"
-                    )
-                    time.sleep(1)
-                
-                if mfi_chart:
-                    self.telegram.send_photo(
-                        mfi_chart,
-                        caption=f"💰 <b>MFI Overview</b>\n{len(signals_list)} signals grouped by MFI levels (1H, 4H, 1D)"
-                    )
-                    time.sleep(1)
-                
-                logger.info("✅ Overview charts sent successfully")
+                if chart_buffers:
+                    # chart_buffers is list of tuples: (indicator, timeframe, buffer)
+                    for indicator, timeframe, chart_buf in chart_buffers:
+                        emoji = "📊" if indicator == "RSI" else "💰"
+                        self.telegram.send_photo(
+                            chart_buf,
+                            caption=f"{emoji} <b>{indicator} Overview - {timeframe}</b>\n"
+                                   f"All coins with {indicator} signals on {timeframe} timeframe"
+                        )
+                        time.sleep(0.8)
+                    
+                    logger.info(f"✅ Sent {len(chart_buffers)} overview charts successfully")
+                else:
+                    logger.warning("No overview charts generated")
             except Exception as e:
                 logger.error(f"Error sending overview charts: {e}")
         
         # Send notification before detailed analysis
-        self.telegram.send_message(f"📤 <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
+        self.telegram.send_message(f"ðŸ“¤ <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
         time.sleep(1)
         
         # Send individual signals WITHOUT charts (already have overview)
@@ -349,16 +348,16 @@ class TradingBot:
         logger.info("Bot is now running in COMMAND-ONLY mode...")
         
         self.telegram.send_message(
-            f"<b>🤖 BOT NOW RUNNING!</b>\n\n"
-            f"<b>⚙️ MODE:</b> Command-Only (Auto-scan OFF)\n"
-            f"<b>📊 Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
-            f"<b>🎯 Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
-            f"<b>⚡ Fast Scan:</b> {'✅ Enabled' if config.USE_FAST_SCAN else '❌ Disabled'}\n\n"
-            f"<b>💬 AVAILABLE COMMANDS:</b>\n"
-            f"• /<b>scan</b> - Run market scan\n"
-            f"• /<b>BTC</b>, /<b>ETH</b> - Analyze coins\n"
-            f"• /<b>help</b> - Show all commands\n\n"
-            f"<i>💡 Use /scan to scan market anytime!</i>"
+            f"<b>ðŸ¤– BOT NOW RUNNING!</b>\n\n"
+            f"<b>âš™ï¸ MODE:</b> Command-Only (Auto-scan OFF)\n"
+            f"<b>ðŸ“Š Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
+            f"<b>ðŸŽ¯ Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
+            f"<b>âš¡ Fast Scan:</b> {'âœ… Enabled' if config.USE_FAST_SCAN else 'âŒ Disabled'}\n\n"
+            f"<b>ðŸ’¬ AVAILABLE COMMANDS:</b>\n"
+            f"â€¢ /<b>scan</b> - Run market scan\n"
+            f"â€¢ /<b>BTC</b>, /<b>ETH</b> - Analyze coins\n"
+            f"â€¢ /<b>help</b> - Show all commands\n\n"
+            f"<i>ðŸ’¡ Use /scan to scan market anytime!</i>"
         )
         
         # Start command handler (blocking - this will run forever)
@@ -367,10 +366,10 @@ class TradingBot:
             self.command_handler.start_polling()
         except KeyboardInterrupt:
             logger.info("Bot stopped by user")
-            self.telegram.send_message("🛑 <b>Bot stopped by user</b>")
+            self.telegram.send_message("ðŸ›‘ <b>Bot stopped by user</b>")
         except Exception as e:
             logger.error(f"Error in command handler: {e}")
-            self.telegram.send_message(f"❌ <b>Bot error:</b> {str(e)}")
+            self.telegram.send_message(f"âŒ <b>Bot error:</b> {str(e)}")
 
 
 def main():
@@ -382,7 +381,7 @@ def main():
     
     # Check if config is set
     if "your_" in config.BINANCE_API_KEY or "your_" in config.TELEGRAM_BOT_TOKEN:
-        print("\n⚠️  WARNING: Please configure your API keys in config.py first!\n")
+        print("\nâš ï¸  WARNING: Please configure your API keys in config.py first!\n")
         sys.exit(1)
     
     # Start bot
@@ -392,3 +391,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
