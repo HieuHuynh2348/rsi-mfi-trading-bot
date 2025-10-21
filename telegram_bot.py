@@ -231,6 +231,8 @@ class TelegramBot:
             market_data: Dictionary with 24h data (high, low, change, volume)
             volume_data: Dictionary with volume analysis (current, last, avg, ratios)
         """
+        logger.info(f"📤 Building signal alert for {symbol}")
+        
         # Get current time
         current_time = datetime.now().strftime('%H:%M:%S')
         
@@ -497,7 +499,13 @@ class TelegramBot:
         
         # Add action keyboard for quick analysis
         keyboard = self.create_action_keyboard()
-        return self.send_message(message, keyboard)
+        logger.info(f"✅ Sending signal alert for {symbol} ({len(message)} chars)")
+        result = self.send_message(message, keyboard)
+        if result:
+            logger.info(f"✅ Signal alert sent successfully for {symbol}")
+        else:
+            logger.error(f"❌ Failed to send signal alert for {symbol}")
+        return result
     
     def send_summary_table(self, signals_list):
         """
