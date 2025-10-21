@@ -463,7 +463,7 @@ Example: /BTC /ETH /LINK
 • Multi-timeframe consensus
 
 <b>⏱️ TIMEFRAMES:</b>
-• 5m, 1h, 3h, 1d
+• 5m, 1h, 4h, 1d
 
 <b>⚡ PERFORMANCE:</b>
 • Auto-scaling: 5-20 workers
@@ -1605,8 +1605,8 @@ Example: /BTC /ETH /LINK
                 
                 # Send charts (2 separate charts)
                 if self._config.SEND_CHARTS:
-                    # Chart 1: Candlestick + Volume + RSI + MFI (single timeframe - 3h default)
-                    main_tf = '3h' if '3h' in self._config.TIMEFRAMES else self._config.TIMEFRAMES[0]
+                    # Chart 1: Candlestick + Volume + RSI + MFI (single timeframe - 4h default)
+                    main_tf = '4h' if '4h' in self._config.TIMEFRAMES else self._config.TIMEFRAMES[0]
                     
                     if main_tf in klines_dict and main_tf in analysis['timeframes']:
                         from indicators import calculate_rsi, calculate_mfi

@@ -28,8 +28,8 @@ MFI_LOWER = 20
 MFI_UPPER = 80
 
 # Timeframes to analyze (in minutes)
-# 5m, 1h, 3h, 1d
-TIMEFRAMES = ['5m', '1h', '3h', '1d']
+# 5m, 1h, 4h, 1d
+TIMEFRAMES = ['5m', '1h', '4h', '1d']
 
 # ============================================================================
 # BINANCE SETTINGS
