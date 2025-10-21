@@ -524,60 +524,83 @@ class TelegramBot:
         Args:
             signals_list: List of signal dictionaries
         """
-        if not signals_list:
-            return self.send_message("💤 No signals detected at this time.")
-        
-        # Sort by consensus strength
-        signals_list = sorted(signals_list, key=lambda x: x['consensus_strength'], reverse=True)
-        
-        message = "<b>📊 MARKET SCAN SUMMARY</b>\n\n"
-        
-        buy_signals = [s for s in signals_list if s['consensus'] == 'BUY']
-        sell_signals = [s for s in signals_list if s['consensus'] == 'SELL']
-        
-        if buy_signals:
-            message += "<b>🚀 BUY SIGNALS:</b>\n"
-            for signal in buy_signals:
-                strength_bar = "🟩" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
-                
-                # Get timeframes with BUY signals
-                buy_timeframes = []
-                if 'timeframe_data' in signal:
-                    for tf, data in signal['timeframe_data'].items():
-                        if data.get('signal') == 1:  # BUY signal
-                            buy_timeframes.append(tf.upper())
-                
-                timeframes_str = ", ".join(buy_timeframes) if buy_timeframes else "N/A"
-                
-                message += f"  ✅ <b>{signal['symbol']}</b>\n"
-                message += f"     {strength_bar} {signal['consensus_strength']}/4\n"
-                message += f"     <i>📊 {timeframes_str}</i>\n"
-            message += "\n"
-        
-        if sell_signals:
-            message += "<b>⚠️ SELL SIGNALS:</b>\n"
-            for signal in sell_signals:
-                strength_bar = "🟥" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
-                
-                # Get timeframes with SELL signals
-                sell_timeframes = []
-                if 'timeframe_data' in signal:
-                    for tf, data in signal['timeframe_data'].items():
-                        if data.get('signal') == -1:  # SELL signal
-                            sell_timeframes.append(tf.upper())
-                
-                timeframes_str = ", ".join(sell_timeframes) if sell_timeframes else "N/A"
-                
-                message += f"  ⛔ <b>{signal['symbol']}</b>\n"
-                message += f"     {strength_bar} {signal['consensus_strength']}/4\n"
-                message += f"     <i>📊 {timeframes_str}</i>\n"
-            message += "\n"
-        
-        message += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
-        message += f"   🟢 Buy: {len(buy_signals)} | 🔴 Sell: {len(sell_signals)}\n"
-        message += f"\n🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
-        
-        return self.send_message(message)
+        try:
+            logger.info(f"📤 Building summary table for {len(signals_list) if signals_list else 0} signals")
+            
+            if not signals_list:
+                logger.warning("No signals to display in summary")
+                return self.send_message("💤 No signals detected at this time.")
+            
+            # Sort by consensus strength
+            signals_list = sorted(signals_list, key=lambda x: x.get('consensus_strength', 0), reverse=True)
+            
+            message = "<b>📊 MARKET SCAN SUMMARY</b>\n\n"
+            
+            buy_signals = [s for s in signals_list if s.get('consensus') == 'BUY']
+            sell_signals = [s for s in signals_list if s.get('consensus') == 'SELL']
+            
+            logger.info(f"Summary: {len(buy_signals)} BUY, {len(sell_signals)} SELL signals")
+            
+            if buy_signals:
+                message += "<b>🚀 BUY SIGNALS:</b>\n"
+                for signal in buy_signals:
+                    strength_bar = "🟩" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
+                    
+                    # Get timeframes with BUY signals
+                    buy_timeframes = []
+                    if 'timeframe_data' in signal:
+                        for tf, data in signal['timeframe_data'].items():
+                            if data.get('signal') == 1:  # BUY signal
+                                buy_timeframes.append(tf.upper())
+                    
+                    timeframes_str = ", ".join(buy_timeframes) if buy_timeframes else "N/A"
+                    
+                    message += f"  ✅ <b>{signal.get('symbol', 'UNKNOWN')}</b>\n"
+                    message += f"     {strength_bar} {signal.get('consensus_strength', 0)}/4\n"
+                    message += f"     <i>📊 {timeframes_str}</i>\n"
+                message += "\n"
+            
+            if sell_signals:
+                message += "<b>⚠️ SELL SIGNALS:</b>\n"
+                for signal in sell_signals:
+                    strength_bar = "🟥" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
+                    
+                    # Get timeframes with SELL signals
+                    sell_timeframes = []
+                    if 'timeframe_data' in signal:
+                        for tf, data in signal['timeframe_data'].items():
+                            if data.get('signal') == -1:  # SELL signal
+                                sell_timeframes.append(tf.upper())
+                    
+                    timeframes_str = ", ".join(sell_timeframes) if sell_timeframes else "N/A"
+                    
+                    message += f"  ⛔ <b>{signal.get('symbol', 'UNKNOWN')}</b>\n"
+                    message += f"     {strength_bar} {signal.get('consensus_strength', 0)}/4\n"
+                    message += f"     <i>📊 {timeframes_str}</i>\n"
+                message += "\n"
+            
+            message += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
+            message += f"   🟢 Buy: {len(buy_signals)} | 🔴 Sell: {len(sell_signals)}\n"
+            message += f"\n🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+            
+            logger.info(f"✅ Sending summary table ({len(message)} chars)")
+            result = self.send_message(message)
+            
+            if result:
+                logger.info("✅ Summary table sent successfully")
+            else:
+                logger.error("❌ Failed to send summary table")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ Error building summary table: {e}")
+            logger.exception(e)
+            try:
+                self.send_message(f"❌ <b>Error building summary table</b>\n\n{str(e)}")
+            except:
+                pass
+            return False
     
     def test_connection(self):
         """Test Telegram bot connection"""
