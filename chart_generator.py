@@ -438,3 +438,185 @@ class ChartGenerator:
         except Exception as e:
             logger.error(f"Error creating multi-timeframe chart: {e}", exc_info=True)
             return None
+    
+    def create_rsi_mfi_overview_charts(self, signals_list):
+        """
+        Create overview charts showing all coins grouped by RSI/MFI levels
+        Returns tuple: (rsi_chart_buf, mfi_chart_buf)
+        
+        Args:
+            signals_list: List of signal dictionaries with timeframe_data
+        """
+        try:
+            logger.info(f"Creating RSI/MFI overview charts for {len(signals_list)} signals")
+            
+            if not signals_list:
+                return None, None
+            
+            # Define timeframes and levels
+            timeframes = ['1H', '4H', '1D']
+            
+            # RSI levels: <20 (Oversold), 20-40 (Low), 40-60 (Neutral), 60-80 (High), >80 (Overbought)
+            rsi_levels = {
+                'Overbought (>80)': [],
+                'High (60-80)': [],
+                'Neutral (40-60)': [],
+                'Low (20-40)': [],
+                'Oversold (<20)': []
+            }
+            
+            # MFI levels: same as RSI
+            mfi_levels = {
+                'Overbought (>80)': [],
+                'High (60-80)': [],
+                'Neutral (40-60)': [],
+                'Low (20-40)': [],
+                'Oversold (<20)': []
+            }
+            
+            # Collect data for each timeframe
+            for signal in signals_list:
+                symbol = signal.get('symbol', 'UNKNOWN')
+                timeframe_data = signal.get('timeframe_data', {})
+                
+                for tf in timeframes:
+                    tf_key = tf.lower()
+                    if tf_key in timeframe_data:
+                        data = timeframe_data[tf_key]
+                        rsi = data.get('rsi', 0)
+                        mfi = data.get('mfi', 0)
+                        
+                        # Format: "SYMBOL (TF): value"
+                        coin_label = f"{symbol} ({tf})"
+                        
+                        # Categorize RSI
+                        if rsi >= 80:
+                            rsi_levels['Overbought (>80)'].append((coin_label, rsi))
+                        elif rsi >= 60:
+                            rsi_levels['High (60-80)'].append((coin_label, rsi))
+                        elif rsi >= 40:
+                            rsi_levels['Neutral (40-60)'].append((coin_label, rsi))
+                        elif rsi >= 20:
+                            rsi_levels['Low (20-40)'].append((coin_label, rsi))
+                        else:
+                            rsi_levels['Oversold (<20)'].append((coin_label, rsi))
+                        
+                        # Categorize MFI
+                        if mfi >= 80:
+                            mfi_levels['Overbought (>80)'].append((coin_label, mfi))
+                        elif mfi >= 60:
+                            mfi_levels['High (60-80)'].append((coin_label, mfi))
+                        elif mfi >= 40:
+                            mfi_levels['Neutral (40-60)'].append((coin_label, mfi))
+                        elif mfi >= 20:
+                            mfi_levels['Low (20-40)'].append((coin_label, mfi))
+                        else:
+                            mfi_levels['Oversold (<20)'].append((coin_label, mfi))
+            
+            # Create RSI overview chart
+            rsi_buf = self._create_level_overview_chart(rsi_levels, 'RSI', '#2962FF')
+            
+            # Create MFI overview chart
+            mfi_buf = self._create_level_overview_chart(mfi_levels, 'MFI', '#FF6D00')
+            
+            return rsi_buf, mfi_buf
+            
+        except Exception as e:
+            logger.error(f"Error creating overview charts: {e}", exc_info=True)
+            return None, None
+    
+    def _create_level_overview_chart(self, levels_data, indicator_name, color):
+        """
+        Create a single overview chart for RSI or MFI
+        
+        Args:
+            levels_data: Dictionary of level -> [(coin, value), ...]
+            indicator_name: 'RSI' or 'MFI'
+            color: Color for the bars
+        """
+        try:
+            # Create figure
+            fig, ax = plt.subplots(figsize=(14, 10), dpi=self.dpi)
+            
+            # Prepare data
+            level_names = list(levels_data.keys())
+            level_colors = {
+                'Overbought (>80)': '#EF5350',  # Red
+                'High (60-80)': '#FF9800',       # Orange
+                'Neutral (40-60)': '#FFC107',    # Yellow
+                'Low (20-40)': '#8BC34A',        # Light green
+                'Oversold (<20)': '#4CAF50'      # Green
+            }
+            
+            # Calculate positions
+            y_pos = 0
+            y_positions = []
+            y_labels = []
+            
+            for level_name in level_names:
+                coins = levels_data[level_name]
+                if not coins:
+                    continue
+                
+                # Sort by value (descending)
+                coins.sort(key=lambda x: x[1], reverse=True)
+                
+                # Add level header
+                y_labels.append(f"━━ {level_name} ({len(coins)}) ━━")
+                y_positions.append(y_pos)
+                y_pos += 1
+                
+                # Add coins
+                for coin_label, value in coins[:20]:  # Limit to 20 per level
+                    y_labels.append(f"  {coin_label}")
+                    y_positions.append(y_pos)
+                    
+                    # Draw bar
+                    bar_color = level_colors.get(level_name, color)
+                    ax.barh(y_pos, value, height=0.7, color=bar_color, alpha=0.7)
+                    
+                    # Add value text
+                    ax.text(value + 2, y_pos, f'{value:.1f}', 
+                           va='center', fontsize=9, fontweight='bold')
+                    
+                    y_pos += 1
+                
+                # Add spacing
+                y_pos += 0.5
+            
+            # Customize chart
+            ax.set_yticks(y_positions)
+            ax.set_yticklabels(y_labels, fontsize=9)
+            ax.set_xlabel(f'{indicator_name} Value', fontsize=11, fontweight='bold')
+            ax.set_title(f'{indicator_name} Overview - All Coins by Level', 
+                        fontsize=14, fontweight='bold', pad=20)
+            
+            # Add reference lines
+            ax.axvline(x=20, color='green', linestyle='--', linewidth=1, alpha=0.5, label='Oversold (20)')
+            ax.axvline(x=80, color='red', linestyle='--', linewidth=1, alpha=0.5, label='Overbought (80)')
+            ax.axvline(x=50, color='gray', linestyle=':', linewidth=1, alpha=0.3, label='Neutral (50)')
+            
+            ax.set_xlim(0, 100)
+            ax.grid(axis='x', alpha=0.3)
+            ax.legend(loc='lower right', fontsize=9)
+            
+            # Add timestamp
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ax.text(0.99, 0.01, f'Generated: {timestamp}', 
+                   transform=ax.transAxes, fontsize=8, 
+                   ha='right', va='bottom', alpha=0.7)
+            
+            # Save to buffer
+            buf = io.BytesIO()
+            plt.tight_layout()
+            plt.savefig(buf, format='png', dpi=self.dpi, bbox_inches='tight',
+                       facecolor='white', edgecolor='none')
+            buf.seek(0)
+            plt.close(fig)
+            
+            logger.info(f"{indicator_name} overview chart created successfully")
+            return buf
+            
+        except Exception as e:
+            logger.error(f"Error creating {indicator_name} overview chart: {e}", exc_info=True)
+            return None

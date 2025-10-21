@@ -297,14 +297,41 @@ class TradingBot:
         if config.SEND_SUMMARY_ONLY:
             return
         
-        # Add delay and notification before sending individual signals
+        # Add delay
         time.sleep(2)  # Give user time to see summary
+        
+        # Send RSI/MFI overview charts (for /scan command)
+        if config.SEND_CHARTS and len(signals_list) > 0:
+            self.telegram.send_message(f"� <b>Generating RSI/MFI overview charts...</b>")
+            
+            try:
+                rsi_chart, mfi_chart = self.chart_gen.create_rsi_mfi_overview_charts(signals_list)
+                
+                if rsi_chart:
+                    self.telegram.send_photo(
+                        rsi_chart,
+                        caption=f"📊 <b>RSI Overview</b>\n{len(signals_list)} signals grouped by RSI levels (1H, 4H, 1D)"
+                    )
+                    time.sleep(1)
+                
+                if mfi_chart:
+                    self.telegram.send_photo(
+                        mfi_chart,
+                        caption=f"💰 <b>MFI Overview</b>\n{len(signals_list)} signals grouped by MFI levels (1H, 4H, 1D)"
+                    )
+                    time.sleep(1)
+                
+                logger.info("✅ Overview charts sent successfully")
+            except Exception as e:
+                logger.error(f"Error sending overview charts: {e}")
+        
+        # Send notification before detailed analysis
         self.telegram.send_message(f"📤 <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
         time.sleep(1)
         
-        # Send individual signals with charts
+        # Send individual signals WITHOUT charts (already have overview)
         for signal in signals_list[:config.MAX_COINS_PER_MESSAGE]:
-            # Send text alert
+            # Send text alert only
             self.telegram.send_signal_alert(
                 signal['symbol'],
                 signal['timeframe_data'],
@@ -314,22 +341,6 @@ class TradingBot:
                 signal.get('market_data'),
                 signal.get('volume_data')
             )
-            
-            # Send chart if enabled
-            if config.SEND_CHARTS:
-                # Create multi-timeframe chart
-                chart_buf = self.chart_gen.create_multi_timeframe_chart(
-                    signal['symbol'],
-                    signal['timeframe_data'],
-                    signal['price'],
-                    signal.get('klines_dict')  # ✅ Pass klines_dict
-                )
-                
-                if chart_buf:
-                    self.telegram.send_photo(
-                        chart_buf,
-                        caption=f"{signal['symbol']} - Multi-Timeframe Analysis"
-                    )
             
             time.sleep(1)  # Delay between messages
     
