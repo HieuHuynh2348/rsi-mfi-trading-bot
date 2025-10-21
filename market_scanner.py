@@ -257,16 +257,40 @@ class MarketScanner:
             
             summary += f"📤 Sending detailed analysis for each coin...\n"
             
-            self.bot.send_message(summary)
-            time.sleep(1)
-            
-            # Send detailed analysis for each coin
+            # Instead of flooding with many messages, aggregate into signal dicts
+            # and reuse TradingBot.send_signals which handles sorting and rate limiting.
+            aggregated_signals = []
             for coin in new_alerts:
+                # Perform detailed analysis for each coin to build signal dict
                 try:
-                    self._send_detailed_analysis(coin['symbol'])
-                    time.sleep(2)  # Rate limiting
+                    result = self.command_handler._analyze_symbol_full(coin['symbol'])
+                    if result:
+                        aggregated_signals.append({
+                            'symbol': result['symbol'],
+                            'timeframe_data': result['timeframe_data'],
+                            'consensus': result['consensus'],
+                            'consensus_strength': result['consensus_strength'],
+                            'price': result['price'],
+                            'market_data': result.get('market_data'),
+                            'volume_data': result.get('volume_data'),
+                            'klines_dict': result.get('klines_dict')
+                        })
                 except Exception as e:
-                    logger.error(f"Error sending detailed analysis for {coin['symbol']}: {e}")
+                    logger.error(f"Error preparing signal for {coin['symbol']}: {e}")
+
+            if aggregated_signals:
+                # Use TradingBot.send_signals if available
+                try:
+                    if hasattr(self.command_handler, 'trading_bot') and self.command_handler.trading_bot:
+                        self.command_handler.trading_bot.send_signals(aggregated_signals)
+                    else:
+                        # Fallback: send via bot summary and signal alerts
+                        self.bot.send_summary_table(aggregated_signals)
+                        for s in aggregated_signals:
+                            self._send_detailed_analysis(s['symbol'])
+                            time.sleep(2)
+                except Exception as e:
+                    logger.error(f"Error sending aggregated signals: {e}")
             
             logger.info(f"✅ Sent alerts for {len(new_alerts)} extreme coins")
             

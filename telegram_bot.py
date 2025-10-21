@@ -6,6 +6,7 @@ Handles sending messages and charts to Telegram
 import telebot
 from telebot import types
 import logging
+import re
 import io
 import time
 from datetime import datetime
@@ -51,24 +52,61 @@ class TelegramBot:
                 
                 # Send chunks
                 for i, chunk in enumerate(chunks):
-                    self.bot.send_message(
-                        chat_id=self.chat_id,
-                        text=chunk,
-                        parse_mode=parse_mode,
-                        reply_markup=reply_markup if i == len(chunks) - 1 else None
-                    )
-                    logger.info(f"Message chunk {i+1}/{len(chunks)} sent ({len(chunk)} chars)")
+                    # Send with retry logic for 429 responses
+                    sent = False
+                    retries = 0
+                    while not sent and retries < 3:
+                        try:
+                            self.bot.send_message(
+                                chat_id=self.chat_id,
+                                text=chunk,
+                                parse_mode=parse_mode,
+                                reply_markup=reply_markup if i == len(chunks) - 1 else None
+                            )
+                            logger.info(f"Message chunk {i+1}/{len(chunks)} sent ({len(chunk)} chars)")
+                            sent = True
+                        except Exception as e:
+                            err = str(e)
+                            # Detect rate limit and retry after specified seconds
+                            if 'Too Many Requests' in err or '429' in err:
+                                m = re.search(r'retry after (\d+)', err)
+                                wait = int(m.group(1)) if m else 30
+                                retries += 1
+                                logger.warning(f"Rate limited by Telegram, retrying after {wait}s (attempt {retries})")
+                                time.sleep(wait + 1)
+                                continue
+                            else:
+                                logger.error(f"Error sending message chunk: {e}")
+                                break
                 
                 return True
             else:
-                self.bot.send_message(
-                    chat_id=self.chat_id,
-                    text=message,
-                    parse_mode=parse_mode,
-                    reply_markup=reply_markup
-                )
-                logger.info(f"Message sent successfully ({len(message)} chars)")
-                return True
+                # Send with retry logic for 429 responses
+                sent = False
+                retries = 0
+                while not sent and retries < 3:
+                    try:
+                        self.bot.send_message(
+                            chat_id=self.chat_id,
+                            text=message,
+                            parse_mode=parse_mode,
+                            reply_markup=reply_markup
+                        )
+                        logger.info(f"Message sent successfully ({len(message)} chars)")
+                        sent = True
+                    except Exception as e:
+                        err = str(e)
+                        if 'Too Many Requests' in err or '429' in err:
+                            m = re.search(r'retry after (\d+)', err)
+                            wait = int(m.group(1)) if m else 30
+                            retries += 1
+                            logger.warning(f"Rate limited by Telegram, retrying after {wait}s (attempt {retries})")
+                            time.sleep(wait + 1)
+                            continue
+                        else:
+                            logger.error(f"Error sending message: {e}")
+                            break
+                return sent
         except Exception as e:
             logger.error(f"Error sending message: {e}")
             logger.error(f"Message length: {len(message) if message else 0} chars")
@@ -242,14 +280,31 @@ class TelegramBot:
             caption: Optional caption
         """
         try:
-            self.bot.send_photo(
-                chat_id=self.chat_id,
-                photo=photo_bytes,
-                caption=caption,
-                parse_mode='HTML'
-            )
-            logger.info("Photo sent successfully")
-            return True
+            sent = False
+            retries = 0
+            while not sent and retries < 3:
+                try:
+                    self.bot.send_photo(
+                        chat_id=self.chat_id,
+                        photo=photo_bytes,
+                        caption=caption,
+                        parse_mode='HTML'
+                    )
+                    logger.info("Photo sent successfully")
+                    sent = True
+                except Exception as e:
+                    err = str(e)
+                    if 'Too Many Requests' in err or '429' in err:
+                        m = re.search(r'retry after (\d+)', err)
+                        wait = int(m.group(1)) if m else 30
+                        retries += 1
+                        logger.warning(f"Rate limited by Telegram (photo), retrying after {wait}s (attempt {retries})")
+                        time.sleep(wait + 1)
+                        continue
+                    else:
+                        logger.error(f"Error sending photo: {e}")
+                        break
+            return sent
         except Exception as e:
             logger.error(f"Error sending photo: {e}")
             return False
