@@ -352,7 +352,7 @@ class TradingBot:
             f"<b>âš™ï¸ MODE:</b> Command-Only (Auto-scan OFF)\n"
             f"<b>ðŸ“Š Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
             f"<b>ðŸŽ¯ Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
-            f"<b>âš¡ Fast Scan:</b> {'âœ… Enabled' if config.USE_FAST_SCAN else 'âŒ Disabled'}\n\n"
+            f"<b>âš¡ Fast Scan:</b> {'âœ… Enabled' if config.USE_FAST_SCAN else 'â❌Œ Disabled'}\n\n"
             f"<b>ðŸ’¬ AVAILABLE COMMANDS:</b>\n"
             f"â€¢ /<b>scan</b> - Run market scan\n"
             f"â€¢ /<b>BTC</b>, /<b>ETH</b> - Analyze coins\n"
@@ -369,7 +369,7 @@ class TradingBot:
             self.telegram.send_message("ðŸ›‘ <b>Bot stopped by user</b>")
         except Exception as e:
             logger.error(f"Error in command handler: {e}")
-            self.telegram.send_message(f"âŒ <b>Bot error:</b> {str(e)}")
+            self.telegram.send_message(f"â❌Œ <b>Bot error:</b> {str(e)}")
 
 
 def main():
