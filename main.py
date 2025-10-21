@@ -71,21 +71,21 @@ class TradingBot:
         if binance_ok and telegram_ok:
             logger.info("All connections successful")
             welcome_msg = """
-<b>ðŸ¤– TRADING BOT ONLINE!</b>
+<b>🤖 TRADING BOT ONLINE!</b>
 
-<b>âœ… ALL SYSTEMS OPERATIONAL</b>
+<b>✅ ALL SYSTEMS OPERATIONAL</b>
 
-<b>ðŸŽ® MODE:</b> Command-Only
-<b>ðŸ“Š Interactive:</b> Enabled
-<b>âš¡ Fast Scan:</b> Active
+<b>🎮 MODE:</b> Command-Only
+<b>📊 Interactive:</b> Enabled
+<b>⚡ Fast Scan:</b> Active
 
-<b>ðŸš€ QUICK START:</b>
-â€¢ /<b>BTC</b> - Bitcoin analysis
-â€¢ /<b>ETH</b> - Ethereum analysis  
-â€¢ /<b>scan</b> - Scan entire market
-â€¢ /<b>help</b> - All commands
+<b>🚀 QUICK START:</b>
+• /<b>BTC</b> - Bitcoin analysis
+• /<b>ETH</b> - Ethereum analysis  
+• /<b>scan</b> - Scan entire market
+• /<b>help</b> - All commands
 
-<i>ðŸ’¡ No auto-scan. Use /scan when needed!</i>
+<i>💡 No auto-scan. Use /scan when needed!</i>
             """
             self.telegram.send_message(welcome_msg)
             return True
@@ -208,7 +208,7 @@ class TradingBot:
             # FAST SCAN - Parallel processing
             self.telegram.send_message(
                 f"ðŸ” <b>Fast Market Scan Started</b>\n\n"
-                f"âš¡ Analyzing {len(symbols)} symbols\n"
+                f"⚡ Analyzing {len(symbols)} symbols\n"
                 f"ðŸš€ Using {max_workers} parallel threads (auto-scaled)\n"
                 f"â³ Please wait..."
             )
@@ -266,7 +266,7 @@ class TradingBot:
         avg_per_symbol = total_time / len(symbols) if len(symbols) > 0 else 0
         
         # Send results summary
-        scan_mode = "âš¡ Fast" if use_fast_scan else "ðŸŒ Normal"
+        scan_mode = "⚡ Fast" if use_fast_scan else "ðŸŒ Normal"
         summary_msg = (
             f"âœ… <b>{scan_mode} Market Scan Complete!</b>\n\n"
             f"â±ï¸ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
@@ -275,7 +275,7 @@ class TradingBot:
         )
         
         if use_fast_scan:
-            summary_msg += f"\nâš¡ Threads used: {max_workers}"
+            summary_msg += f"\n⚡ Threads used: {max_workers}"
         
         self.telegram.send_message(summary_msg)
         
@@ -348,16 +348,16 @@ class TradingBot:
         logger.info("Bot is now running in COMMAND-ONLY mode...")
         
         self.telegram.send_message(
-            f"<b>ðŸ¤– BOT NOW RUNNING!</b>\n\n"
-            f"<b>âš™ï¸ MODE:</b> Command-Only (Auto-scan OFF)\n"
-            f"<b>ðŸ“Š Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
-            f"<b>ðŸŽ¯ Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
-            f"<b>âš¡ Fast Scan:</b> {'âœ… Enabled' if config.USE_FAST_SCAN else 'â❌Œ Disabled'}\n\n"
-            f"<b>ðŸ’¬ AVAILABLE COMMANDS:</b>\n"
-            f"â€¢ /<b>scan</b> - Run market scan\n"
-            f"â€¢ /<b>BTC</b>, /<b>ETH</b> - Analyze coins\n"
-            f"â€¢ /<b>help</b> - Show all commands\n\n"
-            f"<i>ðŸ’¡ Use /scan to scan market anytime!</i>"
+            f"<b>🤖 BOT NOW RUNNING!</b>\n\n"
+            f"<b>⚙️ MODE:</b> Command-Only (Auto-scan OFF)\n"
+            f"<b>📊 Monitoring:</b> {config.QUOTE_ASSET} pairs\n"
+            f"<b>🎯 Min Consensus:</b> {config.MIN_CONSENSUS_STRENGTH}/4\n"
+            f"<b>⚡ Fast Scan:</b> {'✅ Enabled' if config.USE_FAST_SCAN else '❌ Disabled'}\n\n"
+            f"<b>💬 AVAILABLE COMMANDS:</b>\n"
+            f"• /<b>scan</b> - Run market scan\n"
+            f"• /<b>BTC</b>, /<b>ETH</b> - Analyze coins\n"
+            f"• /<b>help</b> - Show all commands\n\n"
+            f"<i>💡 Use /scan to scan market anytime!</i>"
         )
         
         # Start command handler (blocking - this will run forever)
