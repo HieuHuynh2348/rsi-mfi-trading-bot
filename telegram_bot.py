@@ -72,6 +72,9 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Error sending message: {e}")
             logger.error(f"Message length: {len(message) if message else 0} chars")
+            # Log first 500 chars of message for debugging
+            if message:
+                logger.error(f"Message preview: {message[:500]}")
             return False
     
     def create_main_menu_keyboard(self):
@@ -265,13 +268,17 @@ class TelegramBot:
             volume_data: Dictionary with volume analysis (current, last, avg, ratios)
         """
         try:
+            import html as html_module
             logger.info(f"📤 Building signal alert for {symbol}")
+            
+            # Escape HTML in symbol name to prevent parsing errors
+            safe_symbol = html_module.escape(symbol)
             
             # Get current time
             current_time = datetime.now().strftime('%H:%M:%S')
             
             # Header with symbol
-            message = f"<b>💎 #{symbol}</b>\n"
+            message = f"<b>💎 #{safe_symbol}</b>\n"
             message += f"🕐 {current_time}\n\n"
             
             # Get timeframe list (sorted)
