@@ -489,7 +489,9 @@ class TelegramBot:
                     if abs(predicted_impact_pct) > 0.1:  # Only show if significant
                         message += f"🔮 <b>Projected 24h Impact:</b> {impact_sign}{format_volume(abs(predicted_impact))} <i>({predicted_impact_pct:+.1f}%)</i>\n"
         
-        return self.send_message(message)
+        # Add action keyboard for quick analysis
+        keyboard = self.create_action_keyboard()
+        return self.send_message(message, keyboard)
     
     def send_summary_table(self, signals_list):
         """
