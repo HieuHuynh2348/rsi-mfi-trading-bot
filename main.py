@@ -297,6 +297,11 @@ class TradingBot:
         if config.SEND_SUMMARY_ONLY:
             return
         
+        # Add delay and notification before sending individual signals
+        time.sleep(2)  # Give user time to see summary
+        self.telegram.send_message(f"📤 <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
+        time.sleep(1)
+        
         # Send individual signals with charts
         for signal in signals_list[:config.MAX_COINS_PER_MESSAGE]:
             # Send text alert
