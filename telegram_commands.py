@@ -1375,6 +1375,17 @@ Example: /BTC /ETH /LINK
                 return
             
             try:
+                # Check if market_scanner exists
+                if not hasattr(self, 'market_scanner'):
+                    keyboard = self.bot.create_main_menu_keyboard()
+                    self.bot.send_message(
+                        "❌ <b>Market Scanner not initialized</b>\n\n"
+                        "This bot is running in command-only mode.\n"
+                        "Use /scan for manual market scanning.",
+                        reply_markup=keyboard
+                    )
+                    return
+                
                 status = self.market_scanner.get_status()
                 
                 status_icon = "🟢" if status['running'] else "🔴"
@@ -1401,9 +1412,14 @@ Example: /BTC /ETH /LINK
                 self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
-                logger.error(f"Error in /marketstatus: {e}")
+                logger.error(f"Error in /marketstatus: {e}", exc_info=True)
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                self.bot.send_message(
+                    f"❌ <b>Error getting market status</b>\n\n"
+                    f"Details: {str(e)}\n\n"
+                    f"Please try again or contact support.",
+                    reply_markup=keyboard
+                )
         
         @self.telegram_bot.message_handler(commands=['volumescan'])
         def handle_volumescan(message):
