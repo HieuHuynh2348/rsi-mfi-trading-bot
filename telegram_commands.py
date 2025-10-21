@@ -1310,15 +1310,23 @@ Example: /BTC /ETH /LINK
         @self.telegram_bot.message_handler(commands=['startmarketscan'])
         def handle_startmarketscan(message):
             """Start automatic market scanner"""
+            logger.info(f"Received /startmarketscan command from chat {message.chat.id}")
+            
             if not check_authorized(message):
+                logger.warning(f"/startmarketscan: Unauthorized access attempt from {message.chat.id}")
                 return
             
             try:
+                logger.info("/startmarketscan: Checking scanner status...")
                 if self.market_scanner.running:
+                    logger.info("/startmarketscan: Scanner already running")
                     msg = "⚠️ Market scanner is already running!\n\n"
                     msg += "💡 Use /marketstatus to check status"
                 else:
+                    logger.info("/startmarketscan: Starting scanner...")
                     success = self.market_scanner.start()
+                    logger.info(f"/startmarketscan: Scanner start result: {success}")
+                    
                     if success:
                         msg = "✅ <b>Market Scanner Started!</b>\n\n"
                         msg += "🔍 <b>What it does:</b>\n"
@@ -1334,11 +1342,13 @@ Example: /BTC /ETH /LINK
                     else:
                         msg = "❌ Failed to start market scanner"
                 
+                logger.info("/startmarketscan: Sending response message...")
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
+                logger.info("/startmarketscan: Response sent successfully")
                 
             except Exception as e:
-                logger.error(f"Error in /startmarketscan: {e}")
+                logger.error(f"Error in /startmarketscan: {e}", exc_info=True)
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
@@ -1371,12 +1381,16 @@ Example: /BTC /ETH /LINK
         @self.telegram_bot.message_handler(commands=['marketstatus'])
         def handle_marketstatus(message):
             """Show market scanner status"""
+            logger.info(f"Received /marketstatus command from chat {message.chat.id}")
+            
             if not check_authorized(message):
+                logger.warning(f"/marketstatus: Unauthorized access attempt from {message.chat.id}")
                 return
             
             try:
                 # Check if market_scanner exists
                 if not hasattr(self, 'market_scanner'):
+                    logger.warning("/marketstatus: market_scanner not initialized")
                     keyboard = self.bot.create_main_menu_keyboard()
                     self.bot.send_message(
                         "❌ <b>Market Scanner not initialized</b>\n\n"
@@ -1386,7 +1400,9 @@ Example: /BTC /ETH /LINK
                     )
                     return
                 
+                logger.info("/marketstatus: Getting scanner status...")
                 status = self.market_scanner.get_status()
+                logger.info(f"/marketstatus: Status retrieved - running: {status['running']}")
                 
                 status_icon = "🟢" if status['running'] else "🔴"
                 status_text = "RUNNING" if status['running'] else "STOPPED"
@@ -1409,7 +1425,9 @@ Example: /BTC /ETH /LINK
                     msg += "💡 Use /startmarketscan to start"
                 
                 keyboard = self.bot.create_main_menu_keyboard()
+                logger.info("/marketstatus: Sending status message...")
                 self.bot.send_message(msg, reply_markup=keyboard)
+                logger.info("/marketstatus: Status message sent successfully")
                 
             except Exception as e:
                 logger.error(f"Error in /marketstatus: {e}", exc_info=True)
@@ -1679,9 +1697,17 @@ Example: /BTC /ETH /LINK
         """Start polling for commands"""
         logger.info("Starting command polling...")
         try:
-            self.telegram_bot.infinity_polling(timeout=10, long_polling_timeout=5)
+            # Use infinity_polling with better error handling
+            self.telegram_bot.infinity_polling(
+                timeout=30,  # Increased timeout
+                long_polling_timeout=20,  # Increased long polling
+                skip_pending=True,  # Skip old messages on restart
+                allowed_updates=['message', 'callback_query']  # Only handle relevant updates
+            )
+        except KeyboardInterrupt:
+            logger.info("Polling stopped by user")
         except Exception as e:
-            logger.error(f"Polling error: {e}")
+            logger.error(f"Polling error: {e}", exc_info=True)
     
     def process_commands_non_blocking(self):
         """Process commands without blocking (for use in main loop)"""
