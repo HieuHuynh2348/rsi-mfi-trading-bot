@@ -38,6 +38,10 @@ class TelegramCommandHandler:
         # Initialize watchlist monitor (auto-notification)
         self.monitor = WatchlistMonitor(self, check_interval=300)  # 5 minutes
         
+        # Initialize market scanner (extreme RSI/MFI detection)
+        from market_scanner import MarketScanner
+        self.market_scanner = MarketScanner(self, scan_interval=900)  # 15 minutes
+        
         # Use monitor's volume detector for signal alerts (shared instance)
         self.volume_detector = self.monitor.volume_detector
         
@@ -203,7 +207,8 @@ class TelegramCommandHandler:
             'rsi', 'mfi', 'chart', 'scan', 'settings', 'menu',
             'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch',
             'performance', 'startmonitor', 'stopmonitor', 'monitorstatus',
-            'volumescan', 'volumesensitivity'
+            'volumescan', 'volumesensitivity',
+            'startmarketscan', 'stopmarketscan', 'marketstatus'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -390,6 +395,11 @@ Example: /BTC /ETH /LINK
 <b>🔥 VOLUME ALERTS:</b>
 /volumescan - Scan volume spikes
 /volumesensitivity - Set sensitivity
+
+<b>🌍 MARKET SCANNER:</b>
+/startmarketscan - Auto-scan ALL Binance
+/stopmarketscan - Stop market scanner
+/marketstatus - Scanner status
 
 <b>ℹ️ INFO:</b>
 /help - Show this message
@@ -1288,6 +1298,104 @@ Example: /BTC /ETH /LINK
                 
             except Exception as e:
                 logger.error(f"Error in /monitorstatus: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['startmarketscan'])
+        def handle_startmarketscan(message):
+            """Start automatic market scanner"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                if self.market_scanner.running:
+                    msg = "⚠️ Market scanner is already running!\n\n"
+                    msg += "💡 Use /marketstatus to check status"
+                else:
+                    success = self.market_scanner.start()
+                    if success:
+                        msg = "✅ <b>Market Scanner Started!</b>\n\n"
+                        msg += "🔍 <b>What it does:</b>\n"
+                        msg += "   • Scans ALL Binance USDT pairs\n"
+                        msg += "   • Checks 1D RSI & MFI\n"
+                        msg += "   • Alerts on extreme levels (>80 or <20)\n\n"
+                        msg += f"⏱️ <b>Scan interval:</b> {self.market_scanner.scan_interval//60} minutes\n"
+                        msg += f"📊 <b>RSI levels:</b> <{self.market_scanner.rsi_lower} or >{self.market_scanner.rsi_upper}\n"
+                        msg += f"💰 <b>MFI levels:</b> <{self.market_scanner.mfi_lower} or >{self.market_scanner.mfi_upper}\n"
+                        msg += f"🔔 <b>Cooldown:</b> 1 hour per coin\n\n"
+                        msg += "🚀 Scanner running in background...\n"
+                        msg += "💡 Use /stopmarketscan to stop"
+                    else:
+                        msg = "❌ Failed to start market scanner"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /startmarketscan: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['stopmarketscan'])
+        def handle_stopmarketscan(message):
+            """Stop automatic market scanner"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                if not self.market_scanner.running:
+                    msg = "⚠️ Market scanner is not running"
+                else:
+                    success = self.market_scanner.stop()
+                    if success:
+                        msg = "⛔ <b>Market Scanner Stopped</b>\n\n"
+                        msg += "🔕 Auto-scanning disabled\n"
+                        msg += "💡 Use /startmarketscan to resume"
+                    else:
+                        msg = "❌ Failed to stop market scanner"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /stopmarketscan: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['marketstatus'])
+        def handle_marketstatus(message):
+            """Show market scanner status"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                status = self.market_scanner.get_status()
+                
+                status_icon = "🟢" if status['running'] else "🔴"
+                status_text = "RUNNING" if status['running'] else "STOPPED"
+                
+                msg = f"{status_icon} <b>Market Scanner Status: {status_text}</b>\n\n"
+                msg += f"⏱️ <b>Scan interval:</b> {status['scan_interval']//60} min ({status['scan_interval']}s)\n"
+                msg += f"📊 <b>RSI levels:</b> {status['rsi_levels']}\n"
+                msg += f"💰 <b>MFI levels:</b> {status['mfi_levels']}\n"
+                msg += f"🔔 <b>Alert cooldown:</b> {status['cooldown']}\n"
+                msg += f"💾 <b>Tracked coins:</b> {status['tracked_coins']}\n\n"
+                
+                if status['running']:
+                    msg += "🔍 <b>Scanning for:</b>\n"
+                    msg += "   🟢 Oversold: RSI/MFI < 20\n"
+                    msg += "   🔴 Overbought: RSI/MFI > 80\n\n"
+                    msg += "🚀 Scanner active in background\n"
+                    msg += "💡 Use /stopmarketscan to stop"
+                else:
+                    msg += "🔕 Auto-scanning: OFF\n"
+                    msg += "💡 Use /startmarketscan to start"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /marketstatus: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
