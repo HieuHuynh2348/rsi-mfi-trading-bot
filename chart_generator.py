@@ -441,8 +441,9 @@ class ChartGenerator:
     
     def create_rsi_mfi_overview_charts(self, signals_list):
         """
-        Create overview charts showing all coins grouped by RSI/MFI levels
+        Create overview charts showing coins with ACTUAL signals (BUY/SELL) grouped by RSI/MFI levels
         Separated by timeframe (1H, 4H, 1D) for clarity
+        Only shows coins that have BUY or SELL signal in that specific timeframe
         Returns list of chart buffers
         
         Args:
@@ -457,48 +458,65 @@ class ChartGenerator:
             # Define timeframes
             timeframes = ['1h', '4h', '1d']
             
-            # Collect data by timeframe
+            # Collect data by timeframe - ONLY for coins with actual signals
             rsi_data_by_tf = {tf: [] for tf in timeframes}
             mfi_data_by_tf = {tf: [] for tf in timeframes}
             
             for signal in signals_list:
                 symbol = signal.get('symbol', 'UNKNOWN')
                 timeframe_data = signal.get('timeframe_data', {})
+                consensus = signal.get('consensus', 'NEUTRAL')
+                
+                # Skip if no clear consensus
+                if consensus not in ['BUY', 'SELL']:
+                    continue
                 
                 for tf in timeframes:
                     if tf in timeframe_data:
                         data = timeframe_data[tf]
-                        rsi = data.get('rsi', 0)
-                        mfi = data.get('mfi', 0)
+                        tf_signal = data.get('signal', 0)
                         
-                        rsi_data_by_tf[tf].append((symbol, rsi))
-                        mfi_data_by_tf[tf].append((symbol, mfi))
+                        # CRITICAL: Only add coin if THIS timeframe has the signal
+                        # BUY signal = 1, SELL signal = -1
+                        has_signal_in_tf = (
+                            (consensus == 'BUY' and tf_signal == 1) or
+                            (consensus == 'SELL' and tf_signal == -1)
+                        )
+                        
+                        if has_signal_in_tf:
+                            rsi = data.get('rsi', 0)
+                            mfi = data.get('mfi', 0)
+                            
+                            rsi_data_by_tf[tf].append((symbol, rsi))
+                            mfi_data_by_tf[tf].append((symbol, mfi))
             
             # Create charts for each timeframe
             chart_buffers = []
             
             for tf in timeframes:
                 # RSI chart for this timeframe
-                rsi_buf = self._create_timeframe_chart(
-                    rsi_data_by_tf[tf], 
-                    'RSI', 
-                    tf.upper(),
-                    '#2962FF'
-                )
-                if rsi_buf:
-                    chart_buffers.append(('RSI', tf.upper(), rsi_buf))
+                if rsi_data_by_tf[tf]:  # Only create if has data
+                    rsi_buf = self._create_timeframe_chart(
+                        rsi_data_by_tf[tf], 
+                        'RSI', 
+                        tf.upper(),
+                        '#2962FF'
+                    )
+                    if rsi_buf:
+                        chart_buffers.append(('RSI', tf.upper(), rsi_buf))
                 
                 # MFI chart for this timeframe
-                mfi_buf = self._create_timeframe_chart(
-                    mfi_data_by_tf[tf], 
-                    'MFI', 
-                    tf.upper(),
-                    '#FF6D00'
-                )
-                if mfi_buf:
-                    chart_buffers.append(('MFI', tf.upper(), mfi_buf))
+                if mfi_data_by_tf[tf]:  # Only create if has data
+                    mfi_buf = self._create_timeframe_chart(
+                        mfi_data_by_tf[tf], 
+                        'MFI', 
+                        tf.upper(),
+                        '#FF6D00'
+                    )
+                    if mfi_buf:
+                        chart_buffers.append(('MFI', tf.upper(), mfi_buf))
             
-            logger.info(f"Created {len(chart_buffers)} overview charts")
+            logger.info(f"Created {len(chart_buffers)} overview charts (signals only)")
             return chart_buffers
             
         except Exception as e:
@@ -609,8 +627,8 @@ class ChartGenerator:
             ax.set_yticks(y_positions)
             ax.set_yticklabels(y_labels, fontsize=10, family='monospace')
             ax.set_xlabel(f'{indicator_name} Value', fontsize=13, fontweight='bold')
-            ax.set_title(f'📊 {indicator_name} Overview - {timeframe} Timeframe\n'
-                        f'Total: {len(data)} coins', 
+            ax.set_title(f'📊 {indicator_name} Signals - {timeframe} Timeframe\n'
+                        f'Total: {len(data)} coins with active signals', 
                         fontsize=16, fontweight='bold', pad=20)
             
             # Reference lines with labels

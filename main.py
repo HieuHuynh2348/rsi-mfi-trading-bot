@@ -313,8 +313,8 @@ class TradingBot:
                         emoji = "📊" if indicator == "RSI" else "💰"
                         self.telegram.send_photo(
                             chart_buf,
-                            caption=f"{emoji} <b>{indicator} Overview - {timeframe}</b>\n"
-                                   f"All coins with {indicator} signals on {timeframe} timeframe"
+                            caption=f"{emoji} <b>{indicator} Signals - {timeframe}</b>\n"
+                                   f"Coins with active {indicator} {timeframe} signals"
                         )
                         time.sleep(0.8)
                     
