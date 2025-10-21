@@ -29,16 +29,48 @@ class TelegramBot:
             reply_markup: Optional keyboard markup
         """
         try:
-            self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode=parse_mode,
-                reply_markup=reply_markup
-            )
-            logger.info("Message sent successfully")
-            return True
+            # Telegram limit is 4096 characters
+            MAX_LENGTH = 4096
+            
+            if len(message) > MAX_LENGTH:
+                logger.warning(f"Message too long ({len(message)} chars), splitting...")
+                # Split message into chunks
+                chunks = []
+                current_chunk = ""
+                
+                for line in message.split('\n'):
+                    if len(current_chunk) + len(line) + 1 > MAX_LENGTH:
+                        chunks.append(current_chunk)
+                        current_chunk = line + '\n'
+                    else:
+                        current_chunk += line + '\n'
+                
+                if current_chunk:
+                    chunks.append(current_chunk)
+                
+                # Send chunks
+                for i, chunk in enumerate(chunks):
+                    self.bot.send_message(
+                        chat_id=self.chat_id,
+                        text=chunk,
+                        parse_mode=parse_mode,
+                        reply_markup=reply_markup if i == len(chunks) - 1 else None
+                    )
+                    logger.info(f"Message chunk {i+1}/{len(chunks)} sent ({len(chunk)} chars)")
+                
+                return True
+            else:
+                self.bot.send_message(
+                    chat_id=self.chat_id,
+                    text=message,
+                    parse_mode=parse_mode,
+                    reply_markup=reply_markup
+                )
+                logger.info(f"Message sent successfully ({len(message)} chars)")
+                return True
         except Exception as e:
             logger.error(f"Error sending message: {e}")
+            logger.error(f"Message length: {len(message) if message else 0} chars")
             return False
     
     def create_main_menu_keyboard(self):
@@ -534,15 +566,24 @@ class TelegramBot:
             # Sort by consensus strength
             signals_list = sorted(signals_list, key=lambda x: x.get('consensus_strength', 0), reverse=True)
             
+            # Limit to prevent message too long (Telegram 4096 char limit)
+            # Each signal ~80 chars, so max ~50 signals to stay under limit
+            MAX_SIGNALS_DISPLAY = 50
+            total_signals = len(signals_list)
+            display_signals = signals_list[:MAX_SIGNALS_DISPLAY]
+            
             message = "<b>📊 MARKET SCAN SUMMARY</b>\n\n"
             
-            buy_signals = [s for s in signals_list if s.get('consensus') == 'BUY']
-            sell_signals = [s for s in signals_list if s.get('consensus') == 'SELL']
+            buy_signals = [s for s in display_signals if s.get('consensus') == 'BUY']
+            sell_signals = [s for s in display_signals if s.get('consensus') == 'SELL']
             
-            logger.info(f"Summary: {len(buy_signals)} BUY, {len(sell_signals)} SELL signals")
+            total_buy = sum(1 for s in signals_list if s.get('consensus') == 'BUY')
+            total_sell = sum(1 for s in signals_list if s.get('consensus') == 'SELL')
+            
+            logger.info(f"Summary: {total_buy} BUY, {total_sell} SELL signals (displaying {len(display_signals)}/{total_signals})")
             
             if buy_signals:
-                message += "<b>🚀 BUY SIGNALS:</b>\n"
+                message += f"<b>🚀 BUY SIGNALS: ({len(buy_signals)}/{total_buy})</b>\n"
                 for signal in buy_signals:
                     strength_bar = "🟩" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
                     
@@ -561,7 +602,7 @@ class TelegramBot:
                 message += "\n"
             
             if sell_signals:
-                message += "<b>⚠️ SELL SIGNALS:</b>\n"
+                message += f"<b>⚠️ SELL SIGNALS: ({len(sell_signals)}/{total_sell})</b>\n"
                 for signal in sell_signals:
                     strength_bar = "🟥" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
                     
@@ -579,8 +620,12 @@ class TelegramBot:
                     message += f"     <i>📊 {timeframes_str}</i>\n"
                 message += "\n"
             
-            message += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
-            message += f"   🟢 Buy: {len(buy_signals)} | 🔴 Sell: {len(sell_signals)}\n"
+            # Add note if signals were truncated
+            if total_signals > MAX_SIGNALS_DISPLAY:
+                message += f"<i>⚠️ Showing top {MAX_SIGNALS_DISPLAY} of {total_signals} signals</i>\n\n"
+            
+            message += f"<b>📈 Total Signals:</b> {total_signals}\n"
+            message += f"   🟢 Buy: {total_buy} | 🔴 Sell: {total_sell}\n"
             message += f"\n🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
             
             logger.info(f"✅ Sending summary table ({len(message)} chars)")
