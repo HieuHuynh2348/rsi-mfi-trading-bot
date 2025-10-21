@@ -516,7 +516,8 @@ class TelegramBot:
                 self.send_message(f"❌ <b>Error sending alert for {symbol}</b>\n\n{str(e)}")
             except:
                 pass
-            return False    def send_summary_table(self, signals_list):
+            return False    
+    def send_summary_table(self, signals_list):
         """
         Send a summary table of multiple signals
         
