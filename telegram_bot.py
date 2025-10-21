@@ -231,283 +231,292 @@ class TelegramBot:
             market_data: Dictionary with 24h data (high, low, change, volume)
             volume_data: Dictionary with volume analysis (current, last, avg, ratios)
         """
-        logger.info(f"📤 Building signal alert for {symbol}")
-        
-        # Get current time
-        current_time = datetime.now().strftime('%H:%M:%S')
-        
-        # Header with symbol
-        message = f"<b>💎 #{symbol}</b>\n"
-        message += f"🕐 {current_time}\n\n"
-        
-        # Get timeframe list (sorted)
-        timeframes = sorted(timeframe_data.keys(), 
-                          key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
-        
-        # RSI Analysis
-        message += "\n<b>📊 RSI ANALYSIS</b>\n"
-        
-        # Find main timeframe (usually first or most important)
-        main_tf = timeframes[0] if timeframes else '5m'
-        main_rsi = timeframe_data[main_tf]['rsi']
-        last_rsi = timeframe_data[main_tf].get('last_rsi', main_rsi)
-        rsi_change = timeframe_data[main_tf].get('rsi_change', 0)
-        
-        # RSI status emoji
-        if main_rsi >= 80:
-            rsi_status = "🔥"
-            rsi_alert = f"⚠️ Overbought Alert: {main_rsi:.0f}+ 🔴🔴"
-        elif main_rsi <= 20:
-            rsi_status = "❄️"
-            rsi_alert = f"💎 Oversold Alert: {main_rsi:.0f}- 🟢🟢"
-        else:
-            rsi_status = "⚖️"
-            rsi_alert = None
-        
-        # RSI trend indicator
-        rsi_trend = "📈" if rsi_change > 0 else ("📉" if rsi_change < 0 else "➡️")
-        
-        message += f"📍 <b>Main RSI:</b> {main_rsi:.2f} {rsi_status}\n"
-        message += f"⏮️ <b>Last RSI:</b> {last_rsi:.2f} {rsi_trend} <i>({rsi_change:+.2f})</i>\n"
-        if rsi_alert:
-            message += f"{rsi_alert}\n\n"
-        else:
-            message += "\n"
-        
-        # All timeframe RSI values
-        for tf in timeframes:
-            rsi_val = timeframe_data[tf]['rsi']
-            last_val = timeframe_data[tf].get('last_rsi', rsi_val)
-            change = timeframe_data[tf].get('rsi_change', 0)
+        try:
+            logger.info(f"📤 Building signal alert for {symbol}")
             
-            if rsi_val >= 80:
-                emoji = "🔴"
-                status = "Overbought"
-            elif rsi_val <= 20:
-                emoji = "🟢"
-                status = "Oversold"
+            # Get current time
+            current_time = datetime.now().strftime('%H:%M:%S')
+            
+            # Header with symbol
+            message = f"<b>💎 #{symbol}</b>\n"
+            message += f"🕐 {current_time}\n\n"
+            
+            # Get timeframe list (sorted)
+            timeframes = sorted(timeframe_data.keys(), 
+                              key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
+            
+            # RSI Analysis
+            message += "\n<b>📊 RSI ANALYSIS</b>\n"
+            
+            # Find main timeframe (usually first or most important)
+            main_tf = timeframes[0] if timeframes else '5m'
+            main_rsi = timeframe_data[main_tf]['rsi']
+            last_rsi = timeframe_data[main_tf].get('last_rsi', main_rsi)
+            rsi_change = timeframe_data[main_tf].get('rsi_change', 0)
+            
+            # RSI status emoji
+            if main_rsi >= 80:
+                rsi_status = "🔥"
+                rsi_alert = f"⚠️ Overbought Alert: {main_rsi:.0f}+ 🔴🔴"
+            elif main_rsi <= 20:
+                rsi_status = "❄️"
+                rsi_alert = f"💎 Oversold Alert: {main_rsi:.0f}- 🟢🟢"
             else:
-                emoji = "🔵"
-                status = "Normal"
+                rsi_status = "⚖️"
+                rsi_alert = None
             
-            trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
-            message += f"  ├─ {tf.upper()}: {rsi_val:.2f} {emoji} <i>{status}</i> {trend}\n"
-        
-        # MFI Analysis
-        message += "\n<b>💰 MFI ANALYSIS</b>\n"
-        main_mfi = timeframe_data[main_tf]['mfi']
-        last_mfi = timeframe_data[main_tf].get('last_mfi', main_mfi)
-        mfi_change = timeframe_data[main_tf].get('mfi_change', 0)
-        
-        # MFI status emoji
-        if main_mfi >= 80:
-            mfi_status = "🔥"
-            mfi_alert = f"⚠️ Overbought Alert: {main_mfi:.0f}+ 🔴🔴"
-        elif main_mfi <= 20:
-            mfi_status = "❄️"
-            mfi_alert = f"💎 Oversold Alert: {main_mfi:.0f}- 🟢🟢"
-        else:
-            mfi_status = "⚖️"
-            mfi_alert = None
-        
-        # MFI trend indicator
-        mfi_trend = "📈" if mfi_change > 0 else ("📉" if mfi_change < 0 else "➡️")
-        
-        message += f"📍 <b>Main MFI:</b> {main_mfi:.2f} {mfi_status}\n"
-        message += f"⏮️ <b>Last MFI:</b> {last_mfi:.2f} {mfi_trend} <i>({mfi_change:+.2f})</i>\n"
-        if mfi_alert:
-            message += f"{mfi_alert}\n\n"
-        else:
-            message += "\n"
-        
-        # All timeframe MFI values
-        for tf in timeframes:
-            mfi_val = timeframe_data[tf]['mfi']
-            last_val = timeframe_data[tf].get('last_mfi', mfi_val)
-            change = timeframe_data[tf].get('mfi_change', 0)
+            # RSI trend indicator
+            rsi_trend = "📈" if rsi_change > 0 else ("📉" if rsi_change < 0 else "➡️")
             
-            if mfi_val >= 80:
-                emoji = "🔴"
-                status = "Overbought"
-            elif mfi_val <= 20:
-                emoji = "🟢"
-                status = "Oversold"
+            message += f"📍 <b>Main RSI:</b> {main_rsi:.2f} {rsi_status}\n"
+            message += f"⏮️ <b>Last RSI:</b> {last_rsi:.2f} {rsi_trend} <i>({rsi_change:+.2f})</i>\n"
+            if rsi_alert:
+                message += f"{rsi_alert}\n\n"
             else:
-                emoji = "🔵"
-                status = "Normal"
+                message += "\n"
             
-            trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
-            message += f"  ├─ {tf.upper()}: {mfi_val:.2f} {emoji} <i>{status}</i> {trend}\n"
-        
-        # Consensus Analysis
-        message += "\n<b>🎯 CONSENSUS SIGNALS</b>\n"
-        for tf in timeframes:
-            data = timeframe_data[tf]
-            avg = (data['rsi'] + data['mfi']) / 2
-            
-            if data['signal'] == 1:
-                signal_text = "🟢 BUY"
-                arrow = "📈"
-            elif data['signal'] == -1:
-                signal_text = "🔴 SELL"
-                arrow = "📉"
-            else:
-                signal_text = "⚪ NEUTRAL"
-                arrow = "➡️"
-            
-            message += f"  {arrow} {tf.upper()}: {avg:.1f} → {signal_text}\n"
-        
-        # Overall consensus
-        if consensus == "BUY":
-            consensus_icon = "�"
-            consensus_bar = "🟩" * consensus_strength + "⬜" * (4 - consensus_strength)
-        elif consensus == "SELL":
-            consensus_icon = "⚠️"
-            consensus_bar = "🟥" * consensus_strength + "⬜" * (4 - consensus_strength)
-        else:
-            consensus_icon = "💤"
-            consensus_bar = "⬜" * 4
-        
-        message += f"\n<b>{consensus_icon} OVERALL: {consensus}</b>\n"
-        message += f"<b>Strength: {consensus_bar} ({consensus_strength}/4)</b>\n"
-        
-        # Price Information
-        message += "\n<b>💵 PRICE INFO</b>\n"
-        if price:
-            message += f"💲 Current: <b>${price:,.4f}</b>\n"
-        
-        # 24h Market Data
-        if market_data:
-            change_24h = market_data.get('price_change_percent', 0)
-            volume_24h = market_data.get('volume', 0)
-            high_24h = market_data.get('high', 0)
-            low_24h = market_data.get('low', 0)
-            
-            # Format volume intelligently
-            if volume_24h >= 1e9:  # Billions
-                vol_str = f"${volume_24h/1e9:.2f}B"
-            elif volume_24h >= 1e6:  # Millions
-                vol_str = f"${volume_24h/1e6:.2f}M"
-            elif volume_24h >= 1e3:  # Thousands
-                vol_str = f"${volume_24h/1e3:.2f}K"
-            else:
-                vol_str = f"${volume_24h:.2f}"
-            
-            change_emoji = "📈" if change_24h >= 0 else "📉"
-            change_color = "🟩" if change_24h >= 0 else "🟥"
-            message += f"\n📊 <b>24h Change:</b> {change_emoji} {change_color} <b>{change_24h:+.2f}%</b>\n"
-            message += f"💎 <b>Volume:</b> {vol_str}\n"
-            
-            if price and high_24h > 0:
-                high_diff = ((high_24h - price) / price) * 100
-                message += f"🔺 <b>High:</b> ${high_24h:,.4f} <i>(+{high_diff:.2f}%)</i>\n"
-            
-            if price and low_24h > 0:
-                low_diff = ((price - low_24h) / price) * 100
-                message += f"🔻 <b>Low:</b> ${low_24h:,.4f} <i>(+{low_diff:.2f}%)</i>\n"
-        
-        # Volume Analysis (if available)
-        if volume_data:
-            current_vol = volume_data.get('current_volume', 0)
-            last_vol = volume_data.get('last_volume', 0)
-            avg_vol = volume_data.get('avg_volume', 0)
-            is_anomaly = volume_data.get('is_anomaly', False)
-            
-            # Get 24h volume for comparison
-            volume_24h = market_data.get('volume', 0) if market_data else 0
-            
-            # Format volumes intelligently
-            def format_volume(vol):
-                if vol >= 1e9:
-                    return f"{vol/1e9:.2f}B"
-                elif vol >= 1e6:
-                    return f"{vol/1e6:.2f}M"
-                elif vol >= 1e3:
-                    return f"{vol/1e3:.2f}K"
-                else:
-                    return f"{vol:.2f}"
-            
-            message += f"\n<b>📊 VOLUME ANALYSIS</b>\n"
-            
-            # Show anomaly warning if detected
-            if is_anomaly:
-                message += f"⚡ <b>VOLUME SPIKE DETECTED!</b> ⚡\n"
-            
-            message += f"💹 <b>Current Candle:</b> {format_volume(current_vol)}\n"
-            message += f"⏮️ <b>Last Candle:</b> {format_volume(last_vol)}\n"
-            message += f"📊 <b>Average Candle:</b> {format_volume(avg_vol)}\n"
-            
-            # Show ratios
-            if last_vol > 0:
-                last_ratio = volume_data.get('last_candle_ratio', 0)
-                last_increase = volume_data.get('last_candle_increase_percent', 0)
-                ratio_emoji = "📈" if last_ratio > 1 else ("📉" if last_ratio < 1 else "➡️")
-                message += f"🔄 <b>vs Last:</b> {last_ratio:.2f}x {ratio_emoji} <i>({last_increase:+.1f}%)</i>\n"
-            
-            if avg_vol > 0:
-                avg_ratio = volume_data.get('avg_ratio', 0)
-                avg_increase = volume_data.get('avg_increase_percent', 0)
-                avg_emoji = "📈" if avg_ratio > 1 else ("📉" if avg_ratio < 1 else "➡️")
-                message += f"🔄 <b>vs Avg:</b> {avg_ratio:.2f}x {avg_emoji} <i>({avg_increase:+.1f}%)</i>\n"
-            
-            # 24h Volume Impact Analysis
-            if volume_24h > 0 and current_vol > 0:
-                # Calculate contribution percentage
-                contribution_pct = (current_vol / volume_24h) * 100
+            # All timeframe RSI values
+            for tf in timeframes:
+                rsi_val = timeframe_data[tf]['rsi']
+                last_val = timeframe_data[tf].get('last_rsi', rsi_val)
+                change = timeframe_data[tf].get('rsi_change', 0)
                 
-                # Smart formatting for contribution percentage
-                if contribution_pct >= 0.001:
-                    contribution_str = f"{contribution_pct:.3f}%"
-                elif contribution_pct >= 0.00001:
-                    contribution_str = f"{contribution_pct:.5f}%"
+                if rsi_val >= 80:
+                    emoji = "🔴"
+                    status = "Overbought"
+                elif rsi_val <= 20:
+                    emoji = "🟢"
+                    status = "Oversold"
                 else:
-                    # Use scientific notation for very small values
-                    contribution_str = f"{contribution_pct:.2e}%"
+                    emoji = "🔵"
+                    status = "Normal"
                 
-                # Calculate trend (current vs last)
-                if last_vol > 0:
-                    vol_change = current_vol - last_vol
-                    vol_change_pct = ((current_vol - last_vol) / last_vol) * 100
-                    
-                    # Predict 24h impact if trend continues
-                    # Assume 288 candles per day (5-min timeframe)
-                    candles_per_day = 288
-                    predicted_impact = vol_change * candles_per_day
-                    predicted_impact_pct = (predicted_impact / volume_24h) * 100
-                    
-                    # Determine trend
-                    if vol_change > 0:
-                        trend_emoji = "🔥"
-                        trend_text = "Increasing"
-                        impact_sign = "+"
-                    elif vol_change < 0:
-                        trend_emoji = "❄️"
-                        trend_text = "Decreasing"
-                        impact_sign = ""
+                trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
+                message += f"  ├─ {tf.upper()}: {rsi_val:.2f} {emoji} <i>{status}</i> {trend}\n"
+            
+            # MFI Analysis
+            message += "\n<b>💰 MFI ANALYSIS</b>\n"
+            main_mfi = timeframe_data[main_tf]['mfi']
+            last_mfi = timeframe_data[main_tf].get('last_mfi', main_mfi)
+            mfi_change = timeframe_data[main_tf].get('mfi_change', 0)
+            
+            # MFI status emoji
+            if main_mfi >= 80:
+                mfi_status = "🔥"
+                mfi_alert = f"⚠️ Overbought Alert: {main_mfi:.0f}+ 🔴🔴"
+            elif main_mfi <= 20:
+                mfi_status = "❄️"
+                mfi_alert = f"💎 Oversold Alert: {main_mfi:.0f}- 🟢🟢"
+            else:
+                mfi_status = "⚖️"
+                mfi_alert = None
+            
+            # MFI trend indicator
+            mfi_trend = "📈" if mfi_change > 0 else ("📉" if mfi_change < 0 else "➡️")
+            
+            message += f"📍 <b>Main MFI:</b> {main_mfi:.2f} {mfi_status}\n"
+            message += f"⏮️ <b>Last MFI:</b> {last_mfi:.2f} {mfi_trend} <i>({mfi_change:+.2f})</i>\n"
+            if mfi_alert:
+                message += f"{mfi_alert}\n\n"
+            else:
+                message += "\n"
+            
+            # All timeframe MFI values
+            for tf in timeframes:
+                mfi_val = timeframe_data[tf]['mfi']
+                last_val = timeframe_data[tf].get('last_mfi', mfi_val)
+                change = timeframe_data[tf].get('mfi_change', 0)
+                
+                if mfi_val >= 80:
+                    emoji = "🔴"
+                    status = "Overbought"
+                elif mfi_val <= 20:
+                    emoji = "🟢"
+                    status = "Oversold"
+                else:
+                    emoji = "🔵"
+                    status = "Normal"
+                
+                trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
+                message += f"  ├─ {tf.upper()}: {mfi_val:.2f} {emoji} <i>{status}</i> {trend}\n"
+            
+            # Consensus Analysis
+            message += "\n<b>🎯 CONSENSUS SIGNALS</b>\n"
+            for tf in timeframes:
+                data = timeframe_data[tf]
+                avg = (data['rsi'] + data['mfi']) / 2
+                
+                if data['signal'] == 1:
+                    signal_text = "🟢 BUY"
+                    arrow = "📈"
+                elif data['signal'] == -1:
+                    signal_text = "🔴 SELL"
+                    arrow = "📉"
+                else:
+                    signal_text = "⚪ NEUTRAL"
+                    arrow = "➡️"
+                
+                message += f"  {arrow} {tf.upper()}: {avg:.1f} → {signal_text}\n"
+            
+            # Overall consensus
+            if consensus == "BUY":
+                consensus_icon = "🚀"
+                consensus_bar = "🟩" * consensus_strength + "⬜" * (4 - consensus_strength)
+            elif consensus == "SELL":
+                consensus_icon = "⚠️"
+                consensus_bar = "🟥" * consensus_strength + "⬜" * (4 - consensus_strength)
+            else:
+                consensus_icon = "💤"
+                consensus_bar = "⬜" * 4
+            
+            message += f"\n<b>{consensus_icon} OVERALL: {consensus}</b>\n"
+            message += f"<b>Strength: {consensus_bar} ({consensus_strength}/4)</b>\n"
+            
+            # Price Information
+            message += "\n<b>💵 PRICE INFO</b>\n"
+            if price:
+                message += f"💲 Current: <b>${price:,.4f}</b>\n"
+            
+            # 24h Market Data
+            if market_data:
+                change_24h = market_data.get('price_change_percent', 0)
+                volume_24h = market_data.get('volume', 0)
+                high_24h = market_data.get('high', 0)
+                low_24h = market_data.get('low', 0)
+                
+                # Format volume intelligently
+                if volume_24h >= 1e9:  # Billions
+                    vol_str = f"${volume_24h/1e9:.2f}B"
+                elif volume_24h >= 1e6:  # Millions
+                    vol_str = f"${volume_24h/1e6:.2f}M"
+                elif volume_24h >= 1e3:  # Thousands
+                    vol_str = f"${volume_24h/1e3:.2f}K"
+                else:
+                    vol_str = f"${volume_24h:.2f}"
+                
+                change_emoji = "📈" if change_24h >= 0 else "📉"
+                change_color = "🟩" if change_24h >= 0 else "🟥"
+                message += f"\n📊 <b>24h Change:</b> {change_emoji} {change_color} <b>{change_24h:+.2f}%</b>\n"
+                message += f"💎 <b>Volume:</b> {vol_str}\n"
+                
+                if price and high_24h > 0:
+                    high_diff = ((high_24h - price) / price) * 100
+                    message += f"🔺 <b>High:</b> ${high_24h:,.4f} <i>(+{high_diff:.2f}%)</i>\n"
+                
+                if price and low_24h > 0:
+                    low_diff = ((price - low_24h) / price) * 100
+                    message += f"🔻 <b>Low:</b> ${low_24h:,.4f} <i>(+{low_diff:.2f}%)</i>\n"
+            
+            # Volume Analysis (if available)
+            if volume_data:
+                current_vol = volume_data.get('current_volume', 0)
+                last_vol = volume_data.get('last_volume', 0)
+                avg_vol = volume_data.get('avg_volume', 0)
+                is_anomaly = volume_data.get('is_anomaly', False)
+                
+                # Get 24h volume for comparison
+                volume_24h = market_data.get('volume', 0) if market_data else 0
+                
+                # Format volumes intelligently
+                def format_volume(vol):
+                    if vol >= 1e9:
+                        return f"{vol/1e9:.2f}B"
+                    elif vol >= 1e6:
+                        return f"{vol/1e6:.2f}M"
+                    elif vol >= 1e3:
+                        return f"{vol/1e3:.2f}K"
                     else:
-                        trend_emoji = "➡️"
-                        trend_text = "Stable"
-                        impact_sign = ""
+                        return f"{vol:.2f}"
+                
+                message += f"\n<b>📊 VOLUME ANALYSIS</b>\n"
+                
+                # Show anomaly warning if detected
+                if is_anomaly:
+                    message += f"⚡ <b>VOLUME SPIKE DETECTED!</b> ⚡\n"
+                
+                message += f"💹 <b>Current Candle:</b> {format_volume(current_vol)}\n"
+                message += f"⏮️ <b>Last Candle:</b> {format_volume(last_vol)}\n"
+                message += f"📊 <b>Average Candle:</b> {format_volume(avg_vol)}\n"
+                
+                # Show ratios
+                if last_vol > 0:
+                    last_ratio = volume_data.get('last_candle_ratio', 0)
+                    last_increase = volume_data.get('last_candle_increase_percent', 0)
+                    ratio_emoji = "📈" if last_ratio > 1 else ("📉" if last_ratio < 1 else "➡️")
+                    message += f"🔄 <b>vs Last:</b> {last_ratio:.2f}x {ratio_emoji} <i>({last_increase:+.1f}%)</i>\n"
+                
+                if avg_vol > 0:
+                    avg_ratio = volume_data.get('avg_ratio', 0)
+                    avg_increase = volume_data.get('avg_increase_percent', 0)
+                    avg_emoji = "📈" if avg_ratio > 1 else ("📉" if avg_ratio < 1 else "➡️")
+                    message += f"🔄 <b>vs Avg:</b> {avg_ratio:.2f}x {avg_emoji} <i>({avg_increase:+.1f}%)</i>\n"
+                
+                # 24h Volume Impact Analysis
+                if volume_24h > 0 and current_vol > 0:
+                    # Calculate contribution percentage
+                    contribution_pct = (current_vol / volume_24h) * 100
                     
-                    message += f"\n<b>📈 24h IMPACT ANALYSIS</b>\n"
-                    message += f"💎 <b>Current 24h Volume:</b> {format_volume(volume_24h)}\n"
-                    message += f"📊 <b>Candle Contribution:</b> {contribution_str} of 24h\n"
-                    message += f"{trend_emoji} <b>Trend:</b> {trend_text} <i>({vol_change_pct:+.1f}%)</i>\n"
+                    # Smart formatting for contribution percentage
+                    if contribution_pct >= 0.001:
+                        contribution_str = f"{contribution_pct:.3f}%"
+                    elif contribution_pct >= 0.00001:
+                        contribution_str = f"{contribution_pct:.5f}%"
+                    else:
+                        # Use scientific notation for very small values
+                        contribution_str = f"{contribution_pct:.2e}%"
                     
-                    if abs(predicted_impact_pct) > 0.1:  # Only show if significant
-                        message += f"🔮 <b>Projected 24h Impact:</b> {impact_sign}{format_volume(abs(predicted_impact))} <i>({predicted_impact_pct:+.1f}%)</i>\n"
-        
-        # Add action keyboard for quick analysis
-        keyboard = self.create_action_keyboard()
-        logger.info(f"✅ Sending signal alert for {symbol} ({len(message)} chars)")
-        result = self.send_message(message, keyboard)
-        if result:
-            logger.info(f"✅ Signal alert sent successfully for {symbol}")
-        else:
-            logger.error(f"❌ Failed to send signal alert for {symbol}")
-        return result
-    
-    def send_summary_table(self, signals_list):
+                    # Calculate trend (current vs last)
+                    if last_vol > 0:
+                        vol_change = current_vol - last_vol
+                        vol_change_pct = ((current_vol - last_vol) / last_vol) * 100
+                        
+                        # Predict 24h impact if trend continues
+                        # Assume 288 candles per day (5-min timeframe)
+                        candles_per_day = 288
+                        predicted_impact = vol_change * candles_per_day
+                        predicted_impact_pct = (predicted_impact / volume_24h) * 100
+                        
+                        # Determine trend
+                        if vol_change > 0:
+                            trend_emoji = "🔥"
+                            trend_text = "Increasing"
+                            impact_sign = "+"
+                        elif vol_change < 0:
+                            trend_emoji = "❄️"
+                            trend_text = "Decreasing"
+                            impact_sign = ""
+                        else:
+                            trend_emoji = "➡️"
+                            trend_text = "Stable"
+                            impact_sign = ""
+                        
+                        message += f"\n<b>📈 24h IMPACT ANALYSIS</b>\n"
+                        message += f"💎 <b>Current 24h Volume:</b> {format_volume(volume_24h)}\n"
+                        message += f"📊 <b>Candle Contribution:</b> {contribution_str} of 24h\n"
+                        message += f"{trend_emoji} <b>Trend:</b> {trend_text} <i>({vol_change_pct:+.1f}%)</i>\n"
+                        
+                        if abs(predicted_impact_pct) > 0.1:  # Only show if significant
+                            message += f"🔮 <b>Projected 24h Impact:</b> {impact_sign}{format_volume(abs(predicted_impact))} <i>({predicted_impact_pct:+.1f}%)</i>\n"
+            
+            # Add action keyboard for quick analysis
+            keyboard = self.create_action_keyboard()
+            logger.info(f"✅ Sending signal alert for {symbol} ({len(message)} chars)")
+            result = self.send_message(message, keyboard)
+            if result:
+                logger.info(f"✅ Signal alert sent successfully for {symbol}")
+            else:
+                logger.error(f"❌ Failed to send signal alert for {symbol}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ Error building/sending signal alert for {symbol}: {e}")
+            logger.exception(e)  # Print full traceback
+            # Send a basic error message
+            try:
+                self.send_message(f"❌ <b>Error sending alert for {symbol}</b>\n\n{str(e)}")
+            except:
+                pass
+            return False    def send_summary_table(self, signals_list):
         """
         Send a summary table of multiple signals
         

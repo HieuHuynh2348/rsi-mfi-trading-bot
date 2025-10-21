@@ -201,9 +201,9 @@ class WatchlistMonitor:
             # Send detailed analysis for each signal
             for i, result in enumerate(signals, 1):
                 try:
+                    logger.info(f"📤 Sending detailed analysis {i}/{len(signals)} for {result['symbol']}")
                     # Send text alert
-                    logger.info(f"Sending detailed alert for {result['symbol']} ({i}/{len(signals)})")
-                    success = self.command_handler.bot.send_signal_alert(
+                    self.command_handler.bot.send_signal_alert(
                         result['symbol'],
                         result['timeframe_data'],
                         result['consensus'],
@@ -212,11 +212,7 @@ class WatchlistMonitor:
                         result.get('market_data'),
                         result.get('volume_data')
                     )
-                    
-                    if success:
-                        logger.info(f"✅ Successfully sent alert for {result['symbol']}")
-                    else:
-                        logger.error(f"❌ Failed to send alert for {result['symbol']}")
+                    logger.info(f"✅ Successfully sent alert for {result['symbol']}")
                     
                     # Send chart if enabled
                     if self.command_handler._config.SEND_CHARTS:
@@ -236,7 +232,8 @@ class WatchlistMonitor:
                     time.sleep(1)  # Delay between messages
                     
                 except Exception as e:
-                    logger.error(f"Error sending notification for {result['symbol']}: {e}")
+                    logger.error(f"❌ Error sending notification for {result['symbol']}: {e}")
+                    logger.exception(e)  # Full traceback
                     continue
             
             # Final summary
