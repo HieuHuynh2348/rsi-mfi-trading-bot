@@ -438,6 +438,54 @@ class ChartGenerator:
         except Exception as e:
             logger.error(f"Error creating multi-timeframe chart: {e}", exc_info=True)
             return None
+
+    def create_price_chart(self, symbol, klines_dict=None):
+        """
+        Create a simple price chart using available klines_dict data.
+        Falls back to the 1h timeframe if multi timeframe is not provided.
+
+        Args:
+            symbol: Trading symbol
+            klines_dict: Dict of {timeframe: DataFrame} or single DataFrame
+
+        Returns:
+            BytesIO chart buffer or None
+        """
+        try:
+            if klines_dict is None:
+                return None
+
+            # If a single DataFrame provided (not dict), wrap it
+            if isinstance(klines_dict, dict):
+                # Use multiple timeframe view if possible
+                timeframes = sorted(list(klines_dict.keys()), key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 99))
+                if len(timeframes) > 1:
+                    # Use multi timeframe chart if available
+                    return self.create_multi_timeframe_chart(symbol, {}, price=None, klines_dict=klines_dict)
+                else:
+                    # Single timeframe - create rsi/mfi combined chart
+                    tf = timeframes[0]
+                    df = klines_dict.get(tf)
+                    if df is None:
+                        return None
+                    # Compute RSI and MFI series
+                    from indicators import calculate_hlcc4, calculate_rsi, calculate_mfi
+                    hlcc = calculate_hlcc4(df)
+                    rsi_series = calculate_rsi(hlcc)
+                    mfi_series = calculate_mfi(df)
+                    return self.create_rsi_mfi_chart(symbol, df, rsi_series, mfi_series, timeframe=tf)
+            else:
+                # If provided as DataFrame, compute RSI/MFI and create chart
+                df = klines_dict
+                from indicators import calculate_hlcc4, calculate_rsi, calculate_mfi
+                hlcc = calculate_hlcc4(df)
+                rsi_series = calculate_rsi(hlcc)
+                mfi_series = calculate_mfi(df)
+                return self.create_rsi_mfi_chart(symbol, df, rsi_series, mfi_series)
+
+        except Exception as e:
+            logger.error(f"Error creating price chart for {symbol}: {e}", exc_info=True)
+            return None
     
     def create_rsi_mfi_overview_charts(self, signals_list):
         """

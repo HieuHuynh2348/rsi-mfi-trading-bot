@@ -538,8 +538,15 @@ class TelegramBot:
                         if abs(predicted_impact_pct) > 0.1:  # Only show if significant
                             message += f"🔮 <b>Projected 24h Impact:</b> {impact_sign}{format_volume(abs(predicted_impact))} <i>({predicted_impact_pct:+.1f}%)</i>\n"
             
-            # Add action keyboard for quick analysis
-            keyboard = self.create_action_keyboard()
+            # Add inline keyboard for quick actions: View Chart, Add to Watchlist
+            keyboard = types.InlineKeyboardMarkup(row_width=2)
+            # Button to request chart for this symbol
+            # Use uppercase raw symbol for callback data to keep it URL-safe
+            keyboard.add(types.InlineKeyboardButton("📈 View Chart", callback_data=f"viewchart_{symbol.upper()}"))
+            # Button to add the symbol to the user's watchlist
+            keyboard.add(types.InlineKeyboardButton("⭐ Add to Watchlist", callback_data=f"addwatch_{symbol.upper()}"))
+            # Also add a back to main menu button
+            keyboard.add(types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu"))
             logger.info(f"✅ Sending signal alert for {symbol} ({len(message)} chars)")
             result = self.send_message(message, reply_markup=keyboard)
             if result:

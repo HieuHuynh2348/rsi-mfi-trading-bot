@@ -272,6 +272,49 @@ class TelegramCommandHandler:
                             result.get('market_data'),
                             result.get('volume_data')
                         )
+
+                # View chart request
+                elif data.startswith("viewchart_"):
+                    symbol = data.replace("viewchart_", "").upper().strip()
+                    symbol = symbol.replace('&AMP;', '&').replace('&amp;', '&')
+                    try:
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"📈 Generating chart for {symbol}...")
+                        # Generate a chart image for the symbol using chart generator
+                        # Use last analysis data if available via trading bot, otherwise perform quick analysis
+                        if self.trading_bot:
+                            try:
+                                # Attempt to get full analysis for the symbol
+                                result = self._analyze_symbol_full(symbol)
+                                if result and 'klines_dict' in result:
+                                    buf = self.chart_gen.create_price_chart(symbol, result['klines_dict'])
+                                    if buf:
+                                        self.bot.send_photo(buf, caption=f"📈 <b>{symbol}</b> - Price Chart")
+                                        return
+                            except Exception:
+                                pass
+
+                        # Fallback: request quick chart from Binance client
+                        klines = self.binance.get_klines(symbol, '1h', limit=200)
+                        buf = self.chart_gen.create_price_chart(symbol, {'1h': klines} if klines is not None else None)
+                        if buf:
+                            self.bot.send_photo(buf, caption=f"📈 <b>{symbol}</b> - Price Chart")
+                        else:
+                            self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Could not generate chart for {symbol}")
+                    except Exception as e:
+                        logger.error(f"Error generating chart for {symbol}: {e}")
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Error generating chart: {e}")
+
+                # Add to watchlist request
+                elif data.startswith("addwatch_"):
+                    symbol = data.replace("addwatch_", "").upper().strip()
+                    symbol = symbol.replace('&AMP;', '&').replace('&amp;', '&')
+                    try:
+                        success, message = self.watchlist.add(symbol)
+                        # Update user immediately
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=message)
+                    except Exception as e:
+                        logger.error(f"Error adding {symbol} to watchlist: {e}")
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Error adding to watchlist: {e}")
                 
                 # Volume sensitivity
                 elif data.startswith("vol_"):
