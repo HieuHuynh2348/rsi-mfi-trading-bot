@@ -342,6 +342,12 @@ class TelegramCommandHandler:
                         handle_help(fake_msg)
                     elif cmd == "about":
                         handle_about(fake_msg)
+                    elif cmd == "startmarketscan":
+                        handle_startmarketscan(fake_msg)
+                    elif cmd == "stopmarketscan":
+                        handle_stopmarketscan(fake_msg)
+                    elif cmd == "marketstatus":
+                        handle_marketstatus(fake_msg)
                 
             except Exception as e:
                 logger.error(f"Error handling callback: {e}")

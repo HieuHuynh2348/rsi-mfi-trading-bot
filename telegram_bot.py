@@ -69,28 +69,34 @@ class TelegramBot:
             types.InlineKeyboardButton("⏸️ Stop Monitor", callback_data="cmd_stopmonitor")
         )
         
-        # Row 5: Info & Analysis
+        # Row 5: Market Scanner
+        keyboard.row(
+            types.InlineKeyboardButton("🌍 Start Market Scan", callback_data="cmd_startmarketscan"),
+            types.InlineKeyboardButton("🛑 Stop Market Scan", callback_data="cmd_stopmarketscan")
+        )
+        
+        # Row 6: Info & Analysis
         keyboard.row(
             types.InlineKeyboardButton("📈 Top Coins", callback_data="cmd_top"),
             types.InlineKeyboardButton("🔍 Quick Analysis", callback_data="cmd_quickanalysis")
         )
         
-        # Row 6: Status & Settings
+        # Row 7: Status & Settings
         keyboard.row(
             types.InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status"),
             types.InlineKeyboardButton("⚙️ Settings", callback_data="cmd_settings")
         )
         
-        # Row 7: Monitor Status & Performance
+        # Row 8: Monitor & Market Status
         keyboard.row(
-            types.InlineKeyboardButton("� Monitor Status", callback_data="cmd_monitorstatus"),
-            types.InlineKeyboardButton("⚡ Performance", callback_data="cmd_performance")
+            types.InlineKeyboardButton("📡 Monitor Status", callback_data="cmd_monitorstatus"),
+            types.InlineKeyboardButton("🌐 Market Status", callback_data="cmd_marketstatus")
         )
         
-        # Row 8: Help
+        # Row 9: Performance & Help
         keyboard.row(
-            types.InlineKeyboardButton("ℹ️ Help", callback_data="cmd_help"),
-            types.InlineKeyboardButton("ℹ️ About", callback_data="cmd_about")
+            types.InlineKeyboardButton("⚡ Performance", callback_data="cmd_performance"),
+            types.InlineKeyboardButton("ℹ️ Help", callback_data="cmd_help")
         )
         
         return keyboard
