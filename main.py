@@ -144,7 +144,7 @@ class TradingBot:
                     'klines_dict': klines_dict
                 }
                 
-                logger.info(f"âœ“ Signal found for {symbol}: {analysis['consensus']} "
+                logger.info(f"✓ Signal found for {symbol}: {analysis['consensus']}" 
                           f"(Strength: {analysis['consensus_strength']})")
                 return signal_data
             
@@ -207,10 +207,10 @@ class TradingBot:
             
             # FAST SCAN - Parallel processing
             self.telegram.send_message(
-                f"ðŸ” <b>Fast Market Scan Started</b>\n\n"
+                f"🔍 <b>Fast Market Scan Started</b>\n\n"
                 f"⚡ Analyzing {len(symbols)} symbols\n"
-                f"ðŸš€ Using {max_workers} parallel threads (auto-scaled)\n"
-                f"â³ Please wait..."
+                f"🚀 Using {max_workers} parallel threads (auto-scaled)\n"
+                f"⏳ Please wait..."
             )
             
             completed_count = 0
@@ -241,9 +241,9 @@ class TradingBot:
                             remaining = (len(symbols) - completed_count) * avg_time
                             
                             self.telegram.send_message(
-                                f"â³ Progress: {completed_count}/{len(symbols)} ({progress_pct:.0f}%)\n"
-                                f"ðŸ“Š Signals: {len(signals_found)}\n"
-                                f"â±ï¸ Est. remaining: {remaining:.0f}s"
+                                f"⏳ Progress: {completed_count}/{len(symbols)} ({progress_pct:.0f}%)\n"
+                                f"📊 Signals: {len(signals_found)}\n"
+                                f"⏱️ Est. remaining: {remaining:.0f}s"
                             )
                     
                     except Exception as e:
@@ -266,12 +266,12 @@ class TradingBot:
         avg_per_symbol = total_time / len(symbols) if len(symbols) > 0 else 0
         
         # Send results summary
-        scan_mode = "⚡ Fast" if use_fast_scan else "ðŸŒ Normal"
+        scan_mode = "⚡ Fast" if use_fast_scan else "🌐 Normal"
         summary_msg = (
-            f"âœ… <b>{scan_mode} Market Scan Complete!</b>\n\n"
-            f"â±ï¸ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
-            f"ðŸ” Scanned: {len(symbols)} symbols\n"
-            f"ðŸ“Š Signals found: {len(signals_found)}"
+            f"✅ <b>{scan_mode} Market Scan Complete!</b>\n\n"
+            f"⏱️ Time: {total_time:.1f}s ({avg_per_symbol:.2f}s per symbol)\n"
+            f"🔍 Scanned: {len(symbols)} symbols\n"
+            f"📊 Signals found: {len(signals_found)}"
         )
         
         if use_fast_scan:
@@ -286,7 +286,7 @@ class TradingBot:
         else:
             logger.info("No signals found")
             if not config.SEND_SUMMARY_ONLY:
-                self.telegram.send_message("ðŸ“Š Market scan complete. No signals detected.")
+                self.telegram.send_message("📊 Market scan complete. No signals detected.")
     
     def send_signals(self, signals_list):
         """Send signals to Telegram"""
@@ -325,7 +325,7 @@ class TradingBot:
                 logger.error(f"Error sending overview charts: {e}")
         
         # Send notification before detailed analysis
-        self.telegram.send_message(f"ðŸ“¤ <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
+        self.telegram.send_message(f"📤 <b>Sending detailed analysis for {len(signals_list[:config.MAX_COINS_PER_MESSAGE])} signals...</b>")
         time.sleep(1)
         
         # Send individual signals WITHOUT charts (already have overview)
@@ -366,10 +366,10 @@ class TradingBot:
             self.command_handler.start_polling()
         except KeyboardInterrupt:
             logger.info("Bot stopped by user")
-            self.telegram.send_message("ðŸ›‘ <b>Bot stopped by user</b>")
+            self.telegram.send_message("🛑 <b>Bot stopped by user</b>")
         except Exception as e:
             logger.error(f"Error in command handler: {e}")
-            self.telegram.send_message(f"â❌Œ <b>Bot error:</b> {str(e)}")
+            self.telegram.send_message(f"❌ <b>Bot error:</b> {str(e)}")
 
 
 def main():
@@ -381,7 +381,7 @@ def main():
     
     # Check if config is set
     if "your_" in config.BINANCE_API_KEY or "your_" in config.TELEGRAM_BOT_TOKEN:
-        print("\nâš ï¸  WARNING: Please configure your API keys in config.py first!\n")
+        print("\n⚠️  WARNING: Please configure your API keys in config.py first!\n")
         sys.exit(1)
     
     # Start bot
