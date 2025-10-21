@@ -539,16 +539,38 @@ class TelegramBot:
             message += "<b>🚀 BUY SIGNALS:</b>\n"
             for signal in buy_signals:
                 strength_bar = "🟩" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
+                
+                # Get timeframes with BUY signals
+                buy_timeframes = []
+                if 'timeframe_data' in signal:
+                    for tf, data in signal['timeframe_data'].items():
+                        if data.get('signal') == 1:  # BUY signal
+                            buy_timeframes.append(tf.upper())
+                
+                timeframes_str = ", ".join(buy_timeframes) if buy_timeframes else "N/A"
+                
                 message += f"  ✅ <b>{signal['symbol']}</b>\n"
                 message += f"     {strength_bar} {signal['consensus_strength']}/4\n"
+                message += f"     <i>📊 {timeframes_str}</i>\n"
             message += "\n"
         
         if sell_signals:
             message += "<b>⚠️ SELL SIGNALS:</b>\n"
             for signal in sell_signals:
                 strength_bar = "🟥" * signal['consensus_strength'] + "⬜" * (4 - signal['consensus_strength'])
+                
+                # Get timeframes with SELL signals
+                sell_timeframes = []
+                if 'timeframe_data' in signal:
+                    for tf, data in signal['timeframe_data'].items():
+                        if data.get('signal') == -1:  # SELL signal
+                            sell_timeframes.append(tf.upper())
+                
+                timeframes_str = ", ".join(sell_timeframes) if sell_timeframes else "N/A"
+                
                 message += f"  ⛔ <b>{signal['symbol']}</b>\n"
                 message += f"     {strength_bar} {signal['consensus_strength']}/4\n"
+                message += f"     <i>📊 {timeframes_str}</i>\n"
             message += "\n"
         
         message += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
