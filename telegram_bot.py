@@ -554,6 +554,7 @@ class TelegramBot:
         """
         Send a summary table of multiple signals
         Split into multiple messages if needed to avoid Telegram 4096 char limit
+        Only show signals that have signals in 1H, 4H, or 1D timeframes (ignore 5M only)
         
         Args:
             signals_list: List of signal dictionaries
@@ -565,13 +566,47 @@ class TelegramBot:
                 logger.warning("No signals to display in summary")
                 return self.send_message("💤 No signals detected at this time.")
             
+            # Filter signals: Only show if has signal in 1H, 4H, or 1D (ignore 5M only signals)
+            IMPORTANT_TIMEFRAMES = ['1h', '4h', '1d']
+            
+            def has_important_timeframe_signal(signal):
+                """Check if signal has BUY/SELL in important timeframes"""
+                if 'timeframe_data' not in signal:
+                    return False
+                
+                consensus = signal.get('consensus')
+                if consensus not in ['BUY', 'SELL']:
+                    return False
+                
+                # Check if any important timeframe has the same signal
+                for tf in IMPORTANT_TIMEFRAMES:
+                    if tf in signal['timeframe_data']:
+                        tf_signal = signal['timeframe_data'][tf].get('signal', 0)
+                        # BUY = 1, SELL = -1
+                        if consensus == 'BUY' and tf_signal == 1:
+                            return True
+                        elif consensus == 'SELL' and tf_signal == -1:
+                            return True
+                
+                return False
+            
+            # Filter signals
+            original_count = len(signals_list)
+            signals_list = [s for s in signals_list if has_important_timeframe_signal(s)]
+            filtered_count = original_count - len(signals_list)
+            
+            logger.info(f"Filtered {filtered_count} signals (5M only), remaining: {len(signals_list)}")
+            
+            if not signals_list:
+                return self.send_message("💤 No signals in important timeframes (1H, 4H, 1D).")
+            
             # Sort by consensus strength
             signals_list = sorted(signals_list, key=lambda x: x.get('consensus_strength', 0), reverse=True)
             
             buy_signals = [s for s in signals_list if s.get('consensus') == 'BUY']
             sell_signals = [s for s in signals_list if s.get('consensus') == 'SELL']
             
-            logger.info(f"Summary: {len(buy_signals)} BUY, {len(sell_signals)} SELL signals")
+            logger.info(f"Summary: {len(buy_signals)} BUY, {len(sell_signals)} SELL signals (important timeframes only)")
             
             # Telegram limit is 4096 chars, leave some margin
             MAX_MESSAGE_LENGTH = 3800
@@ -579,9 +614,12 @@ class TelegramBot:
             messages = []
             
             # Build header
-            header = f"<b>📊 MARKET SCAN SUMMARY</b>\n\n"
+            header = f"<b>📊 MARKET SCAN SUMMARY</b>\n"
+            header += f"<i>⏱️ Showing signals in 1H, 4H, 1D only</i>\n\n"
             header += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
             header += f"   🟢 Buy: {len(buy_signals)} | 🔴 Sell: {len(sell_signals)}\n"
+            if filtered_count > 0:
+                header += f"   <i>🔕 Filtered: {filtered_count} (5M only)</i>\n"
             header += f"🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>\n\n"
             
             # Build BUY signals (split if needed)
@@ -592,12 +630,16 @@ class TelegramBot:
                 for i, signal in enumerate(buy_signals, 1):
                     strength_bar = "🟩" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
                     
-                    # Get timeframes with BUY signals
+                    # Get timeframes with BUY signals (only important ones: 1H, 4H, 1D)
                     buy_timeframes = []
                     if 'timeframe_data' in signal:
                         for tf, data in signal['timeframe_data'].items():
-                            if data.get('signal') == 1:
+                            if tf in IMPORTANT_TIMEFRAMES and data.get('signal') == 1:
                                 buy_timeframes.append(tf.upper())
+                    
+                    # Sort timeframes: 1H, 4H, 1D
+                    timeframe_order = {'1H': 1, '4H': 2, '1D': 3}
+                    buy_timeframes.sort(key=lambda x: timeframe_order.get(x, 99))
                     
                     timeframes_str = ", ".join(buy_timeframes) if buy_timeframes else "N/A"
                     
@@ -625,12 +667,16 @@ class TelegramBot:
                 for i, signal in enumerate(sell_signals, 1):
                     strength_bar = "🟥" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
                     
-                    # Get timeframes with SELL signals
+                    # Get timeframes with SELL signals (only important ones: 1H, 4H, 1D)
                     sell_timeframes = []
                     if 'timeframe_data' in signal:
                         for tf, data in signal['timeframe_data'].items():
-                            if data.get('signal') == -1:
+                            if tf in IMPORTANT_TIMEFRAMES and data.get('signal') == -1:
                                 sell_timeframes.append(tf.upper())
+                    
+                    # Sort timeframes: 1H, 4H, 1D
+                    timeframe_order = {'1H': 1, '4H': 2, '1D': 3}
+                    sell_timeframes.sort(key=lambda x: timeframe_order.get(x, 99))
                     
                     timeframes_str = ", ".join(sell_timeframes) if sell_timeframes else "N/A"
                     
