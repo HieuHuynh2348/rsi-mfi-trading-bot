@@ -7,6 +7,7 @@ import telebot
 from telebot import types
 import logging
 import io
+import time
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -552,6 +553,7 @@ class TelegramBot:
     def send_summary_table(self, signals_list):
         """
         Send a summary table of multiple signals
+        Split into multiple messages if needed to avoid Telegram 4096 char limit
         
         Args:
             signals_list: List of signal dictionaries
@@ -566,77 +568,110 @@ class TelegramBot:
             # Sort by consensus strength
             signals_list = sorted(signals_list, key=lambda x: x.get('consensus_strength', 0), reverse=True)
             
-            # Limit to prevent message too long (Telegram 4096 char limit)
-            # Each signal ~80 chars, so max ~50 signals to stay under limit
-            MAX_SIGNALS_DISPLAY = 50
-            total_signals = len(signals_list)
-            display_signals = signals_list[:MAX_SIGNALS_DISPLAY]
+            buy_signals = [s for s in signals_list if s.get('consensus') == 'BUY']
+            sell_signals = [s for s in signals_list if s.get('consensus') == 'SELL']
             
-            message = "<b>📊 MARKET SCAN SUMMARY</b>\n\n"
+            logger.info(f"Summary: {len(buy_signals)} BUY, {len(sell_signals)} SELL signals")
             
-            buy_signals = [s for s in display_signals if s.get('consensus') == 'BUY']
-            sell_signals = [s for s in display_signals if s.get('consensus') == 'SELL']
+            # Telegram limit is 4096 chars, leave some margin
+            MAX_MESSAGE_LENGTH = 3800
             
-            total_buy = sum(1 for s in signals_list if s.get('consensus') == 'BUY')
-            total_sell = sum(1 for s in signals_list if s.get('consensus') == 'SELL')
+            messages = []
             
-            logger.info(f"Summary: {total_buy} BUY, {total_sell} SELL signals (displaying {len(display_signals)}/{total_signals})")
+            # Build header
+            header = f"<b>📊 MARKET SCAN SUMMARY</b>\n\n"
+            header += f"<b>📈 Total Signals:</b> {len(signals_list)}\n"
+            header += f"   🟢 Buy: {len(buy_signals)} | 🔴 Sell: {len(sell_signals)}\n"
+            header += f"🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>\n\n"
             
+            # Build BUY signals (split if needed)
             if buy_signals:
-                message += f"<b>🚀 BUY SIGNALS: ({len(buy_signals)}/{total_buy})</b>\n"
-                for signal in buy_signals:
+                current_msg = header + f"<b>🚀 BUY SIGNALS: ({len(buy_signals)})</b>\n"
+                buy_msg_count = 1
+                
+                for i, signal in enumerate(buy_signals, 1):
                     strength_bar = "🟩" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
                     
                     # Get timeframes with BUY signals
                     buy_timeframes = []
                     if 'timeframe_data' in signal:
                         for tf, data in signal['timeframe_data'].items():
-                            if data.get('signal') == 1:  # BUY signal
+                            if data.get('signal') == 1:
                                 buy_timeframes.append(tf.upper())
                     
                     timeframes_str = ", ".join(buy_timeframes) if buy_timeframes else "N/A"
                     
-                    message += f"  ✅ <b>{signal.get('symbol', 'UNKNOWN')}</b>\n"
-                    message += f"     {strength_bar} {signal.get('consensus_strength', 0)}/4\n"
-                    message += f"     <i>📊 {timeframes_str}</i>\n"
-                message += "\n"
+                    signal_text = f"  ✅ <b>{signal.get('symbol', 'UNKNOWN')}</b>\n"
+                    signal_text += f"     {strength_bar} {signal.get('consensus_strength', 0)}/4\n"
+                    signal_text += f"     <i>📊 {timeframes_str}</i>\n"
+                    
+                    # Check if adding this signal exceeds limit
+                    if len(current_msg) + len(signal_text) > MAX_MESSAGE_LENGTH:
+                        # Send current message and start new one
+                        messages.append(current_msg)
+                        buy_msg_count += 1
+                        current_msg = f"<b>🚀 BUY SIGNALS (Part {buy_msg_count}):</b>\n"
+                    
+                    current_msg += signal_text
+                
+                # Add remaining BUY signals message
+                messages.append(current_msg + "\n")
             
+            # Build SELL signals (split if needed)
             if sell_signals:
-                message += f"<b>⚠️ SELL SIGNALS: ({len(sell_signals)}/{total_sell})</b>\n"
-                for signal in sell_signals:
+                current_msg = f"<b>⚠️ SELL SIGNALS: ({len(sell_signals)})</b>\n"
+                sell_msg_count = 1
+                
+                for i, signal in enumerate(sell_signals, 1):
                     strength_bar = "🟥" * signal.get('consensus_strength', 0) + "⬜" * (4 - signal.get('consensus_strength', 0))
                     
                     # Get timeframes with SELL signals
                     sell_timeframes = []
                     if 'timeframe_data' in signal:
                         for tf, data in signal['timeframe_data'].items():
-                            if data.get('signal') == -1:  # SELL signal
+                            if data.get('signal') == -1:
                                 sell_timeframes.append(tf.upper())
                     
                     timeframes_str = ", ".join(sell_timeframes) if sell_timeframes else "N/A"
                     
-                    message += f"  ⛔ <b>{signal.get('symbol', 'UNKNOWN')}</b>\n"
-                    message += f"     {strength_bar} {signal.get('consensus_strength', 0)}/4\n"
-                    message += f"     <i>📊 {timeframes_str}</i>\n"
-                message += "\n"
+                    signal_text = f"  ⛔ <b>{signal.get('symbol', 'UNKNOWN')}</b>\n"
+                    signal_text += f"     {strength_bar} {signal.get('consensus_strength', 0)}/4\n"
+                    signal_text += f"     <i>📊 {timeframes_str}</i>\n"
+                    
+                    # Check if adding this signal exceeds limit
+                    if len(current_msg) + len(signal_text) > MAX_MESSAGE_LENGTH:
+                        # Send current message and start new one
+                        messages.append(current_msg)
+                        sell_msg_count += 1
+                        current_msg = f"<b>⚠️ SELL SIGNALS (Part {sell_msg_count}):</b>\n"
+                    
+                    current_msg += signal_text
+                
+                # Add remaining SELL signals message
+                messages.append(current_msg)
             
-            # Add note if signals were truncated
-            if total_signals > MAX_SIGNALS_DISPLAY:
-                message += f"<i>⚠️ Showing top {MAX_SIGNALS_DISPLAY} of {total_signals} signals</i>\n\n"
+            # Send all messages
+            logger.info(f"✅ Sending {len(messages)} summary message(s)")
+            success = True
             
-            message += f"<b>📈 Total Signals:</b> {total_signals}\n"
-            message += f"   🟢 Buy: {total_buy} | 🔴 Sell: {total_sell}\n"
-            message += f"\n🕐 <i>{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</i>"
+            for i, msg in enumerate(messages, 1):
+                logger.info(f"Sending summary part {i}/{len(messages)} ({len(msg)} chars)")
+                if not self.send_message(msg):
+                    logger.error(f"❌ Failed to send summary part {i}/{len(messages)}")
+                    success = False
+                else:
+                    logger.info(f"✅ Summary part {i}/{len(messages)} sent successfully")
+                
+                # Small delay between messages
+                if i < len(messages):
+                    time.sleep(0.5)
             
-            logger.info(f"✅ Sending summary table ({len(message)} chars)")
-            result = self.send_message(message)
-            
-            if result:
-                logger.info("✅ Summary table sent successfully")
+            if success:
+                logger.info("✅ All summary messages sent successfully")
             else:
-                logger.error("❌ Failed to send summary table")
+                logger.error("❌ Some summary messages failed to send")
             
-            return result
+            return success
             
         except Exception as e:
             logger.error(f"❌ Error building summary table: {e}")
