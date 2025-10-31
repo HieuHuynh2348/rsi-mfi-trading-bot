@@ -257,45 +257,102 @@ class MarketScanner:
             
             summary += f"📤 Sending detailed analysis for each coin...\n"
             
-            # Instead of flooding with many messages, aggregate into signal dicts
-            # and reuse TradingBot.send_signals which handles sorting and rate limiting.
-            aggregated_signals = []
+            # Send detailed analysis for each coin (1D ONLY - no multi-timeframe)
+            self.bot.send_message(summary)
+            time.sleep(1)
+            
             for coin in new_alerts:
-                # Perform detailed analysis for each coin to build signal dict
                 try:
-                    result = self.command_handler._analyze_symbol_full(coin['symbol'])
-                    if result:
-                        aggregated_signals.append({
-                            'symbol': result['symbol'],
-                            'timeframe_data': result['timeframe_data'],
-                            'consensus': result['consensus'],
-                            'consensus_strength': result['consensus_strength'],
-                            'price': result['price'],
-                            'market_data': result.get('market_data'),
-                            'volume_data': result.get('volume_data'),
-                            'klines_dict': result.get('klines_dict')
-                        })
+                    # Send 1D-only analysis instead of full multi-timeframe
+                    self._send_1d_analysis(coin)
+                    time.sleep(2)  # Rate limiting between coins
                 except Exception as e:
-                    logger.error(f"Error preparing signal for {coin['symbol']}: {e}")
-
-            if aggregated_signals:
-                # Use TradingBot.send_signals if available
-                try:
-                    if hasattr(self.command_handler, 'trading_bot') and self.command_handler.trading_bot:
-                        self.command_handler.trading_bot.send_signals(aggregated_signals)
-                    else:
-                        # Fallback: send via bot summary and signal alerts
-                        self.bot.send_summary_table(aggregated_signals)
-                        for s in aggregated_signals:
-                            self._send_detailed_analysis(s['symbol'])
-                            time.sleep(2)
-                except Exception as e:
-                    logger.error(f"Error sending aggregated signals: {e}")
+                    logger.error(f"Error sending 1D analysis for {coin['symbol']}: {e}")
             
             logger.info(f"✅ Sent alerts for {len(new_alerts)} extreme coins")
             
         except Exception as e:
             logger.error(f"Error sending alerts: {e}")
+    
+    def _send_1d_analysis(self, coin):
+        """
+        Send 1D-only analysis for a coin (no multi-timeframe)
+        
+        Args:
+            coin: Coin data dict with symbol, rsi_1d, mfi_1d, price, conditions
+        """
+        try:
+            symbol = coin['symbol']
+            
+            # Get only 1D klines
+            df_1d = self.binance.get_klines(symbol, '1d', limit=100)
+            
+            if df_1d is None or len(df_1d) < 14:
+                logger.warning(f"No 1D data for {symbol}")
+                return
+            
+            # Calculate RSI and MFI
+            from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
+            
+            hlcc4 = calculate_hlcc4(df_1d)
+            rsi_series = calculate_rsi(hlcc4, period=14)
+            mfi_series = calculate_mfi(df_1d, period=14)
+            
+            # Get current values
+            current_rsi = rsi_series.iloc[-1]
+            current_mfi = mfi_series.iloc[-1]
+            last_rsi = rsi_series.iloc[-2] if len(rsi_series) >= 2 else current_rsi
+            last_mfi = mfi_series.iloc[-2] if len(mfi_series) >= 2 else current_mfi
+            
+            # Get signal
+            from indicators import get_signal
+            signal = get_signal(current_rsi, current_mfi, 
+                              self.rsi_lower, self.rsi_upper,
+                              self.mfi_lower, self.mfi_upper)
+            
+            # Determine consensus
+            if signal == 1:
+                consensus = "BUY"
+                consensus_strength = 1
+            elif signal == -1:
+                consensus = "SELL"
+                consensus_strength = 1
+            else:
+                consensus = "NEUTRAL"
+                consensus_strength = 0
+            
+            # Get price and market data
+            price = self.binance.get_current_price(symbol)
+            market_data = self.binance.get_24h_data(symbol)
+            
+            # Build timeframe_data with ONLY 1D
+            timeframe_data = {
+                '1d': {
+                    'rsi': round(current_rsi, 2),
+                    'mfi': round(current_mfi, 2),
+                    'last_rsi': round(last_rsi, 2),
+                    'last_mfi': round(last_mfi, 2),
+                    'rsi_change': round(current_rsi - last_rsi, 2),
+                    'mfi_change': round(current_mfi - last_mfi, 2),
+                    'signal': signal
+                }
+            }
+            
+            # Send alert with ONLY 1D timeframe
+            self.bot.send_signal_alert(
+                symbol,
+                timeframe_data,
+                consensus,
+                consensus_strength,
+                price,
+                market_data,
+                None  # No volume data for market scanner
+            )
+            
+            logger.info(f"✅ Sent 1D-only analysis for {symbol}")
+            
+        except Exception as e:
+            logger.error(f"Error in 1D analysis for {coin.get('symbol', 'UNKNOWN')}: {e}")
     
     def _send_detailed_analysis(self, symbol):
         """
