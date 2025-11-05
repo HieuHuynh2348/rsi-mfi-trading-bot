@@ -42,10 +42,17 @@ class BotDetector:
             # 3. Get Aggregate Trades (for timing analysis)
             agg_trades = self.binance.client.get_aggregate_trades(symbol=symbol, limit=1000)
             
+            # 4. Get 24h data for pump detection
+            ticker_24h = self.binance.client.get_ticker(symbol=symbol)
+            
+            # 5. Get recent klines for price action analysis
+            klines = self.binance.get_klines(symbol, '5m', limit=100)
+            
             # Analyze components
             orderbook_analysis = self._analyze_orderbook(depth)
             trade_analysis = self._analyze_trades(trades)
             timing_analysis = self._analyze_timing(agg_trades)
+            pump_analysis = self._analyze_pump_pattern(ticker_24h, klines, trades)
             
             # Combine analyses
             bot_score = self._calculate_bot_score(
@@ -54,18 +61,27 @@ class BotDetector:
                 timing_analysis
             )
             
+            # Calculate pump score separately
+            pump_score = pump_analysis.get('pump_score', 0)
+            # Calculate pump score separately
+            pump_score = pump_analysis.get('pump_score', 0)
+            
             result = {
                 'symbol': symbol,
                 'bot_score': bot_score,
+                'pump_score': pump_score,
                 'likely_bot_activity': bot_score >= 50,  # 50%+ = likely bot
+                'likely_pump_bot': pump_score >= 60,  # 60%+ = likely pump bot
                 'confidence': self._get_confidence_level(bot_score),
+                'pump_confidence': self._get_confidence_level(pump_score),
                 'orderbook': orderbook_analysis,
                 'trades': trade_analysis,
                 'timing': timing_analysis,
+                'pump': pump_analysis,
                 'timestamp': datetime.now()
             }
             
-            logger.info(f"Bot detection for {symbol}: Score={bot_score:.1f}%, Likely={result['likely_bot_activity']}")
+            logger.info(f"Bot detection for {symbol}: Bot Score={bot_score:.1f}%, Pump Score={pump_score:.1f}%")
             return result
             
         except Exception as e:
@@ -264,6 +280,112 @@ class BotDetector:
             logger.error(f"Error analyzing timing: {e}")
             return {'bot_indicators': 0}
     
+    def _analyze_pump_pattern(self, ticker_24h, klines, recent_trades):
+        """
+        Analyze for PUMP BOT patterns - coordinated buying to artificially inflate price
+        
+        Args:
+            ticker_24h: 24h ticker data
+            klines: Recent 5m klines DataFrame
+            recent_trades: Recent trades data
+        
+        Returns:
+            dict with pump analysis
+        """
+        try:
+            pump_indicators = 0
+            details = {}
+            
+            # 1. PRICE SPIKE - Sharp price increase in short time
+            price_change = float(ticker_24h.get('priceChangePercent', 0))
+            details['price_change_24h'] = price_change
+            
+            # Extreme price spike (>10% in 24h)
+            if price_change > 10:
+                pump_indicators += 1
+            if price_change > 20:
+                pump_indicators += 2  # Extra point for extreme spike
+            
+            # 2. VOLUME SPIKE - Abnormal volume surge
+            volume_24h = float(ticker_24h.get('volume', 0))
+            quote_volume = float(ticker_24h.get('quoteVolume', 0))
+            
+            # Check volume concentration in recent candles
+            if klines is not None and len(klines) >= 20:
+                recent_volumes = klines['volume'].tail(5).sum()  # Last 5 candles
+                older_volumes = klines['volume'].iloc[-20:-5].sum()  # Previous 15 candles
+                
+                if older_volumes > 0:
+                    volume_concentration = recent_volumes / (older_volumes / 3)  # Compare to average
+                    details['volume_concentration'] = round(volume_concentration, 2)
+                    
+                    # High concentration (>3x) = pump
+                    if volume_concentration > 3:
+                        pump_indicators += 1
+                    if volume_concentration > 5:
+                        pump_indicators += 1
+            
+            # 3. BUY PRESSURE - Majority of trades are buys (taker buys)
+            if recent_trades and len(recent_trades) >= 50:
+                buy_count = sum(1 for t in recent_trades if t.get('isBuyerMaker') == False)  # Taker buys
+                total_trades = len(recent_trades)
+                buy_ratio = buy_count / total_trades if total_trades > 0 else 0
+                details['buy_ratio'] = round(buy_ratio, 3)
+                
+                # High buy ratio (>70%) = coordinated buying
+                if buy_ratio > 0.7:
+                    pump_indicators += 1
+                if buy_ratio > 0.85:
+                    pump_indicators += 1
+            
+            # 4. PRICE VELOCITY - Rapid consecutive green candles
+            if klines is not None and len(klines) >= 10:
+                last_10_candles = klines.tail(10)
+                green_candles = sum(1 for _, row in last_10_candles.iterrows() 
+                                  if row['close'] > row['open'])
+                green_ratio = green_candles / 10
+                details['green_candle_ratio'] = round(green_ratio, 2)
+                
+                # Mostly green (>80%) = pump momentum
+                if green_ratio > 0.8:
+                    pump_indicators += 1
+            
+            # 5. SUDDEN VOLUME APPEARANCE - Low volume then sudden spike
+            num_trades_24h = int(ticker_24h.get('count', 0))
+            if klines is not None and len(klines) >= 20:
+                avg_old_volume = klines['volume'].iloc[-20:-5].mean()
+                current_volume = klines['volume'].iloc[-1]
+                
+                if avg_old_volume > 0:
+                    volume_ratio = current_volume / avg_old_volume
+                    details['current_vs_avg_volume'] = round(volume_ratio, 2)
+                    
+                    # Extreme spike (>10x average)
+                    if volume_ratio > 10:
+                        pump_indicators += 2
+                    elif volume_ratio > 5:
+                        pump_indicators += 1
+            
+            # 6. ORDERBOOK IMBALANCE - Heavy buy side
+            # This would require orderbook analysis (already in _analyze_orderbook)
+            
+            # Calculate pump score (max 10 indicators)
+            max_pump_indicators = 10
+            pump_score = min(100, (pump_indicators / max_pump_indicators) * 100)
+            
+            # Bonus for extreme combinations
+            if price_change > 15 and details.get('buy_ratio', 0) > 0.75:
+                pump_score = min(100, pump_score + 15)
+            
+            details['pump_indicators'] = pump_indicators
+            details['pump_score'] = round(pump_score, 1)
+            
+            return details
+            
+        except Exception as e:
+            logger.error(f"Error analyzing pump pattern: {e}")
+            return {'pump_score': 0, 'pump_indicators': 0}
+    
     def _is_round_number(self, num):
         """
         Check if a number is "round" (ends in 0s)
@@ -351,26 +473,42 @@ class BotDetector:
             return "❌ Bot detection failed"
         
         symbol = detection_result['symbol']
-        score = detection_result['bot_score']
-        likely = detection_result['likely_bot_activity']
+        bot_score = detection_result['bot_score']
+        pump_score = detection_result['pump_score']
+        likely_bot = detection_result['likely_bot_activity']
+        likely_pump = detection_result['likely_pump_bot']
         confidence = detection_result['confidence']
+        pump_confidence = detection_result['pump_confidence']
         
-        # Emoji based on likelihood
-        if likely:
+        # Determine primary pattern
+        if likely_pump and pump_score > bot_score:
+            emoji = "🚀"
+            primary_verdict = "PUMP BOT DETECTED"
+            alert_level = "⚠️ HIGH RISK"
+        elif likely_bot:
             emoji = "🤖"
-            verdict = "LIKELY BOT TRADING"
+            primary_verdict = "TRADING BOT DETECTED"
+            alert_level = "ℹ️ MODERATE"
         else:
             emoji = "👤"
-            verdict = "LIKELY HUMAN TRADING"
+            primary_verdict = "ORGANIC TRADING"
+            alert_level = "✅ NORMAL"
         
         msg = f"{emoji} <b>BOT ACTIVITY ANALYSIS</b>\n"
-        msg += f"<b>Symbol:</b> {symbol}\n\n"
+        msg += f"<b>Symbol:</b> {symbol}\n"
+        msg += f"<b>Alert Level:</b> {alert_level}\n\n"
         
-        # Score bar
-        msg += f"<b>Bot Score:</b> {score}% "
-        msg += "█" * int(score / 10) + "░" * (10 - int(score / 10)) + "\n"
-        msg += f"<b>Verdict:</b> {verdict}\n"
-        msg += f"<b>Confidence:</b> {confidence}\n\n"
+        # Bot Score
+        msg += f"<b>🤖 Trading Bot Score:</b> {bot_score}% "
+        msg += "█" * int(bot_score / 10) + "░" * (10 - int(bot_score / 10)) + "\n"
+        msg += f"   Verdict: {'YES' if likely_bot else 'NO'} (Confidence: {confidence})\n\n"
+        
+        # Pump Score
+        msg += f"<b>🚀 Pump Bot Score:</b> {pump_score}% "
+        msg += "█" * int(pump_score / 10) + "░" * (10 - int(pump_score / 10)) + "\n"
+        msg += f"   Verdict: {'YES' if likely_pump else 'NO'} (Confidence: {pump_confidence})\n\n"
+        
+        msg += f"<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n"
         
         # Orderbook analysis
         ob = detection_result['orderbook']
@@ -393,15 +531,42 @@ class BotDetector:
         msg += f"   Interval diversity: {tm.get('interval_diversity', 0)*100:.1f}%\n"
         msg += f"   Bot signals: {tm.get('bot_indicators', 0)}/3\n\n"
         
+        # Pump analysis
+        pump = detection_result.get('pump', {})
+        msg += f"<b>🚀 Pump Indicators:</b>\n"
+        msg += f"   Price change 24h: {pump.get('price_change_24h', 0):+.2f}%\n"
+        msg += f"   Buy pressure: {pump.get('buy_ratio', 0)*100:.1f}%\n"
+        
+        if 'volume_concentration' in pump:
+            msg += f"   Volume spike: {pump.get('volume_concentration', 0):.1f}x\n"
+        if 'green_candle_ratio' in pump:
+            msg += f"   Green candles: {pump.get('green_candle_ratio', 0)*100:.0f}%\n"
+        
+        msg += f"   Pump signals: {pump.get('pump_indicators', 0)}/10\n\n"
+        
+        msg += f"<b>━━━━━━━━━━━━━━━━━━━━</b>\n\n"
+        
         # Interpretation
         msg += f"<b>💡 Interpretation:</b>\n"
-        if likely:
-            msg += "   High probability of algorithmic/bot trading.\n"
-            msg += "   Market makers or trading bots are active.\n"
-            if score >= 75:
-                msg += "   ⚠️ Very strong bot activity detected!"
+        
+        if likely_pump:
+            msg += "   🚀 <b>PUMP BOT DETECTED!</b>\n"
+            msg += "   ⚠️ Coordinated buying pattern detected\n"
+            msg += "   ⚠️ Artificial price inflation likely\n"
+            msg += "   ⚠️ HIGH RISK - Possible pump & dump scheme\n"
+            if pump_score >= 80:
+                msg += "   🔴 <b>EXTREME PUMP ACTIVITY!</b>\n"
+            msg += "\n   📉 <b>Warning:</b> Price may crash suddenly\n"
+            msg += "   💡 <b>Advice:</b> Avoid buying, consider selling\n"
+        elif likely_bot:
+            msg += "   🤖 Trading bot/algorithm active\n"
+            msg += "   Market makers or automated systems\n"
+            if bot_score >= 75:
+                msg += "   ⚠️ Very strong bot activity\n"
+            msg += "   💡 Expect tight spreads and quick fills\n"
         else:
-            msg += "   Market appears to have natural/human trading.\n"
-            msg += "   Low bot activity detected.\n"
+            msg += "   👤 Organic/natural trading pattern\n"
+            msg += "   Low automated activity\n"
+            msg += "   ✅ Normal market conditions\n"
         
         return msg
