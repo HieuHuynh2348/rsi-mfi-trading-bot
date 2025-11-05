@@ -7,12 +7,53 @@ import pandas as pd
 import numpy as np
 
 
+def validate_dataframe(df):
+    """
+    Validate and clean DataFrame for indicator calculations
+    
+    Args:
+        df: pandas DataFrame with OHLCV data
+    
+    Returns:
+        Cleaned DataFrame or None if invalid
+    """
+    if df is None or len(df) < 14:
+        return None
+    
+    # Ensure all required columns exist
+    required_cols = ['high', 'low', 'close', 'volume']
+    if not all(col in df.columns for col in required_cols):
+        return None
+    
+    # Convert all columns to numeric, replacing errors with NaN
+    for col in required_cols:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # Check for NaN values
+    if df[required_cols].isnull().any().any():
+        # Drop rows with NaN
+        df = df.dropna(subset=required_cols)
+        
+        # Check if we still have enough data
+        if len(df) < 14:
+            return None
+    
+    return df
+
+
 def calculate_hlcc4(df):
     """
     Calculate HLCC/4 price
     (High + Low + Close + Close) / 4
+    
+    Ensures numeric data types before calculation
     """
-    return (df['high'] + df['low'] + df['close'] + df['close']) / 4
+    # Ensure columns are numeric (convert strings to float)
+    high = pd.to_numeric(df['high'], errors='coerce')
+    low = pd.to_numeric(df['low'], errors='coerce')
+    close = pd.to_numeric(df['close'], errors='coerce')
+    
+    return (high + low + close + close) / 4
 
 
 def calculate_rsi(data, period=14):
@@ -27,6 +68,9 @@ def calculate_rsi(data, period=14):
     Returns:
         pandas Series of RSI values
     """
+    # Ensure data is numeric
+    data = pd.to_numeric(data, errors='coerce')
+    
     delta = data.diff()
     
     # Separate gains and losses
@@ -59,11 +103,17 @@ def calculate_mfi(df, period=14):
     Returns:
         pandas Series of MFI values
     """
+    # Ensure all columns are numeric
+    high = pd.to_numeric(df['high'], errors='coerce')
+    low = pd.to_numeric(df['low'], errors='coerce')
+    close = pd.to_numeric(df['close'], errors='coerce')
+    volume = pd.to_numeric(df['volume'], errors='coerce')
+    
     # Typical Price
-    tp = (df['high'] + df['low'] + df['close']) / 3
+    tp = (high + low + close) / 3
     
     # Money Flow
-    mf = tp * df['volume']
+    mf = tp * volume
     
     # Positive and Negative Money Flow
     tp_change = tp.diff()
@@ -122,6 +172,9 @@ def analyze_symbol(df, rsi_period, mfi_period, rsi_lower, rsi_upper, mfi_lower, 
     Returns:
         dict with RSI, MFI, and signal values
     """
+    # Validate and clean data first
+    df = validate_dataframe(df)
+    
     if df is None or len(df) < max(rsi_period, mfi_period) + 1:
         return None
     
