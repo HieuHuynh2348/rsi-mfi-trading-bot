@@ -328,7 +328,7 @@ class WatchlistMonitor:
                         continue
                     
                     # Add volume info to message
-                    vol_header = f"<b>🔥 VOLUME SPIKE DETECTED!</b>\n\n"
+                    vol_header = f"<b>🔥 PHÁT HIỆN TĂNG ĐỘT BIẾN VOLUME!</b>\n\n"
                     
                     # Get volume details from the strongest timeframe
                     strongest_tf = None

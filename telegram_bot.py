@@ -581,28 +581,28 @@ class TelegramBot:
                     else:
                         return f"{vol:.2f}"
                 
-                message += f"\n<b>📊 VOLUME ANALYSIS</b>\n"
+                message += f"\n<b>📊 PHÂN TÍCH VOLUME</b>\n"
                 
                 # Show anomaly warning if detected
                 if is_anomaly:
-                    message += f"⚡ <b>VOLUME SPIKE DETECTED!</b> ⚡\n"
+                    message += f"⚡ <b>PHÁT HIỆN TĂNG ĐỘT BIẾN VOLUME!</b> ⚡\n"
                 
-                message += f"💹 <b>Current Candle:</b> {format_volume(current_vol)}\n"
-                message += f"⏮️ <b>Last Candle:</b> {format_volume(last_vol)}\n"
-                message += f"📊 <b>Average Candle:</b> {format_volume(avg_vol)}\n"
+                message += f"💹 <b>Nến Hiện Tại:</b> {format_volume(current_vol)}\n"
+                message += f"⏮️ <b>Nến Trước:</b> {format_volume(last_vol)}\n"
+                message += f"📊 <b>Nến Trung Bình:</b> {format_volume(avg_vol)}\n"
                 
                 # Show ratios
                 if last_vol > 0:
                     last_ratio = volume_data.get('last_candle_ratio', 0)
                     last_increase = volume_data.get('last_candle_increase_percent', 0)
                     ratio_emoji = "📈" if last_ratio > 1 else ("📉" if last_ratio < 1 else "➡️")
-                    message += f"🔄 <b>vs Last:</b> {last_ratio:.2f}x {ratio_emoji} <i>({last_increase:+.1f}%)</i>\n"
+                    message += f"🔄 <b>so với Trước:</b> {last_ratio:.2f}x {ratio_emoji} <i>({last_increase:+.1f}%)</i>\n"
                 
                 if avg_vol > 0:
                     avg_ratio = volume_data.get('avg_ratio', 0)
                     avg_increase = volume_data.get('avg_increase_percent', 0)
                     avg_emoji = "📈" if avg_ratio > 1 else ("📉" if avg_ratio < 1 else "➡️")
-                    message += f"🔄 <b>vs Avg:</b> {avg_ratio:.2f}x {avg_emoji} <i>({avg_increase:+.1f}%)</i>\n"
+                    message += f"🔄 <b>so với TB:</b> {avg_ratio:.2f}x {avg_emoji} <i>({avg_increase:+.1f}%)</i>\n"
                 
                 # 24h Volume Impact Analysis
                 if volume_24h > 0 and current_vol > 0:

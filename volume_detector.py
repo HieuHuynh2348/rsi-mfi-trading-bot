@@ -307,11 +307,11 @@ class VolumeDetector:
             Formatted text string
         """
         if not result:
-            return "No volume data available"
+            return "Không có dữ liệu volume"
         
-        text = f"<b>📊 VOLUME ANALYSIS</b>\n\n"
+        text = f"<b>📊 PHÂN TÍCH VOLUME</b>\n\n"
         text += f"<b>Symbol:</b> {result['symbol']}\n"
-        text += f"<b>Timeframe:</b> {result['timeframe']}\n\n"
+        text += f"<b>Khung thời gian:</b> {result['timeframe']}\n\n"
         
         # Current volume
         if result['current_volume'] >= 1e9:
@@ -333,12 +333,12 @@ class VolumeDetector:
         else:
             last_vol_str = f"${result['last_volume']:.2f}"
         
-        text += f"<b>💹 Current Volume:</b> {curr_vol_str}\n"
-        text += f"<b>⏮️ Last Volume:</b> {last_vol_str}\n"
-        text += f"<b>📊 Avg Volume:</b> {result.get('avg_volume', 0)/1e6:.2f}M\n\n"
+        text += f"<b>💹 Volume Hiện Tại:</b> {curr_vol_str}\n"
+        text += f"<b>⏮️ Volume Trước:</b> {last_vol_str}\n"
+        text += f"<b>📊 Volume TB:</b> {result.get('avg_volume', 0)/1e6:.2f}M\n\n"
         
-        text += f"<b>📈 vs Average:</b> {result['volume_ratio']:.2f}x (+{result['volume_increase_percent']:.1f}%)\n"
-        text += f"<b>📊 vs Last Candle:</b> {result['last_candle_ratio']:.2f}x ({result['last_candle_increase_percent']:+.1f}%)\n"
+        text += f"<b>📈 so với TB:</b> {result['volume_ratio']:.2f}x (+{result['volume_increase_percent']:.1f}%)\n"
+        text += f"<b>📊 so với Nến Trước:</b> {result['last_candle_ratio']:.2f}x ({result['last_candle_increase_percent']:+.1f}%)\n"
         text += f"<b>📉 Z-Score:</b> {result['z_score']:.2f}σ\n\n"
         
         # Spike status
@@ -350,10 +350,17 @@ class VolumeDetector:
             }
             emoji = spike_emoji.get(result['spike_type'], '🔥')
             
-            text += f"<b>Status:</b> {emoji} <b>{result['spike_type'].replace('_', ' ')}</b>\n"
-            text += f"<b>Price Change:</b> {result['price_change_percent']:+.2f}%\n"
+            spike_type_vn = {
+                'BULLISH_BREAKOUT': 'TĂNG ĐỘT PHÁ',
+                'BEARISH_BREAKDOWN': 'GIẢM ĐỘT PHÁ',
+                'NEUTRAL_SPIKE': 'TĂNG TRUNG LẬP'
+            }
+            type_text = spike_type_vn.get(result['spike_type'], result['spike_type'])
+            
+            text += f"<b>Trạng thái:</b> {emoji} <b>{type_text}</b>\n"
+            text += f"<b>Thay Đổi Giá:</b> {result['price_change_percent']:+.2f}%\n"
         else:
-            text += f"<b>Status:</b> ⚪ Normal Volume\n"
+            text += f"<b>Trạng thái:</b> ⚪ Volume Bình Thường\n"
         
         return text
     
@@ -368,33 +375,33 @@ class VolumeDetector:
             Formatted summary text
         """
         if not spike_alerts:
-            return "ℹ️ No volume spikes detected in watchlist"
+            return "ℹ️ Không phát hiện tăng đột biến volume trong watchlist"
         
-        text = f"<b>🔥 VOLUME SPIKE ALERT!</b>\n\n"
-        text += f"<b>📊 Summary:</b>\n"
-        text += f"• {len(spike_alerts)} coin(s) with unusual volume\n"
-        text += f"• Sensitivity: {self.sensitivity.upper()}\n"
-        text += f"• Time: {datetime.now().strftime('%H:%M:%S')}\n\n"
+        text = f"<b>🔥 CẢNH BÁO TĂNG ĐỘT BIẾN VOLUME!</b>\n\n"
+        text += f"<b>📊 Tóm tắt:</b>\n"
+        text += f"• {len(spike_alerts)} coin có volume bất thường\n"
+        text += f"• Độ nhạy: {self.sensitivity.upper()}\n"
+        text += f"• Thời gian: {datetime.now().strftime('%H:%M:%S')}\n\n"
         
         # Group by strength
         strong = [a for a in spike_alerts if a['spike_strength'] == 'STRONG']
         moderate = [a for a in spike_alerts if a['spike_strength'] == 'MODERATE']
         
         if strong:
-            text += f"<b>🔴 STRONG SIGNALS ({len(strong)}):</b>\n"
+            text += f"<b>🔴 TÍN HIỆU MẠNH ({len(strong)}):</b>\n"
             for alert in strong[:5]:  # Top 5
                 symbol = alert['symbol']
                 spikes = alert['spikes_detected']
-                text += f"  🚨 <b>{symbol}</b> - {spikes} timeframe(s)\n"
+                text += f"  🚨 <b>{symbol}</b> - {spikes} khung thời gian\n"
             text += "\n"
         
         if moderate:
-            text += f"<b>🟡 MODERATE SIGNALS ({len(moderate)}):</b>\n"
+            text += f"<b>🟡 TÍN HIỆU TRUNG BÌNH ({len(moderate)}):</b>\n"
             for alert in moderate[:5]:  # Top 5
                 symbol = alert['symbol']
                 text += f"  ⚡ <b>{symbol}</b>\n"
             text += "\n"
         
-        text += f"💡 Detailed analysis will be sent for each coin..."
+        text += f"💡 Phân tích chi tiết sẽ được gửi cho từng coin..."
         
         return text
