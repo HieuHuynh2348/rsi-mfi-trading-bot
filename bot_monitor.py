@@ -32,9 +32,9 @@ class BotMonitor:
         self.thread = None
         self.last_alerts = {}  # Track last alerts to avoid spam
         
-        # Alert thresholds
-        self.bot_score_threshold = 70  # Alert if bot score >= 70%
-        self.pump_score_threshold = 60  # Alert if pump score >= 60%
+        # Alert thresholds (more sensitive)
+        self.bot_score_threshold = 40  # Alert if bot score >= 40%
+        self.pump_score_threshold = 45  # Alert if pump score >= 45%
         self.alert_cooldown = 3600  # 1 hour cooldown per symbol
         
         logger.info(f"Bot monitor initialized (interval: {check_interval}s)")

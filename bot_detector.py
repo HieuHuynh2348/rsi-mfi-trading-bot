@@ -63,15 +63,13 @@ class BotDetector:
             
             # Calculate pump score separately
             pump_score = pump_analysis.get('pump_score', 0)
-            # Calculate pump score separately
-            pump_score = pump_analysis.get('pump_score', 0)
             
             result = {
                 'symbol': symbol,
                 'bot_score': bot_score,
                 'pump_score': pump_score,
-                'likely_bot_activity': bot_score >= 50,  # 50%+ = likely bot
-                'likely_pump_bot': pump_score >= 60,  # 60%+ = likely pump bot
+                'likely_bot_activity': bot_score >= 40,  # 40%+ = likely bot (more sensitive)
+                'likely_pump_bot': pump_score >= 45,  # 45%+ = likely pump bot (more sensitive)
                 'confidence': self._get_confidence_level(bot_score),
                 'pump_confidence': self._get_confidence_level(pump_score),
                 'orderbook': orderbook_analysis,
