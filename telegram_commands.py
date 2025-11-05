@@ -1526,12 +1526,12 @@ class TelegramCommandHandler:
                         msg += "⚠️ Hãy chắc watchlist không trống\n"
                         msg += "Dùng /watch SYMBOL để thêm coin"
                 
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /startbotmonitor: {e}")
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
@@ -1553,12 +1553,12 @@ class TelegramCommandHandler:
                     else:
                         msg = "❌ Không thể dừng giám sát bot"
                 
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /stopbotmonitor: {e}")
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
@@ -1594,12 +1594,12 @@ class TelegramCommandHandler:
                     msg += "💡 Dùng /startbotmonitor để bắt đầu\n"
                     msg += "💡 Dùng /botscan để quét thủ công"
                 
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /botmonitorstatus: {e}")
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
@@ -1664,12 +1664,12 @@ class TelegramCommandHandler:
                 if len(sorted_detections) > 10:
                     self.bot.send_message(f"ℹ️ Hiển thị top 10 trong tổng {len(sorted_detections)} phát hiện")
                 
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 self.bot.send_message(f"✅ <b>Quét bot hoàn tất!</b>", reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /botscan: {e}")
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
@@ -1715,12 +1715,12 @@ class TelegramCommandHandler:
                 else:
                     msg = "❌ Loại không hợp lệ. Dùng 'bot' hoặc 'pump'"
                 
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /botthreshold: {e}")
-                keyboard = self.bot.create_main_menu_keyboard()
+                keyboard = self.bot.create_bot_monitor_keyboard()
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         

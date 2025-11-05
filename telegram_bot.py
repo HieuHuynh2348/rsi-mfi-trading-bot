@@ -122,56 +122,68 @@ class TelegramBot:
         
         # Row 1: Analysis
         keyboard.row(
-            types.InlineKeyboardButton("📊 Scan Market", callback_data="cmd_scan"),
-            types.InlineKeyboardButton("⭐ Scan Watchlist", callback_data="cmd_scanwatch")
+            types.InlineKeyboardButton("📊 Quét Thị Trường", callback_data="cmd_scan"),
+            types.InlineKeyboardButton("⭐ Quét Watchlist", callback_data="cmd_scanwatch")
         )
         
         # Row 2: Watchlist
         keyboard.row(
-            types.InlineKeyboardButton("📝 View Watchlist", callback_data="cmd_watchlist"),
-            types.InlineKeyboardButton("🗑️ Clear Watchlist", callback_data="cmd_clearwatch")
+            types.InlineKeyboardButton("📝 Xem Watchlist", callback_data="cmd_watchlist"),
+            types.InlineKeyboardButton("🗑️ Xóa Watchlist", callback_data="cmd_clearwatch")
         )
         
         # Row 3: Volume
         keyboard.row(
-            types.InlineKeyboardButton("🔥 Volume Scan", callback_data="cmd_volumescan"),
-            types.InlineKeyboardButton("🎯 Volume Settings", callback_data="cmd_volumesensitivity")
+            types.InlineKeyboardButton("🔥 Quét Volume", callback_data="cmd_volumescan"),
+            types.InlineKeyboardButton("🎯 Cài Đặt Volume", callback_data="cmd_volumesensitivity")
         )
         
         # Row 4: Monitor
         keyboard.row(
-            types.InlineKeyboardButton("🔔 Start Monitor", callback_data="cmd_startmonitor"),
-            types.InlineKeyboardButton("⏸️ Stop Monitor", callback_data="cmd_stopmonitor")
+            types.InlineKeyboardButton("🔔 Bật Monitor", callback_data="cmd_startmonitor"),
+            types.InlineKeyboardButton("⏸️ Dừng Monitor", callback_data="cmd_stopmonitor")
         )
         
-        # Row 5: Market Scanner
+        # Row 5: Bot Monitor
         keyboard.row(
-            types.InlineKeyboardButton("🌍 Start Market Scan", callback_data="cmd_startmarketscan"),
-            types.InlineKeyboardButton("🛑 Stop Market Scan", callback_data="cmd_stopmarketscan")
+            types.InlineKeyboardButton("🤖 Bật Bot Monitor", callback_data="cmd_startbotmonitor"),
+            types.InlineKeyboardButton("🛑 Dừng Bot Monitor", callback_data="cmd_stopbotmonitor")
         )
         
-        # Row 6: Info & Analysis
+        # Row 6: Market Scanner
+        keyboard.row(
+            types.InlineKeyboardButton("🌍 Bật Quét Market", callback_data="cmd_startmarketscan"),
+            types.InlineKeyboardButton("🛑 Dừng Quét Market", callback_data="cmd_stopmarketscan")
+        )
+        
+        # Row 7: Info & Analysis
         keyboard.row(
             types.InlineKeyboardButton("📈 Top Coins", callback_data="cmd_top"),
-            types.InlineKeyboardButton("🔍 Quick Analysis", callback_data="cmd_quickanalysis")
+            types.InlineKeyboardButton("🔍 Phân Tích Nhanh", callback_data="cmd_quickanalysis")
         )
         
-        # Row 7: Status & Settings
+        # Row 8: Status & Settings
         keyboard.row(
-            types.InlineKeyboardButton("📊 Bot Status", callback_data="cmd_status"),
-            types.InlineKeyboardButton("⚙️ Settings", callback_data="cmd_settings")
+            types.InlineKeyboardButton("📊 Trạng Thái Bot", callback_data="cmd_status"),
+            types.InlineKeyboardButton("⚙️ Cài Đặt", callback_data="cmd_settings")
         )
         
-        # Row 8: Monitor & Market Status
+        # Row 9: Monitor & Market Status
         keyboard.row(
-            types.InlineKeyboardButton("📡 Monitor Status", callback_data="cmd_monitorstatus"),
-            types.InlineKeyboardButton("🌐 Market Status", callback_data="cmd_marketstatus")
+            types.InlineKeyboardButton("📡 Trạng Thái Monitor", callback_data="cmd_monitorstatus"),
+            types.InlineKeyboardButton("🌐 Trạng Thái Market", callback_data="cmd_marketstatus")
         )
         
-        # Row 9: Performance & Help
+        # Row 10: Bot Monitor Status
         keyboard.row(
-            types.InlineKeyboardButton("⚡ Performance", callback_data="cmd_performance"),
-            types.InlineKeyboardButton("ℹ️ Help", callback_data="cmd_help")
+            types.InlineKeyboardButton("🤖 Trạng Thái Bot Monitor", callback_data="cmd_botmonitorstatus"),
+            types.InlineKeyboardButton("🔍 Quét Bot", callback_data="cmd_botscan")
+        )
+        
+        # Row 11: Performance & Help
+        keyboard.row(
+            types.InlineKeyboardButton("⚡ Hiệu Suất", callback_data="cmd_performance"),
+            types.InlineKeyboardButton("ℹ️ Trợ Giúp", callback_data="cmd_help")
         )
         
         return keyboard
@@ -181,15 +193,15 @@ class TelegramBot:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
         keyboard.row(
-            types.InlineKeyboardButton("📝 View List", callback_data="cmd_watchlist"),
-            types.InlineKeyboardButton("⭐ Scan All", callback_data="cmd_scanwatch")
+            types.InlineKeyboardButton("📝 Xem Danh Sách", callback_data="cmd_watchlist"),
+            types.InlineKeyboardButton("⭐ Quét Tất Cả", callback_data="cmd_scanwatch")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔥 Volume Scan", callback_data="cmd_volumescan"),
-            types.InlineKeyboardButton("🗑️ Clear All", callback_data="cmd_clearwatch")
+            types.InlineKeyboardButton("🔥 Quét Volume", callback_data="cmd_volumescan"),
+            types.InlineKeyboardButton("🗑️ Xóa Tất Cả", callback_data="cmd_clearwatch")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
         )
         
         return keyboard
@@ -199,14 +211,14 @@ class TelegramBot:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
         keyboard.row(
-            types.InlineKeyboardButton("🔔 Start", callback_data="cmd_startmonitor"),
-            types.InlineKeyboardButton("⏸️ Stop", callback_data="cmd_stopmonitor")
+            types.InlineKeyboardButton("🔔 Bật", callback_data="cmd_startmonitor"),
+            types.InlineKeyboardButton("⏸️ Dừng", callback_data="cmd_stopmonitor")
         )
         keyboard.row(
-            types.InlineKeyboardButton("📊 Status", callback_data="cmd_monitorstatus")
+            types.InlineKeyboardButton("📊 Trạng Thái", callback_data="cmd_monitorstatus")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
         )
         
         return keyboard
@@ -216,15 +228,15 @@ class TelegramBot:
         keyboard = types.InlineKeyboardMarkup(row_width=3)
         
         keyboard.row(
-            types.InlineKeyboardButton("🔥 Scan Now", callback_data="cmd_volumescan")
+            types.InlineKeyboardButton("🔥 Quét Ngay", callback_data="cmd_volumescan")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔴 Low", callback_data="vol_low"),
-            types.InlineKeyboardButton("🟡 Medium", callback_data="vol_medium"),
-            types.InlineKeyboardButton("🟢 High", callback_data="vol_high")
+            types.InlineKeyboardButton("🔴 Thấp", callback_data="vol_low"),
+            types.InlineKeyboardButton("🟡 Trung Bình", callback_data="vol_medium"),
+            types.InlineKeyboardButton("🟢 Cao", callback_data="vol_high")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
         )
         
         return keyboard
@@ -249,7 +261,7 @@ class TelegramBot:
             types.InlineKeyboardButton("🔴 MATIC", callback_data="analyze_MATICUSDT")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
         )
         
         return keyboard
@@ -259,15 +271,36 @@ class TelegramBot:
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
         keyboard.row(
-            types.InlineKeyboardButton("📊 Scan Market", callback_data="cmd_scan"),
-            types.InlineKeyboardButton("⭐ Scan Watchlist", callback_data="cmd_scanwatch")
+            types.InlineKeyboardButton("📊 Quét Thị Trường", callback_data="cmd_scan"),
+            types.InlineKeyboardButton("⭐ Quét Watchlist", callback_data="cmd_scanwatch")
         )
         keyboard.row(
-            types.InlineKeyboardButton("📝 View Watchlist", callback_data="cmd_watchlist"),
-            types.InlineKeyboardButton("🔥 Volume Scan", callback_data="cmd_volumescan")
+            types.InlineKeyboardButton("📝 Xem Watchlist", callback_data="cmd_watchlist"),
+            types.InlineKeyboardButton("🔥 Quét Volume", callback_data="cmd_volumescan")
         )
         keyboard.row(
-            types.InlineKeyboardButton("🔙 Main Menu", callback_data="cmd_menu")
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
+        )
+        
+        return keyboard
+    
+    def create_bot_monitor_keyboard(self):
+        """Create bot monitor control keyboard"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("🤖 Bật Bot Monitor", callback_data="cmd_startbotmonitor"),
+            types.InlineKeyboardButton("🛑 Dừng Bot Monitor", callback_data="cmd_stopbotmonitor")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Trạng Thái", callback_data="cmd_botmonitorstatus"),
+            types.InlineKeyboardButton("🔍 Quét Bot", callback_data="cmd_botscan")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🎯 Đặt Ngưỡng", callback_data="cmd_botthreshold")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
         )
         
         return keyboard
