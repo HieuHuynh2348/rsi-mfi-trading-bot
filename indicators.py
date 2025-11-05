@@ -20,6 +20,9 @@ def validate_dataframe(df):
     if df is None or len(df) < 14:
         return None
     
+    # Make a copy to avoid modifying original
+    df = df.copy()
+    
     # Ensure all required columns exist
     required_cols = ['high', 'low', 'close', 'volume']
     if not all(col in df.columns for col in required_cols):
@@ -62,14 +65,28 @@ def calculate_rsi(data, period=14):
     Matches Pine Script custom RSI calculation
     
     Args:
-        data: pandas Series of price data (HLCC/4)
+        data: pandas Series or DataFrame column of price data (HLCC/4)
         period: RSI period (default 14)
     
     Returns:
         pandas Series of RSI values
     """
-    # Ensure data is numeric
+    # Convert to Series if needed and ensure numeric
+    if isinstance(data, pd.DataFrame):
+        # If it's a DataFrame, extract the first column
+        data = data.iloc[:, 0]
+    
+    # Ensure it's a Series and numeric
+    if not isinstance(data, pd.Series):
+        data = pd.Series(data)
+    
     data = pd.to_numeric(data, errors='coerce')
+    
+    # Drop NaN values
+    data = data.dropna()
+    
+    if len(data) < period + 1:
+        return pd.Series([np.nan] * len(data), index=data.index)
     
     delta = data.diff()
     
@@ -172,45 +189,64 @@ def analyze_symbol(df, rsi_period, mfi_period, rsi_lower, rsi_upper, mfi_lower, 
     Returns:
         dict with RSI, MFI, and signal values
     """
-    # Validate and clean data first
-    df = validate_dataframe(df)
+    try:
+        # Validate and clean data first
+        df = validate_dataframe(df)
+        
+        if df is None or len(df) < max(rsi_period, mfi_period) + 1:
+            return None
+        
+        # Calculate HLCC/4
+        hlcc4 = calculate_hlcc4(df)
+        
+        # Ensure hlcc4 is a valid Series
+        if hlcc4 is None or not isinstance(hlcc4, pd.Series):
+            return None
+        
+        # Calculate indicators
+        rsi = calculate_rsi(hlcc4, rsi_period)
+        mfi = calculate_mfi(df, mfi_period)
+        
+        # Check if calculations succeeded
+        if rsi is None or mfi is None or len(rsi) == 0 or len(mfi) == 0:
+            return None
+        
+        # Get latest values (current)
+        latest_rsi = rsi.iloc[-1]
+        latest_mfi = mfi.iloc[-1]
+        
+        # Check for NaN
+        if pd.isna(latest_rsi) or pd.isna(latest_mfi):
+            return None
+        
+        # Get previous values (last candle)
+        last_rsi = rsi.iloc[-2] if len(rsi) >= 2 else latest_rsi
+        last_mfi = mfi.iloc[-2] if len(mfi) >= 2 else latest_mfi
+        
+        # Calculate changes
+        rsi_change = latest_rsi - last_rsi
+        mfi_change = latest_mfi - last_mfi
+        
+        # Get signal
+        signal = get_signal(latest_rsi, latest_mfi, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
+        
+        return {
+            'rsi': round(latest_rsi, 2),
+            'mfi': round(latest_mfi, 2),
+            'last_rsi': round(last_rsi, 2),
+            'last_mfi': round(last_mfi, 2),
+            'rsi_change': round(rsi_change, 2),
+            'mfi_change': round(mfi_change, 2),
+            'signal': signal,
+            'rsi_series': rsi,
+            'mfi_series': mfi
+        }
     
-    if df is None or len(df) < max(rsi_period, mfi_period) + 1:
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in analyze_symbol: {e}")
         return None
-    
-    # Calculate HLCC/4
-    hlcc4 = calculate_hlcc4(df)
-    
-    # Calculate indicators
-    rsi = calculate_rsi(hlcc4, rsi_period)
-    mfi = calculate_mfi(df, mfi_period)
-    
-    # Get latest values (current)
-    latest_rsi = rsi.iloc[-1]
-    latest_mfi = mfi.iloc[-1]
-    
-    # Get previous values (last candle)
-    last_rsi = rsi.iloc[-2] if len(rsi) >= 2 else latest_rsi
-    last_mfi = mfi.iloc[-2] if len(mfi) >= 2 else latest_mfi
-    
-    # Calculate changes
-    rsi_change = latest_rsi - last_rsi
-    mfi_change = latest_mfi - last_mfi
-    
-    # Get signal
-    signal = get_signal(latest_rsi, latest_mfi, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
-    
-    return {
-        'rsi': round(latest_rsi, 2),
-        'mfi': round(latest_mfi, 2),
-        'last_rsi': round(last_rsi, 2),
-        'last_mfi': round(last_mfi, 2),
-        'rsi_change': round(rsi_change, 2),
-        'mfi_change': round(mfi_change, 2),
-        'signal': signal,
-        'rsi_series': rsi,
-        'mfi_series': mfi
-    }
 
 
 def analyze_multi_timeframe(klines_dict, rsi_period, mfi_period, rsi_lower, rsi_upper, mfi_lower, mfi_upper):
