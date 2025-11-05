@@ -120,10 +120,11 @@ class BinanceClient:
                 'taker_buy_quote', 'ignore'
             ])
             
-            # Convert types
+            # Convert types - ensure all numeric columns are float
             df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                df[col] = df[col].astype(float)
+            for col in ['open', 'high', 'low', 'close', 'volume', 'quote_volume', 
+                       'taker_buy_base', 'taker_buy_quote']:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
             
             df.set_index('timestamp', inplace=True)
             

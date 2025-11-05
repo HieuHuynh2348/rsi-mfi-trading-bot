@@ -162,10 +162,16 @@ class MarketScanner:
             if df_1d is None or len(df_1d) < 14:
                 return None
             
-            # Calculate RSI and MFI for 1D
-            from indicators import calculate_rsi, calculate_mfi
+            # Validate data - check for NaN values in critical columns
+            if df_1d[['high', 'low', 'close', 'volume']].isnull().any().any():
+                logger.debug(f"Skipping {symbol} - contains invalid data")
+                return None
             
-            rsi_1d = calculate_rsi(df_1d, period=14)
+            # Calculate RSI and MFI for 1D
+            from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
+            
+            hlcc4 = calculate_hlcc4(df_1d)
+            rsi_1d = calculate_rsi(hlcc4, period=14)
             mfi_1d = calculate_mfi(df_1d, period=14)
             
             if rsi_1d is None or mfi_1d is None:
