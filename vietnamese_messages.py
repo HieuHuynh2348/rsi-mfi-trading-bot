@@ -3,6 +3,8 @@ Vietnamese Messages for Trading Bot
 All user-facing messages in Vietnamese
 """
 
+from datetime import datetime
+
 # Help and Info Messages
 HELP_MESSAGE = """
 <b>🤖 BOT GIAO DỊCH RSI+MFI</b>
@@ -100,6 +102,19 @@ ABOUT_MESSAGE = """
 <i>⚠️ Lưu ý: Không phải lời khuyên tài chính!</i>
 <i>📚 Luôn tự nghiên cứu (DYOR)</i>
 """
+
+# Error Messages
+ERROR_OCCURRED = "❌ Lỗi: {error}"
+BOT_DETECTION_FAILED = "❌ Phát hiện bot thất bại"
+
+# Usage Messages
+PRICE_USAGE = "❌ Cách dùng: /price SYMBOL\nVí dụ: /price BTC"
+DAILY_USAGE = "❌ Cách dùng: /24h SYMBOL\nVí dụ: /24h BTC"
+WATCH_USAGE = "❌ Cách dùng: /watch SYMBOL\nVí dụ: /watch BTC"
+UNWATCH_USAGE = "❌ Cách dùng: /unwatch SYMBOL\nVí dụ: /unwatch BTC"
+
+# Watchlist Messages
+WATCHLIST_COUNT = "📊 Tổng số đang theo dõi: {count} symbols"
 
 # Status Messages
 def get_status_message(config):
@@ -328,7 +343,6 @@ MONITOR_NOT_RUNNING = "ℹ️ Giám sát không chạy."
 
 # Bot Detection Messages
 BOT_DETECTION_TITLE = "🤖 PHÂN TÍCH HOẠT ĐỘNG BOT"
-BOT_DETECTION_FAILED = "❌ Phát hiện bot thất bại"
 
 def get_bot_detection_message(detection_result):
     """Generate bot detection message in Vietnamese"""
@@ -441,6 +455,3 @@ def get_bot_detection_message(detection_result):
         msg += "   ✅ Điều kiện thị trường bình thường\n"
     
     return msg
-
-# Import datetime for timestamps
-from datetime import datetime
