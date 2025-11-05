@@ -637,7 +637,7 @@ class TelegramCommandHandler:
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /rsi SYMBOL\nExample: /rsi BTC")
+                    self.bot.send_message("❌ Cách dùng: /rsi SYMBOL\nVí dụ: /rsi BTC")
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -656,7 +656,7 @@ class TelegramCommandHandler:
                 )
                 
                 if not klines_dict:
-                    self.bot.send_message(f"❌ No data found for {symbol}")
+                    self.bot.send_message(f"❌ Không tìm thấy dữ liệu cho {symbol}")
                     return
                 
                 # Analyze
@@ -671,7 +671,7 @@ class TelegramCommandHandler:
                 )
                 
                 # Build RSI-only message
-                msg = f"<b>📊 RSI Analysis - {symbol}</b>\n\n"
+                msg = f"<b>📊 Phân Tích RSI - {symbol}</b>\n\n"
                 
                 timeframes = sorted(analysis['timeframes'].keys(), 
                                   key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
@@ -688,7 +688,8 @@ class TelegramCommandHandler:
             except Exception as e:
                 logger.error(f"Error in /rsi: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['mfi'])
         def handle_mfi(message):
@@ -699,7 +700,7 @@ class TelegramCommandHandler:
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /mfi SYMBOL\nExample: /mfi BTC")
+                    self.bot.send_message("❌ Cách dùng: /mfi SYMBOL\nVí dụ: /mfi BTC")
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -718,7 +719,7 @@ class TelegramCommandHandler:
                 )
                 
                 if not klines_dict:
-                    self.bot.send_message(f"❌ No data found for {symbol}")
+                    self.bot.send_message(f"❌ Không tìm thấy dữ liệu cho {symbol}")
                     return
                 
                 # Analyze
@@ -733,7 +734,7 @@ class TelegramCommandHandler:
                 )
                 
                 # Build MFI-only message
-                msg = f"<b>💰 MFI Analysis - {symbol}</b>\n\n"
+                msg = f"<b>💰 Phân Tích MFI - {symbol}</b>\n\n"
                 
                 timeframes = sorted(analysis['timeframes'].keys(), 
                                   key=lambda x: {'5m': 1, '1h': 2, '4h': 3, '1d': 4}.get(x, 5))
@@ -750,7 +751,8 @@ class TelegramCommandHandler:
             except Exception as e:
                 logger.error(f"Error in /mfi: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['chart'])
         def handle_chart(message):
@@ -761,7 +763,7 @@ class TelegramCommandHandler:
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /chart SYMBOL\nExample: /chart BTC")
+                    self.bot.send_message("❌ Cách dùng: /chart SYMBOL\nVí dụ: /chart BTC")
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -780,7 +782,7 @@ class TelegramCommandHandler:
                 )
                 
                 if not klines_dict:
-                    self.bot.send_message(f"❌ No data found for {symbol}")
+                    self.bot.send_message(f"❌ Không tìm thấy dữ liệu cho {symbol}")
                     return
                 
                 # Analyze
