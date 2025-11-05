@@ -42,10 +42,6 @@ class TelegramCommandHandler:
         from market_scanner import MarketScanner
         self.market_scanner = MarketScanner(self, scan_interval=900)  # 15 minutes
         
-        # Initialize bot activity monitor
-        from bot_monitor import BotMonitor
-        self.bot_monitor = BotMonitor(self, check_interval=1800)  # 30 minutes
-        
         # Use monitor's volume detector for signal alerts (shared instance)
         self.volume_detector = self.monitor.volume_detector
         
@@ -56,8 +52,12 @@ class TelegramCommandHandler:
         self._config = config
         self._analyze_multi_timeframe = analyze_multi_timeframe
         
-        # Initialize bot detector
+        # Initialize bot detector BEFORE bot monitor
         self.bot_detector = BotDetector(binance_client)
+        
+        # Initialize bot activity monitor (requires bot_detector)
+        from bot_monitor import BotMonitor
+        self.bot_monitor = BotMonitor(self, check_interval=1800)  # 30 minutes
         
         # Setup command handlers
         self.setup_handlers()
