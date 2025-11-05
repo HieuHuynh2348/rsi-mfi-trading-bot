@@ -10,6 +10,7 @@ import re
 import io
 import time
 from datetime import datetime
+from vietnamese_messages import *
 
 logger = logging.getLogger(__name__)
 
@@ -311,7 +312,7 @@ class TelegramBot:
     
     def send_signal_alert(self, symbol, timeframe_data, consensus, consensus_strength, price=None, market_data=None, volume_data=None):
         """
-        Send a formatted signal alert with detailed information
+        Send a formatted signal alert with detailed information in Vietnamese
         
         Args:
             symbol: Trading symbol
@@ -323,8 +324,32 @@ class TelegramBot:
             volume_data: Dictionary with volume analysis (current, last, avg, ratios)
         """
         try:
-            import html as html_module
-            logger.info(f"📤 Building signal alert for {symbol}")
+            # Use Vietnamese message generator
+            message = get_signal_alert(symbol, timeframe_data, consensus, consensus_strength, price, market_data, volume_data)
+            
+            # Add action buttons
+            keyboard = types.InlineKeyboardMarkup()
+            keyboard.add(types.InlineKeyboardButton("📈 Xem Biểu Đồ", callback_data=f"viewchart_{symbol.upper()}"))
+            keyboard.add(types.InlineKeyboardButton("⭐ Thêm vào Watchlist", callback_data=f"addwatch_{symbol.upper()}"))
+            keyboard.add(types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu"))
+            
+            logger.info(f"✅ Đang gửi cảnh báo tín hiệu cho {symbol}")
+            result = self.send_message(message, reply_markup=keyboard)
+            
+            if result:
+                logger.info(f"✅ Đã gửi cảnh báo tín hiệu cho {symbol}")
+            else:
+                logger.error(f"❌ Gửi cảnh báo thất bại cho {symbol}")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ Lỗi gửi cảnh báo cho {symbol}: {e}")
+            try:
+                self.send_message(f"❌ <b>Lỗi gửi cảnh báo cho {symbol}</b>\n\n{str(e)}")
+            except:
+                pass
+            return False
             
             # Escape HTML in symbol name to prevent parsing errors
             safe_symbol = html_module.escape(symbol)
