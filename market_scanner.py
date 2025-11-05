@@ -105,11 +105,14 @@ class MarketScanner:
         """
         try:
             # Get all USDT trading pairs
-            all_symbols = self.binance.get_all_usdt_symbols()
+            all_symbols_data = self.binance.get_all_symbols(quote_asset='USDT')
             
-            if not all_symbols:
+            if not all_symbols_data:
                 logger.warning("No symbols found")
                 return []
+            
+            # Extract just the symbol names
+            all_symbols = [s['symbol'] for s in all_symbols_data]
             
             logger.info(f"Scanning {len(all_symbols)} USDT pairs...")
             
