@@ -412,69 +412,10 @@ class TelegramCommandHandler:
                 logger.warning(f"Unauthorized access attempt from {message.chat.id}")
                 return
             
-            help_text = """
-<b>🤖 RSI+MFI TRADING BOT</b>
-
-<b>🎛️ INTERACTIVE MENU:</b>
-/menu - Open button menu (recommended!)
-
-<b>📊 SYMBOL ANALYSIS:</b>
-/<b>SYMBOL</b> - Analyze any coin
-Example: /BTC /ETH /LINK
-
-<b>🔍 MARKET INFO:</b>
-/price <b>SYMBOL</b> - Current price
-/24h <b>SYMBOL</b> - 24h market data
-/top - Top 10 volume coins
-
-<b>📈 TECHNICAL ANALYSIS:</b>
-/rsi <b>SYMBOL</b> - RSI only
-/mfi <b>SYMBOL</b> - MFI only
-/chart <b>SYMBOL</b> - View chart
-
-<b>⚙️ BOT CONTROL:</b>
-/status - Bot status & settings
-/scan - Force market scan
-/settings - View settings
-/performance - Scan performance
-
-<b>⭐ WATCHLIST:</b>
-/watch <b>SYMBOL</b> - Add to watchlist
-/unwatch <b>SYMBOL</b> - Remove coin
-/watchlist - View watchlist
-/scanwatch - Scan watchlist
-/clearwatch - Clear all
-
-<b>🔔 AUTO-MONITOR:</b>
-/startmonitor - Start auto-notify
-/stopmonitor - Stop auto-notify
-/monitorstatus - Monitor status
-
-<b>🔥 VOLUME ALERTS:</b>
-/volumescan - Scan volume spikes
-/volumesensitivity - Set sensitivity
-
-<b>🌍 MARKET SCANNER:</b>
-/startmarketscan - Auto-scan ALL Binance
-/stopmarketscan - Stop market scanner
-/marketstatus - Scanner status
-
-<b>🤖 BOT MONITOR:</b>
-/startbotmonitor - Auto-detect bots
-/stopbotmonitor - Stop bot monitor
-/botmonitorstatus - Monitor status
-/botscan - Manual bot scan
-/botthreshold - Set alert levels
-
-<b>ℹ️ INFO:</b>
-/help - Show this message
-/about - About bot
-
-<i>💡 Tip: Use /menu for easy-to-use buttons! 🎯</i>
-            """
-            # Send with main menu keyboard
+            # Use Vietnamese help message
+            from vietnamese_messages import HELP_MESSAGE
             keyboard = self.bot.create_main_menu_keyboard()
-            self.bot.send_message(help_text, reply_markup=keyboard)
+            self.bot.send_message(HELP_MESSAGE, reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['menu'])
         def handle_menu(message):
@@ -485,13 +426,13 @@ Example: /BTC /ETH /LINK
             try:
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(
-                    "<b>🤖 MAIN MENU</b>\n\n"
-                    "Choose an option below or use /help for text commands:",
+                    "<b>🤖 MENU CHÍNH</b>\n\n"
+                    "Chọn một tùy chọn bên dưới hoặc dùng /help để xem lệnh văn bản:",
                     reply_markup=keyboard
                 )
             except Exception as e:
                 logger.error(f"Error in /menu: {e}")
-                self.bot.send_message(f"❌ Error: {str(e)}")
+                self.bot.send_message(f"❌ Lỗi: {str(e)}")
         
         @self.telegram_bot.message_handler(commands=['about'])
         def handle_about(message):
@@ -499,42 +440,9 @@ Example: /BTC /ETH /LINK
             if not check_authorized(message):
                 return
             
-            about_text = """
-<b>🚀 RSI+MFI TRADING BOT</b>
-
-<b>📌 Version:</b> 2.0 ULTRA FAST
-<b>☁️ Platform:</b> Railway.app
-<b>🏦 Exchange:</b> Binance
-
-<b>✨ FEATURES:</b>
-✅ Multi-timeframe analysis
-✅ RSI + MFI indicators
-✅ Real-time monitoring
-✅ Auto signal detection
-✅ Interactive commands
-✅ Custom watchlist
-✅ ⚡ Parallel processing
-✅ 24/7 cloud operation
-
-<b>📊 INDICATORS:</b>
-• RSI (Relative Strength Index)
-• MFI (Money Flow Index)
-• Multi-timeframe consensus
-
-<b>⏱️ TIMEFRAMES:</b>
-• 5m, 1h, 4h, 1d
-
-<b>⚡ PERFORMANCE:</b>
-• Auto-scaling: 5-20 workers
-• 3-5x faster scanning
-• Parallel analysis
-
-<i>⚠️ Disclaimer: Not financial advice!</i>
-<i>📚 Always do your own research (DYOR)</i>
-            """
-            # Send with main menu keyboard
+            from vietnamese_messages import ABOUT_MESSAGE
             keyboard = self.bot.create_main_menu_keyboard()
-            self.bot.send_message(about_text, reply_markup=keyboard)
+            self.bot.send_message(ABOUT_MESSAGE, reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['status'])
         def handle_status(message):
@@ -543,27 +451,8 @@ Example: /BTC /ETH /LINK
                 return
             
             try:
-                # Get config
-                status_text = f"""
-<b>🤖 Bot Status</b>
-
-<b>⚡ System:</b> ✅ Online
-<b>🔗 Binance:</b> ✅ Connected
-<b>💬 Telegram:</b> ✅ Connected
-
-<b>⚙️ Settings:</b>
-• Scan Interval: {self._config.SCAN_INTERVAL}s
-• Min Consensus: {self._config.MIN_CONSENSUS_STRENGTH}/4
-• RSI Period: {self._config.RSI_PERIOD}
-• MFI Period: {self._config.MFI_PERIOD}
-• Timeframes: {', '.join(self._config.TIMEFRAMES)}
-
-<b>📊 Trading Pairs:</b>
-• Quote: {self._config.QUOTE_ASSET}
-• Min Volume: ${self._config.MIN_VOLUME_USDT:,.0f}
-
-<b>🕐 Current Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-                """
+                from vietnamese_messages import get_status_message
+                status_text = get_status_message(self._config)
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(status_text, reply_markup=keyboard)
             except Exception as e:
@@ -580,7 +469,8 @@ Example: /BTC /ETH /LINK
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /price SYMBOL\nExample: /price BTC")
+                    from vietnamese_messages import PRICE_USAGE
+                    self.bot.send_message(PRICE_USAGE)
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -593,15 +483,16 @@ Example: /BTC /ETH /LINK
                 
                 if price:
                     keyboard = self.bot.create_quick_analysis_keyboard()
-                    self.bot.send_message(f"💰 <b>{symbol}</b>\nPrice: ${price:,.4f}", reply_markup=keyboard)
+                    self.bot.send_message(f"💰 <b>{symbol}</b>\nGiá: ${price:,.4f}", reply_markup=keyboard)
                 else:
                     keyboard = self.bot.create_main_menu_keyboard()
-                    self.bot.send_message(f"❌ Could not get price for {symbol}", reply_markup=keyboard)
+                    self.bot.send_message(f"❌ Không thể lấy giá cho {symbol}", reply_markup=keyboard)
                     
             except Exception as e:
                 logger.error(f"Error in /price: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['24h'])
         def handle_24h(message):
@@ -612,7 +503,8 @@ Example: /BTC /ETH /LINK
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /24h SYMBOL\nExample: /24h BTC")
+                    from vietnamese_messages import DAILY_USAGE
+                    self.bot.send_message(DAILY_USAGE)
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -639,26 +531,27 @@ Example: /BTC /ETH /LINK
                         vol_str = f"${volume:.2f}"
                     
                     msg = f"""
-<b>📊 {symbol} - 24h Data</b>
+<b>📊 {symbol} - Dữ liệu 24h</b>
 
-💰 <b>Price:</b> ${data.get('last_price', 0):,.4f}
-{emoji} <b>Change:</b> {change:+.2f}%
+💰 <b>Giá:</b> ${data.get('last_price', 0):,.4f}
+{emoji} <b>Thay đổi:</b> {change:+.2f}%
 
-⬆️ <b>High:</b> ${data.get('high', 0):,.4f}
-⬇️ <b>Low:</b> ${data.get('low', 0):,.4f}
+⬆️ <b>Cao nhất:</b> ${data.get('high', 0):,.4f}
+⬇️ <b>Thấp nhất:</b> ${data.get('low', 0):,.4f}
 
-💵 <b>Volume:</b> {vol_str}
+💵 <b>Khối lượng:</b> {vol_str}
                     """
                     keyboard = self.bot.create_quick_analysis_keyboard()
                     self.bot.send_message(msg, reply_markup=keyboard)
                 else:
                     keyboard = self.bot.create_main_menu_keyboard()
-                    self.bot.send_message(f"❌ Could not get 24h data for {symbol}", reply_markup=keyboard)
+                    self.bot.send_message(f"❌ Không thể lấy dữ liệu 24h cho {symbol}", reply_markup=keyboard)
                     
             except Exception as e:
                 logger.error(f"Error in /24h: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['top'])
         def handle_top(message):
@@ -674,14 +567,14 @@ Example: /BTC /ETH /LINK
                 )
                 
                 if not symbols:
-                    self.bot.send_message("❌ No data available")
+                    self.bot.send_message("❌ Không có dữ liệu")
                     return
                 
                 # Sort by volume
                 sorted_symbols = sorted(symbols, key=lambda x: x.get('volume', 0), reverse=True)
                 top_10 = sorted_symbols[:10]
                 
-                msg = "<b>🏆 Top 10 Volume (24h)</b>\n\n"
+                msg = "<b>🏆 Top 10 Khối Lượng (24h)</b>\n\n"
                 for i, s in enumerate(top_10, 1):
                     symbol = s['symbol']
                     volume = s.get('volume', 0)
@@ -708,7 +601,8 @@ Example: /BTC /ETH /LINK
             except Exception as e:
                 logger.error(f"Error in /top: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['scan'])
         def handle_scan(message):
@@ -929,44 +823,15 @@ Example: /BTC /ETH /LINK
                 return
             
             try:
-                settings_text = f"""
-<b>⚙️ Bot Settings</b>
-
-<b>📊 Indicators:</b>
-• RSI Period: {self._config.RSI_PERIOD}
-• RSI Levels: {self._config.RSI_LOWER} / {self._config.RSI_UPPER}
-• MFI Period: {self._config.MFI_PERIOD}
-• MFI Levels: {self._config.MFI_LOWER} / {self._config.MFI_UPPER}
-
-<b>⏱️ Timeframes:</b>
-• {', '.join(self._config.TIMEFRAMES)}
-
-<b>🎯 Signal Criteria:</b>
-• Min Consensus: {self._config.MIN_CONSENSUS_STRENGTH}/4
-• Scan Interval: {self._config.SCAN_INTERVAL}s
-
-<b>💹 Market Filters:</b>
-• Quote Asset: {self._config.QUOTE_ASSET}
-• Min Volume: ${self._config.MIN_VOLUME_USDT:,.0f}
-• Excluded: {', '.join(self._config.EXCLUDED_KEYWORDS) if self._config.EXCLUDED_KEYWORDS else 'None'}
-
-<b>📈 Display:</b>
-• Send Charts: {'✅ Yes' if self._config.SEND_CHARTS else '❌ No'}
-• Summary Only: {'✅ Yes' if self._config.SEND_SUMMARY_ONLY else '❌ No'}
-• Max Coins/Message: {self._config.MAX_COINS_PER_MESSAGE}
-
-<b>⚡ Performance:</b>
-• Fast Scan: {'✅ Enabled' if self._config.USE_FAST_SCAN else '❌ Disabled'}
-• Workers: {'Auto-scale' if self._config.MAX_SCAN_WORKERS == 0 else self._config.MAX_SCAN_WORKERS}
-
-💡 Use /performance for detailed scan info
-                """
+                from vietnamese_messages import get_settings_message
+                settings_text = get_settings_message(self._config)
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(settings_text, reply_markup=keyboard)
             except Exception as e:
                 logger.error(f"Error in /settings: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['performance'])
         def handle_performance(message):
@@ -1022,7 +887,8 @@ Example: /BTC /ETH /LINK
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /watch SYMBOL\nExample: /watch BTC")
+                    from vietnamese_messages import WATCH_USAGE
+                    self.bot.send_message(WATCH_USAGE)
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -1033,8 +899,9 @@ Example: /BTC /ETH /LINK
                 if success:
                     # Also show current count
                     count = self.watchlist.count()
-                    msg += f"\n\n📊 Total watched: {count} symbols"
-                    msg += f"\n💡 Use /watchlist to view all"
+                    from vietnamese_messages import WATCHLIST_COUNT
+                    msg += f"\n\n{WATCHLIST_COUNT.format(count=count)}"
+                    msg += f"\n💡 Dùng /watchlist để xem tất cả"
                 
                 # Send with watchlist keyboard
                 keyboard = self.bot.create_watchlist_keyboard()
@@ -1043,7 +910,8 @@ Example: /BTC /ETH /LINK
             except Exception as e:
                 logger.error(f"Error in /watch: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['unwatch'])
         def handle_unwatch(message):
@@ -1054,7 +922,8 @@ Example: /BTC /ETH /LINK
             try:
                 parts = message.text.split()
                 if len(parts) < 2:
-                    self.bot.send_message("❌ Usage: /unwatch SYMBOL\nExample: /unwatch BTC")
+                    from vietnamese_messages import UNWATCH_USAGE
+                    self.bot.send_message(UNWATCH_USAGE)
                     return
                 
                 symbol_raw = parts[1].upper()
@@ -1065,9 +934,9 @@ Example: /BTC /ETH /LINK
                 if success:
                     # Also show current count
                     count = self.watchlist.count()
-                    msg += f"\n\n📊 Remaining: {count} symbols"
+                    msg += f"\n\n📊 Còn lại: {count} symbols"
                     if count > 0:
-                        msg += f"\n💡 Use /watchlist to view all"
+                        msg += f"\n💡 Dùng /watchlist để xem tất cả"
                 
                 # Send with watchlist keyboard
                 keyboard = self.bot.create_watchlist_keyboard()
@@ -1284,31 +1153,32 @@ Example: /BTC /ETH /LINK
             
             try:
                 if self.monitor.running:
-                    self.bot.send_message("ℹ️ <b>Monitor already running!</b>\n\n"
-                                        f"⏱️ Check interval: {self.monitor.check_interval//60} min\n"
-                                        f"📊 Watchlist: {self.watchlist.count()} coins")
+                    self.bot.send_message("ℹ️ <b>Giám sát đã đang chạy!</b>\n\n"
+                                        f"⏱️ Khoảng thời gian kiểm tra: {self.monitor.check_interval//60} phút\n"
+                                        f"📊 Watchlist: {self.watchlist.count()} đồng")
                     return
                 
                 count = self.watchlist.count()
                 if count == 0:
-                    self.bot.send_message("⚠️ <b>Watchlist is empty!</b>\n\n"
-                                        "Add coins first with /watch SYMBOL")
+                    self.bot.send_message("⚠️ <b>Watchlist trống!</b>\n\n"
+                                        "Thêm coin trước với /watch SYMBOL")
                     return
                 
                 self.monitor.start()
                 
                 keyboard = self.bot.create_monitor_keyboard()
-                self.bot.send_message(f"✅ <b>Watchlist Monitor Started!</b>\n\n"
-                                    f"⏱️ Check interval: {self.monitor.check_interval//60} min\n"
-                                    f"📊 Monitoring: {count} coins\n"
-                                    f"🔔 Will auto-notify when signals appear\n\n"
-                                    f"💡 Use /stopmonitor to stop",
+                self.bot.send_message(f"✅ <b>Giám Sát Watchlist Đã Bắt Đầu!</b>\n\n"
+                                    f"⏱️ Khoảng thời gian kiểm tra: {self.monitor.check_interval//60} phút\n"
+                                    f"📊 Đang giám sát: {count} đồng\n"
+                                    f"🔔 Sẽ tự động thông báo khi có tín hiệu\n\n"
+                                    f"💡 Dùng /stopmonitor để dừng",
                                     reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /startmonitor: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['stopmonitor'])
         def handle_stopmonitor(message):
@@ -1318,21 +1188,22 @@ Example: /BTC /ETH /LINK
             
             try:
                 if not self.monitor.running:
-                    self.bot.send_message("ℹ️ Monitor is not running.")
+                    self.bot.send_message("ℹ️ Giám sát không chạy.")
                     return
                 
                 self.monitor.stop()
                 
                 keyboard = self.bot.create_monitor_keyboard()
-                self.bot.send_message(f"⏸️ <b>Watchlist Monitor Stopped</b>\n\n"
-                                    f"🔕 Auto-notifications disabled\n\n"
-                                    f"💡 Use /startmonitor to resume",
+                self.bot.send_message(f"⏸️ <b>Giám Sát Watchlist Đã Dừng</b>\n\n"
+                                    f"🔕 Thông báo tự động đã tắt\n\n"
+                                    f"💡 Dùng /startmonitor để tiếp tục",
                                     reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /stopmonitor: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['monitorstatus'])
         def handle_monitorstatus(message):
@@ -1342,21 +1213,21 @@ Example: /BTC /ETH /LINK
             
             try:
                 status_icon = "🟢" if self.monitor.running else "🔴"
-                status_text = "RUNNING" if self.monitor.running else "STOPPED"
+                status_text = "ĐANG CHẠY" if self.monitor.running else "ĐÃ DỪNG"
                 
-                msg = f"{status_icon} <b>Monitor Status: {status_text}</b>\n\n"
-                msg += f"⏱️ Check interval: {self.monitor.check_interval//60} min ({self.monitor.check_interval}s)\n"
-                msg += f"📊 Watchlist: {self.watchlist.count()} coins\n"
-                msg += f"💾 Signal history: {len(self.monitor.last_signals)} records\n\n"
+                msg = f"{status_icon} <b>Trạng Thái Giám Sát: {status_text}</b>\n\n"
+                msg += f"⏱️ Khoảng thời gian kiểm tra: {self.monitor.check_interval//60} phút ({self.monitor.check_interval}s)\n"
+                msg += f"📊 Watchlist: {self.watchlist.count()} đồng\n"
+                msg += f"💾 Lịch sử tín hiệu: {len(self.monitor.last_signals)} bản ghi\n\n"
                 
                 if self.monitor.running:
-                    msg += "🔔 Auto-notifications: ON\n"
-                    msg += f"📊 Volume monitoring: {self.monitor.volume_check_interval//60} min interval\n"
-                    msg += f"🎯 Volume sensitivity: {self.monitor.volume_detector.sensitivity.upper()}\n\n"
-                    msg += "💡 Use /stopmonitor to pause"
+                    msg += "🔔 Thông báo tự động: BẬT\n"
+                    msg += f"📊 Giám sát khối lượng: {self.monitor.volume_check_interval//60} phút\n"
+                    msg += f"🎯 Độ nhạy khối lượng: {self.monitor.volume_detector.sensitivity.upper()}\n\n"
+                    msg += "💡 Dùng /stopmonitor để tạm dừng"
                 else:
-                    msg += "🔕 Auto-notifications: OFF\n"
-                    msg += "💡 Use /startmonitor to resume"
+                    msg += "🔕 Thông báo tự động: TẮT\n"
+                    msg += "💡 Dùng /startmonitor để tiếp tục"
                 
                 keyboard = self.bot.create_monitor_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
