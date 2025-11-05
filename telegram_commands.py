@@ -1502,29 +1502,29 @@ class TelegramCommandHandler:
             
             try:
                 if self.bot_monitor.running:
-                    msg = "⚠️ Bot monitor is already running!\n\n"
-                    msg += "💡 Use /botmonitorstatus to check status"
+                    msg = "⚠️ Giám sát bot đã đang chạy!\n\n"
+                    msg += "💡 Dùng /botmonitorstatus để kiểm tra trạng thái"
                 else:
                     success = self.bot_monitor.start()
                     
                     if success:
                         status = self.bot_monitor.get_status()
-                        msg = "✅ <b>Bot Activity Monitor Started!</b>\n\n"
-                        msg += "🔍 <b>What it monitors:</b>\n"
-                        msg += "   • Trading bot patterns\n"
-                        msg += "   • Pump & dump schemes\n"
-                        msg += "   • Automated trading activity\n\n"
-                        msg += f"⏱️ <b>Check interval:</b> {status['check_interval']//60} minutes\n"
-                        msg += f"📊 <b>Monitoring:</b> {status['watchlist_count']} symbols\n"
-                        msg += f"🤖 <b>Bot alert:</b> Score ≥{status['bot_threshold']}%\n"
-                        msg += f"🚀 <b>Pump alert:</b> Score ≥{status['pump_threshold']}%\n"
-                        msg += f"🔔 <b>Cooldown:</b> {status['alert_cooldown']//60} min/symbol\n\n"
-                        msg += "🚀 Monitor running in background...\n"
-                        msg += "💡 Use /stopbotmonitor to stop"
+                        msg = "✅ <b>Đã Bật Giám Sát Bot!</b>\n\n"
+                        msg += "🔍 <b>Giám sát:</b>\n"
+                        msg += "   • Mẫu bot giao dịch\n"
+                        msg += "   • Lừa đảo pump & dump\n"
+                        msg += "   • Hoạt động giao dịch tự động\n\n"
+                        msg += f"⏱️ <b>Khoảng kiểm tra:</b> {status['check_interval']//60} phút\n"
+                        msg += f"📊 <b>Đang giám sát:</b> {status['watchlist_count']} symbols\n"
+                        msg += f"🤖 <b>Cảnh báo bot:</b> Điểm ≥{status['bot_threshold']}%\n"
+                        msg += f"🚀 <b>Cảnh báo pump:</b> Điểm ≥{status['pump_threshold']}%\n"
+                        msg += f"🔔 <b>Thời gian chờ:</b> {status['alert_cooldown']//60} phút/symbol\n\n"
+                        msg += "🚀 Monitor đang chạy nền...\n"
+                        msg += "💡 Dùng /stopbotmonitor để dừng"
                     else:
-                        msg = "❌ Failed to start bot monitor\n\n"
-                        msg += "⚠️ Make sure your watchlist is not empty\n"
-                        msg += "Use /watch SYMBOL to add coins"
+                        msg = "❌ Không thể khởi động giám sát bot\n\n"
+                        msg += "⚠️ Hãy chắc watchlist không trống\n"
+                        msg += "Dùng /watch SYMBOL để thêm coin"
                 
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
@@ -1532,7 +1532,8 @@ class TelegramCommandHandler:
             except Exception as e:
                 logger.error(f"Error in /startbotmonitor: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['stopbotmonitor'])
         def handle_stopbotmonitor(message):
@@ -1542,15 +1543,15 @@ class TelegramCommandHandler:
             
             try:
                 if not self.bot_monitor.running:
-                    msg = "⚠️ Bot monitor is not running"
+                    msg = "⚠️ Giám sát bot không chạy"
                 else:
                     success = self.bot_monitor.stop()
                     if success:
-                        msg = "⛔ <b>Bot Activity Monitor Stopped</b>\n\n"
-                        msg += "🔕 Auto-monitoring disabled\n"
-                        msg += "💡 Use /startbotmonitor to resume"
+                        msg = "⛔ <b>Đã Dừng Giám Sát Bot</b>\n\n"
+                        msg += "🔕 Giám sát tự động đã tắt\n"
+                        msg += "💡 Dùng /startbotmonitor để tiếp tục"
                     else:
-                        msg = "❌ Failed to stop bot monitor"
+                        msg = "❌ Không thể dừng giám sát bot"
                 
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
@@ -1558,7 +1559,8 @@ class TelegramCommandHandler:
             except Exception as e:
                 logger.error(f"Error in /stopbotmonitor: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['botmonitorstatus'])
         def handle_botmonitorstatus(message):
@@ -1570,27 +1572,27 @@ class TelegramCommandHandler:
                 status = self.bot_monitor.get_status()
                 
                 status_icon = "🟢" if status['running'] else "🔴"
-                status_text = "RUNNING" if status['running'] else "STOPPED"
+                status_text = "ĐANG CHẠY" if status['running'] else "ĐÃ DỪNG"
                 
-                msg = f"{status_icon} <b>Bot Monitor Status: {status_text}</b>\n\n"
-                msg += f"⏱️ <b>Check interval:</b> {status['check_interval']//60} min ({status['check_interval']}s)\n"
+                msg = f"{status_icon} <b>Trạng Thái Giám Sát Bot: {status_text}</b>\n\n"
+                msg += f"⏱️ <b>Khoảng kiểm tra:</b> {status['check_interval']//60} phút ({status['check_interval']}s)\n"
                 msg += f"📊 <b>Watchlist:</b> {status['watchlist_count']} symbols\n"
-                msg += f"🤖 <b>Bot threshold:</b> {status['bot_threshold']}%\n"
-                msg += f"🚀 <b>Pump threshold:</b> {status['pump_threshold']}%\n"
-                msg += f"🔔 <b>Alert cooldown:</b> {status['alert_cooldown']//60} minutes\n"
-                msg += f"💾 <b>Tracked symbols:</b> {status['tracked_symbols']}\n\n"
+                msg += f"🤖 <b>Ngưỡng bot:</b> {status['bot_threshold']}%\n"
+                msg += f"🚀 <b>Ngưỡng pump:</b> {status['pump_threshold']}%\n"
+                msg += f"🔔 <b>Thời gian chờ:</b> {status['alert_cooldown']//60} phút\n"
+                msg += f"💾 <b>Symbols theo dõi:</b> {status['tracked_symbols']}\n\n"
                 
                 if status['running']:
-                    msg += "🔍 <b>Monitoring for:</b>\n"
-                    msg += "   🤖 High-frequency trading bots\n"
-                    msg += "   🚀 Pump & dump schemes\n"
-                    msg += "   📊 Market manipulation\n\n"
-                    msg += "✅ Auto-alerts enabled\n"
-                    msg += "💡 Use /stopbotmonitor to stop"
+                    msg += "🔍 <b>Đang giám sát:</b>\n"
+                    msg += "   🤖 Bot giao dịch tần số cao\n"
+                    msg += "   🚀 Lừa đảo pump & dump\n"
+                    msg += "   📊 Thao túng thị trường\n\n"
+                    msg += "✅ Cảnh báo tự động đã bật\n"
+                    msg += "💡 Dùng /stopbotmonitor để dừng"
                 else:
-                    msg += "🔕 Auto-monitoring: OFF\n"
-                    msg += "💡 Use /startbotmonitor to start\n"
-                    msg += "💡 Use /botscan for manual scan"
+                    msg += "🔕 Giám sát tự động: TẮT\n"
+                    msg += "💡 Dùng /startbotmonitor để bắt đầu\n"
+                    msg += "💡 Dùng /botscan để quét thủ công"
                 
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
@@ -1598,7 +1600,8 @@ class TelegramCommandHandler:
             except Exception as e:
                 logger.error(f"Error in /botmonitorstatus: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['botscan'])
         def handle_botscan(message):
@@ -1610,20 +1613,20 @@ class TelegramCommandHandler:
                 symbols = self.watchlist.get_all()
                 
                 if not symbols:
-                    self.bot.send_message("⚠️ <b>Watchlist is empty!</b>\n\n"
-                                        "Add coins first with /watch SYMBOL")
+                    self.bot.send_message("⚠️ <b>Watchlist trống!</b>\n\n"
+                                        "Thêm coin trước với /watch SYMBOL")
                     return
                 
-                self.bot.send_message(f"🔍 <b>Scanning {len(symbols)} symbols for bot activity...</b>\n\n"
-                                    f"⏳ This may take a moment...")
+                self.bot.send_message(f"🔍 <b>Đang quét {len(symbols)} symbols tìm bot...</b>\n\n"
+                                    f"⏳ Vui lòng chờ...")
                 
                 # Perform manual scan
                 detections = self.bot_monitor.manual_scan()
                 
                 if not detections:
-                    self.bot.send_message("✅ <b>Scan Complete</b>\n\n"
-                                        f"No significant bot activity detected in {len(symbols)} symbols.\n\n"
-                                        f"All symbols show normal trading patterns.")
+                    self.bot.send_message("✅ <b>Quét Hoàn Tất</b>\n\n"
+                                        f"Không phát hiện hoạt động bot đáng kể trong {len(symbols)} symbols.\n\n"
+                                        f"Tất cả symbols đều có mẫu giao dịch bình thường.")
                     return
                 
                 # Count alerts
@@ -1631,16 +1634,16 @@ class TelegramCommandHandler:
                 bot_alerts = [d for d in detections if d.get('bot_score', 0) >= 70]
                 
                 # Send summary
-                summary = f"<b>🤖 BOT SCAN RESULTS</b>\n\n"
-                summary += f"📊 Scanned: {len(symbols)} symbols\n"
-                summary += f"⚠️ Alerts: {len(pump_alerts) + len(bot_alerts)}\n\n"
+                summary = f"<b>🤖 KẾT QUẢ QUÉT BOT</b>\n\n"
+                summary += f"📊 Đã quét: {len(symbols)} symbols\n"
+                summary += f"⚠️ Cảnh báo: {len(pump_alerts) + len(bot_alerts)}\n\n"
                 
                 if pump_alerts:
-                    summary += f"🚀 <b>PUMP BOTS:</b> {len(pump_alerts)}\n"
+                    summary += f"🚀 <b>BOT PUMP:</b> {len(pump_alerts)}\n"
                 if bot_alerts:
-                    summary += f"🤖 <b>Trading BOTS:</b> {len(bot_alerts)}\n"
+                    summary += f"🤖 <b>BOT Giao Dịch:</b> {len(bot_alerts)}\n"
                 
-                summary += f"\n📤 Sending detailed analysis..."
+                summary += f"\n📤 Đang gửi phân tích chi tiết..."
                 
                 self.bot.send_message(summary)
                 time.sleep(1)
@@ -1653,21 +1656,22 @@ class TelegramCommandHandler:
                 for i, detection in enumerate(sorted_detections[:10], 1):  # Limit to top 10
                     try:
                         analysis_msg = self.bot_detector.get_formatted_analysis(detection)
-                        self.bot.send_message(f"<b>Result {i}/{min(10, len(sorted_detections))}</b>\n\n{analysis_msg}")
+                        self.bot.send_message(f"<b>Kết quả {i}/{min(10, len(sorted_detections))}</b>\n\n{analysis_msg}")
                         time.sleep(1.5)
                     except Exception as e:
                         logger.error(f"Error sending detection {i}: {e}")
                 
                 if len(sorted_detections) > 10:
-                    self.bot.send_message(f"ℹ️ Showing top 10 of {len(sorted_detections)} total detections")
+                    self.bot.send_message(f"ℹ️ Hiển thị top 10 trong tổng {len(sorted_detections)} phát hiện")
                 
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"✅ <b>Bot scan complete!</b>", reply_markup=keyboard)
+                self.bot.send_message(f"✅ <b>Quét bot hoàn tất!</b>", reply_markup=keyboard)
                 
             except Exception as e:
                 logger.error(f"Error in /botscan: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['botthreshold'])
         def handle_botthreshold(message):
@@ -1681,14 +1685,14 @@ class TelegramCommandHandler:
                 if len(parts) < 2:
                     # Show current thresholds
                     status = self.bot_monitor.get_status()
-                    msg = f"<b>🎯 Bot Detection Thresholds</b>\n\n"
-                    msg += f"<b>Current settings:</b>\n"
-                    msg += f"🤖 Trading Bot: {status['bot_threshold']}%\n"
-                    msg += f"🚀 Pump Bot: {status['pump_threshold']}%\n\n"
-                    msg += f"<b>Usage:</b>\n"
+                    msg = f"<b>🎯 Ngưỡng Phát Hiện Bot</b>\n\n"
+                    msg += f"<b>Cài đặt hiện tại:</b>\n"
+                    msg += f"🤖 Bot Giao Dịch: {status['bot_threshold']}%\n"
+                    msg += f"🚀 Bot Pump: {status['pump_threshold']}%\n\n"
+                    msg += f"<b>Cách dùng:</b>\n"
                     msg += f"/botthreshold bot 80\n"
                     msg += f"/botthreshold pump 70\n\n"
-                    msg += f"Range: 0-100%"
+                    msg += f"Khoảng: 0-100%"
                     
                     keyboard = self.bot.create_main_menu_keyboard()
                     self.bot.send_message(msg, reply_markup=keyboard)
@@ -1698,18 +1702,18 @@ class TelegramCommandHandler:
                 threshold_value = int(parts[2]) if len(parts) > 2 else None
                 
                 if threshold_value is None:
-                    self.bot.send_message("❌ Please specify threshold value\n\n"
-                                        "Example: /botthreshold bot 80")
+                    self.bot.send_message("❌ Vui lòng chỉ định giá trị ngưỡng\n\n"
+                                        "Ví dụ: /botthreshold bot 80")
                     return
                 
                 if threshold_type == 'bot':
                     self.bot_monitor.set_thresholds(bot_threshold=threshold_value)
-                    msg = f"✅ Trading Bot threshold updated to {threshold_value}%"
+                    msg = f"✅ Ngưỡng Bot Giao Dịch đã cập nhật thành {threshold_value}%"
                 elif threshold_type == 'pump':
                     self.bot_monitor.set_thresholds(pump_threshold=threshold_value)
-                    msg = f"✅ Pump Bot threshold updated to {threshold_value}%"
+                    msg = f"✅ Ngưỡng Bot Pump đã cập nhật thành {threshold_value}%"
                 else:
-                    msg = "❌ Invalid type. Use 'bot' or 'pump'"
+                    msg = "❌ Loại không hợp lệ. Dùng 'bot' hoặc 'pump'"
                 
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(msg, reply_markup=keyboard)
@@ -1717,7 +1721,8 @@ class TelegramCommandHandler:
             except Exception as e:
                 logger.error(f"Error in /botthreshold: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
-                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)), reply_markup=keyboard)
         
         # ===== SYMBOL ANALYSIS HANDLER (MUST BE LAST) =====
         @self.telegram_bot.message_handler(func=lambda m: m.text and m.text.startswith('/') and 
