@@ -42,6 +42,10 @@ class TelegramCommandHandler:
         from market_scanner import MarketScanner
         self.market_scanner = MarketScanner(self, scan_interval=900)  # 15 minutes
         
+        # Initialize bot activity monitor
+        from bot_monitor import BotMonitor
+        self.bot_monitor = BotMonitor(self, check_interval=1800)  # 30 minutes
+        
         # Use monitor's volume detector for signal alerts (shared instance)
         self.volume_detector = self.monitor.volume_detector
         
@@ -212,7 +216,8 @@ class TelegramCommandHandler:
             'watch', 'unwatch', 'watchlist', 'scanwatch', 'clearwatch',
             'performance', 'startmonitor', 'stopmonitor', 'monitorstatus',
             'volumescan', 'volumesensitivity',
-            'startmarketscan', 'stopmarketscan', 'marketstatus'
+            'startmarketscan', 'stopmarketscan', 'marketstatus',
+            'startbotmonitor', 'stopbotmonitor', 'botmonitorstatus', 'botscan', 'botthreshold'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -453,6 +458,13 @@ Example: /BTC /ETH /LINK
 /startmarketscan - Auto-scan ALL Binance
 /stopmarketscan - Stop market scanner
 /marketstatus - Scanner status
+
+<b>🤖 BOT MONITOR:</b>
+/startbotmonitor - Auto-detect bots
+/stopbotmonitor - Stop bot monitor
+/botmonitorstatus - Monitor status
+/botscan - Manual bot scan
+/botthreshold - Set alert levels
 
 <b>ℹ️ INFO:</b>
 /help - Show this message
@@ -1606,6 +1618,231 @@ Example: /BTC /ETH /LINK
                 
             except Exception as e:
                 logger.error(f"Error in /volumesensitivity: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['startbotmonitor'])
+        def handle_startbotmonitor(message):
+            """Start automatic bot activity monitor"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                if self.bot_monitor.running:
+                    msg = "⚠️ Bot monitor is already running!\n\n"
+                    msg += "💡 Use /botmonitorstatus to check status"
+                else:
+                    success = self.bot_monitor.start()
+                    
+                    if success:
+                        status = self.bot_monitor.get_status()
+                        msg = "✅ <b>Bot Activity Monitor Started!</b>\n\n"
+                        msg += "🔍 <b>What it monitors:</b>\n"
+                        msg += "   • Trading bot patterns\n"
+                        msg += "   • Pump & dump schemes\n"
+                        msg += "   • Automated trading activity\n\n"
+                        msg += f"⏱️ <b>Check interval:</b> {status['check_interval']//60} minutes\n"
+                        msg += f"📊 <b>Monitoring:</b> {status['watchlist_count']} symbols\n"
+                        msg += f"🤖 <b>Bot alert:</b> Score ≥{status['bot_threshold']}%\n"
+                        msg += f"🚀 <b>Pump alert:</b> Score ≥{status['pump_threshold']}%\n"
+                        msg += f"🔔 <b>Cooldown:</b> {status['alert_cooldown']//60} min/symbol\n\n"
+                        msg += "🚀 Monitor running in background...\n"
+                        msg += "💡 Use /stopbotmonitor to stop"
+                    else:
+                        msg = "❌ Failed to start bot monitor\n\n"
+                        msg += "⚠️ Make sure your watchlist is not empty\n"
+                        msg += "Use /watch SYMBOL to add coins"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /startbotmonitor: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['stopbotmonitor'])
+        def handle_stopbotmonitor(message):
+            """Stop automatic bot activity monitor"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                if not self.bot_monitor.running:
+                    msg = "⚠️ Bot monitor is not running"
+                else:
+                    success = self.bot_monitor.stop()
+                    if success:
+                        msg = "⛔ <b>Bot Activity Monitor Stopped</b>\n\n"
+                        msg += "🔕 Auto-monitoring disabled\n"
+                        msg += "💡 Use /startbotmonitor to resume"
+                    else:
+                        msg = "❌ Failed to stop bot monitor"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /stopbotmonitor: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['botmonitorstatus'])
+        def handle_botmonitorstatus(message):
+            """Show bot monitor status"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                status = self.bot_monitor.get_status()
+                
+                status_icon = "🟢" if status['running'] else "🔴"
+                status_text = "RUNNING" if status['running'] else "STOPPED"
+                
+                msg = f"{status_icon} <b>Bot Monitor Status: {status_text}</b>\n\n"
+                msg += f"⏱️ <b>Check interval:</b> {status['check_interval']//60} min ({status['check_interval']}s)\n"
+                msg += f"📊 <b>Watchlist:</b> {status['watchlist_count']} symbols\n"
+                msg += f"🤖 <b>Bot threshold:</b> {status['bot_threshold']}%\n"
+                msg += f"🚀 <b>Pump threshold:</b> {status['pump_threshold']}%\n"
+                msg += f"🔔 <b>Alert cooldown:</b> {status['alert_cooldown']//60} minutes\n"
+                msg += f"💾 <b>Tracked symbols:</b> {status['tracked_symbols']}\n\n"
+                
+                if status['running']:
+                    msg += "🔍 <b>Monitoring for:</b>\n"
+                    msg += "   🤖 High-frequency trading bots\n"
+                    msg += "   🚀 Pump & dump schemes\n"
+                    msg += "   📊 Market manipulation\n\n"
+                    msg += "✅ Auto-alerts enabled\n"
+                    msg += "💡 Use /stopbotmonitor to stop"
+                else:
+                    msg += "🔕 Auto-monitoring: OFF\n"
+                    msg += "💡 Use /startbotmonitor to start\n"
+                    msg += "💡 Use /botscan for manual scan"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /botmonitorstatus: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['botscan'])
+        def handle_botscan(message):
+            """Manual bot activity scan of watchlist"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                symbols = self.watchlist.get_all()
+                
+                if not symbols:
+                    self.bot.send_message("⚠️ <b>Watchlist is empty!</b>\n\n"
+                                        "Add coins first with /watch SYMBOL")
+                    return
+                
+                self.bot.send_message(f"🔍 <b>Scanning {len(symbols)} symbols for bot activity...</b>\n\n"
+                                    f"⏳ This may take a moment...")
+                
+                # Perform manual scan
+                detections = self.bot_monitor.manual_scan()
+                
+                if not detections:
+                    self.bot.send_message("✅ <b>Scan Complete</b>\n\n"
+                                        f"No significant bot activity detected in {len(symbols)} symbols.\n\n"
+                                        f"All symbols show normal trading patterns.")
+                    return
+                
+                # Count alerts
+                pump_alerts = [d for d in detections if d.get('pump_score', 0) >= 60]
+                bot_alerts = [d for d in detections if d.get('bot_score', 0) >= 70]
+                
+                # Send summary
+                summary = f"<b>🤖 BOT SCAN RESULTS</b>\n\n"
+                summary += f"📊 Scanned: {len(symbols)} symbols\n"
+                summary += f"⚠️ Alerts: {len(pump_alerts) + len(bot_alerts)}\n\n"
+                
+                if pump_alerts:
+                    summary += f"🚀 <b>PUMP BOTS:</b> {len(pump_alerts)}\n"
+                if bot_alerts:
+                    summary += f"🤖 <b>Trading BOTS:</b> {len(bot_alerts)}\n"
+                
+                summary += f"\n📤 Sending detailed analysis..."
+                
+                self.bot.send_message(summary)
+                time.sleep(1)
+                
+                # Send all detections (sorted by score)
+                sorted_detections = sorted(detections, 
+                                         key=lambda x: max(x.get('bot_score', 0), x.get('pump_score', 0)), 
+                                         reverse=True)
+                
+                for i, detection in enumerate(sorted_detections[:10], 1):  # Limit to top 10
+                    try:
+                        analysis_msg = self.bot_detector.get_formatted_analysis(detection)
+                        self.bot.send_message(f"<b>Result {i}/{min(10, len(sorted_detections))}</b>\n\n{analysis_msg}")
+                        time.sleep(1.5)
+                    except Exception as e:
+                        logger.error(f"Error sending detection {i}: {e}")
+                
+                if len(sorted_detections) > 10:
+                    self.bot.send_message(f"ℹ️ Showing top 10 of {len(sorted_detections)} total detections")
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"✅ <b>Bot scan complete!</b>", reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /botscan: {e}")
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
+        
+        @self.telegram_bot.message_handler(commands=['botthreshold'])
+        def handle_botthreshold(message):
+            """Set bot detection thresholds"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                parts = message.text.split()
+                
+                if len(parts) < 2:
+                    # Show current thresholds
+                    status = self.bot_monitor.get_status()
+                    msg = f"<b>🎯 Bot Detection Thresholds</b>\n\n"
+                    msg += f"<b>Current settings:</b>\n"
+                    msg += f"🤖 Trading Bot: {status['bot_threshold']}%\n"
+                    msg += f"🚀 Pump Bot: {status['pump_threshold']}%\n\n"
+                    msg += f"<b>Usage:</b>\n"
+                    msg += f"/botthreshold bot 80\n"
+                    msg += f"/botthreshold pump 70\n\n"
+                    msg += f"Range: 0-100%"
+                    
+                    keyboard = self.bot.create_main_menu_keyboard()
+                    self.bot.send_message(msg, reply_markup=keyboard)
+                    return
+                
+                threshold_type = parts[1].lower()
+                threshold_value = int(parts[2]) if len(parts) > 2 else None
+                
+                if threshold_value is None:
+                    self.bot.send_message("❌ Please specify threshold value\n\n"
+                                        "Example: /botthreshold bot 80")
+                    return
+                
+                if threshold_type == 'bot':
+                    self.bot_monitor.set_thresholds(bot_threshold=threshold_value)
+                    msg = f"✅ Trading Bot threshold updated to {threshold_value}%"
+                elif threshold_type == 'pump':
+                    self.bot_monitor.set_thresholds(pump_threshold=threshold_value)
+                    msg = f"✅ Pump Bot threshold updated to {threshold_value}%"
+                else:
+                    msg = "❌ Invalid type. Use 'bot' or 'pump'"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /botthreshold: {e}")
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(f"❌ Error: {str(e)}", reply_markup=keyboard)
         
