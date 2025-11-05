@@ -48,8 +48,12 @@ class TelegramCommandHandler:
         # Import config and indicators early for use in analyze_symbol
         import config
         from indicators import analyze_multi_timeframe
+        from bot_detector import BotDetector
         self._config = config
         self._analyze_multi_timeframe = analyze_multi_timeframe
+        
+        # Initialize bot detector
+        self.bot_detector = BotDetector(binance_client)
         
         # Setup command handlers
         self.setup_handlers()
@@ -1641,6 +1645,22 @@ Example: /BTC /ETH /LINK
                     self.bot.send_message(f"❌ No data found for {symbol}. Symbol may not exist or be delisted.")
                     return
                 
+                # Validate data types in all timeframes
+                for tf, df in klines_dict.items():
+                    if df is None or len(df) < 14:
+                        continue
+                    # Check for NaN values and ensure numeric types
+                    if df[['high', 'low', 'close', 'volume']].isnull().any().any():
+                        logger.warning(f"Skipping {symbol} {tf} - contains invalid data")
+                        klines_dict[tf] = None
+                
+                # Remove None entries
+                klines_dict = {k: v for k, v in klines_dict.items() if v is not None}
+                
+                if not klines_dict:
+                    self.bot.send_message(f"❌ Invalid data for {symbol}. Cannot analyze.")
+                    return
+                
                 # Analyze
                 analysis = self._analyze_multi_timeframe(
                     klines_dict,
@@ -1669,6 +1689,16 @@ Example: /BTC /ETH /LINK
                     except Exception as e:
                         logger.error(f"Volume analysis failed for {symbol}: {e}")
                 
+                # Detect bot activity
+                bot_detection = None
+                try:
+                    logger.info(f"Detecting bot activity for {symbol}...")
+                    bot_detection = self.bot_detector.detect_bot_activity(symbol)
+                    if bot_detection:
+                        logger.info(f"Bot detection for {symbol}: Score={bot_detection['bot_score']}%, Likely={bot_detection['likely_bot_activity']}")
+                except Exception as e:
+                    logger.error(f"Bot detection failed for {symbol}: {e}")
+                
                 # Send analysis
                 self.bot.send_signal_alert(
                     symbol,
@@ -1679,6 +1709,11 @@ Example: /BTC /ETH /LINK
                     market_data,
                     volume_data
                 )
+                
+                # Send bot detection if available
+                if bot_detection:
+                    bot_msg = self.bot_detector.get_formatted_analysis(bot_detection)
+                    self.bot.send_message(bot_msg)
                 
                 # Send charts (2 separate charts)
                 if self._config.SEND_CHARTS:
