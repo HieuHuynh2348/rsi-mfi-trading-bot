@@ -406,6 +406,95 @@ class TelegramCommandHandler:
                         handle_stopmarketscan(fake_msg)
                     elif cmd == "marketstatus":
                         handle_marketstatus(fake_msg)
+                    elif cmd == "startbotmonitor":
+                        handle_startbotmonitor(fake_msg)
+                    elif cmd == "stopbotmonitor":
+                        handle_stopbotmonitor(fake_msg)
+                    elif cmd == "botmonitorstatus":
+                        handle_botmonitorstatus(fake_msg)
+                    elif cmd == "botscan":
+                        handle_botscan(fake_msg)
+                    elif cmd == "botthreshold":
+                        # Show bot threshold help
+                        status = self.bot_monitor.get_status()
+                        keyboard = self.bot.create_bot_monitor_keyboard()
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"<b>🎯 Ngưỡng Phát Hiện Bot</b>\n\n"
+                                 f"<b>Hiện tại:</b>\n"
+                                 f"🤖 Bot: {status['bot_threshold']}%\n"
+                                 f"🚀 Pump: {status['pump_threshold']}%\n\n"
+                                 f"<b>Dùng lệnh:</b>\n"
+                                 f"/botthreshold bot 75\n"
+                                 f"/botthreshold pump 80",
+                            parse_mode='HTML',
+                            reply_markup=keyboard
+                        )
+                    elif cmd == "startpumpwatch":
+                        handle_startpumpwatch(fake_msg)
+                    elif cmd == "stoppumpwatch":
+                        handle_stoppumpwatch(fake_msg)
+                    elif cmd == "pumpstatus":
+                        handle_pumpstatus(fake_msg)
+                
+                # Pump scan callbacks
+                elif data.startswith("pumpscan_"):
+                    symbol = data.replace("pumpscan_", "")
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=f"🔍 <b>Đang phân tích {symbol} qua 3 layers...</b>\n\n⏳ Vui lòng chờ 10-15 giây...",
+                        parse_mode='HTML'
+                    )
+                    
+                    # Perform pump scan
+                    result = self.pump_detector.manual_scan(symbol)
+                    
+                    if not result:
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"❌ <b>Không thể phân tích {symbol}</b>\n\n"
+                                 "Symbol có thể không tồn tại hoặc thiếu dữ liệu.",
+                            parse_mode='HTML'
+                        )
+                        return
+                    
+                    # Build result message
+                    msg = f"<b>📊 PUMP ANALYSIS - {symbol}</b>\n\n"
+                    msg += f"<b>Kết Quả:</b> {result['result']}\n\n"
+                    
+                    if 'final_score' in result:
+                        score = result['final_score']
+                        msg += f"<b>🎯 Điểm Tổng Hợp: {score:.0f}%</b>\n\n"
+                        
+                        if score >= 90:
+                            msg += "✅ <b>PUMP RẤT CAO - 90%+ chính xác</b>\n"
+                        elif score >= 80:
+                            msg += "✅ <b>PUMP CAO - 80%+ chính xác</b>\n"
+                        else:
+                            msg += "⚠️ <b>Dưới ngưỡng - Không khuyến nghị</b>\n"
+                    
+                    # Layer details (abbreviated for callback)
+                    if 'layer1' in result and result['layer1']:
+                        layer1 = result['layer1']
+                        msg += f"\n⚡ Layer 1 (5m): {layer1['pump_score']:.0f}%"
+                    
+                    if 'layer2' in result and result['layer2']:
+                        layer2 = result['layer2']
+                        msg += f" | ✅ Layer 2: {layer2['pump_score']:.0f}%"
+                    
+                    if 'layer3' in result and result['layer3']:
+                        layer3 = result['layer3']
+                        msg += f" | 📈 Layer 3: {layer3['pump_score']:.0f}%"
+                    
+                    msg += f"\n\n⚠️ <i>Phân tích kỹ thuật - không phải tư vấn tài chính</i>"
+                    
+                    keyboard = self.bot.create_pump_detector_keyboard()
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=msg,
+                        parse_mode='HTML',
+                        reply_markup=keyboard
+                    )
                 
             except Exception as e:
                 logger.error(f"Error handling callback: {e}")
