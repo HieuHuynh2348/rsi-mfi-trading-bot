@@ -1,7 +1,8 @@
 """
-Market Scanner - Automatic Extreme RSI Detection
+Market Scanner - Automatic Extreme RSI Detection with Bot Analysis
 Scans all Binance USDT pairs for extreme overbought/oversold RSI conditions on 1D timeframe
 Alert condition: RSI only (MFI is calculated but not used for alerts)
+Additionally detects: Bot activity, Pump patterns, Dump patterns for early entry signals
 """
 
 import logging
@@ -25,6 +26,7 @@ class MarketScanner:
         self.command_handler = command_handler
         self.binance = command_handler.binance
         self.bot = command_handler.bot
+        self.bot_detector = command_handler.bot_detector  # Add bot detector
         self.scan_interval = scan_interval
         
         # Scanner state
@@ -38,7 +40,7 @@ class MarketScanner:
         self.mfi_upper = 80
         self.mfi_lower = 20
         
-        logger.info(f"Market scanner initialized (interval: {self.scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
+        logger.info(f"Market scanner initialized with bot detection (interval: {self.scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
     
     def start(self):
         """Start market scanner"""
@@ -152,6 +154,7 @@ class MarketScanner:
         """
         Analyze single coin for extreme RSI on 1D timeframe
         (MFI is calculated for display but only RSI triggers alerts)
+        Additionally performs bot detection and pump/dump analysis
         
         Args:
             symbol: Trading symbol
@@ -196,12 +199,31 @@ class MarketScanner:
             # Get current price
             current_price = df_1d['close'].iloc[-1]
             
+            # Perform bot detection for extreme coins
+            bot_detection = None
+            try:
+                bot_detection = self.bot_detector.detect_bot_activity(symbol)
+                if bot_detection:
+                    logger.info(f"🤖 Bot analysis for {symbol}: Bot={bot_detection.get('bot_score', 0):.1f}%, Pump={bot_detection.get('pump_score', 0):.1f}%")
+            except Exception as e:
+                logger.warning(f"Bot detection failed for {symbol}: {e}")
+            
             # Determine condition type (RSI only)
             conditions = []
             if current_rsi >= self.rsi_upper:
                 conditions.append(f"RSI Overbought ({current_rsi:.1f})")
             if current_rsi <= self.rsi_lower:
                 conditions.append(f"RSI Oversold ({current_rsi:.1f})")
+            
+            # Add bot/pump warnings if detected
+            if bot_detection:
+                bot_score = bot_detection.get('bot_score', 0)
+                pump_score = bot_detection.get('pump_score', 0)
+                
+                if pump_score >= 45:  # Pump detected
+                    conditions.append(f"⚠️ PUMP Pattern ({pump_score:.0f}%)")
+                if bot_score >= 40:  # Bot activity detected
+                    conditions.append(f"🤖 Bot Activity ({bot_score:.0f}%)")
             
             return {
                 'symbol': symbol,
@@ -210,6 +232,7 @@ class MarketScanner:
                 'mfi_1d': current_mfi,  # Include MFI for display
                 'price': current_price,
                 'conditions': conditions,
+                'bot_detection': bot_detection,  # Include full bot analysis
                 'timestamp': datetime.now()
             }
             
@@ -246,23 +269,49 @@ class MarketScanner:
             summary = f"<b>🔍 MARKET SCAN ALERT</b>\n\n"
             summary += f"⚡ Found <b>{len(new_alerts)}</b> coins with extreme 1D RSI:\n\n"
             
+            # Count bot/pump detections
+            pump_count = sum(1 for c in new_alerts if c.get('bot_detection') and c['bot_detection'].get('pump_score', 0) >= 45)
+            bot_count = sum(1 for c in new_alerts if c.get('bot_detection') and c['bot_detection'].get('bot_score', 0) >= 40)
+            
             for coin in new_alerts:
                 symbol = coin['symbol']
                 rsi = coin['rsi_1d']
                 mfi = coin.get('mfi_1d')
                 conditions_text = ", ".join(coin['conditions'])
+                bot_data = coin.get('bot_detection')
                 
-                # Emoji based on condition
+                # Emoji based on condition and bot detection
                 if rsi <= self.rsi_lower:
                     emoji = "🟢"  # Oversold - potential buy
+                    if bot_data and bot_data.get('pump_score', 0) >= 45:
+                        emoji = "🚀🟢"  # Pump + Oversold = Strong buy signal
                 else:
                     emoji = "🔴"  # Overbought - potential sell
+                    if bot_data and bot_data.get('pump_score', 0) >= 45:
+                        emoji = "⚠️🔴"  # Pump + Overbought = Dump warning
                 
                 summary += f"{emoji} <b>{symbol}</b>\n"
                 summary += f"   📊 RSI: {rsi:.1f}"
                 if mfi is not None:
                     summary += f" | MFI: {mfi:.1f}"
+                
+                # Add bot/pump scores
+                if bot_data:
+                    bot_score = bot_data.get('bot_score', 0)
+                    pump_score = bot_data.get('pump_score', 0)
+                    if pump_score >= 45 or bot_score >= 40:
+                        summary += f"\n   🤖 Bot: {bot_score:.0f}% | Pump: {pump_score:.0f}%"
+                
                 summary += f"\n   ⚡ {conditions_text}\n\n"
+            
+            # Add summary stats
+            if pump_count > 0 or bot_count > 0:
+                summary += f"<b>⚠️ DETECTED:</b>\n"
+                if pump_count > 0:
+                    summary += f"🚀 {pump_count} PUMP pattern(s)\n"
+                if bot_count > 0:
+                    summary += f"🤖 {bot_count} Bot activity\n"
+                summary += f"\n"
             
             summary += f"📤 Sending detailed analysis for each coin...\n"
             
@@ -272,8 +321,8 @@ class MarketScanner:
             
             for coin in new_alerts:
                 try:
-                    # Send 1D-only analysis instead of full multi-timeframe
-                    self._send_1d_analysis(coin)
+                    # Send 1D analysis with bot detection
+                    self._send_1d_analysis_with_bot(coin)
                     time.sleep(2)  # Rate limiting between coins
                 except Exception as e:
                     logger.error(f"Error sending 1D analysis for {coin['symbol']}: {e}")
@@ -282,6 +331,129 @@ class MarketScanner:
             
         except Exception as e:
             logger.error(f"Error sending alerts: {e}")
+    
+    def _send_1d_analysis_with_bot(self, coin):
+        """
+        Send 1D analysis for a coin with bot detection (calculates both RSI and MFI, shows both + bot analysis)
+        
+        Args:
+            coin: Coin data dict with symbol, rsi_1d, mfi_1d, price, conditions, bot_detection
+        """
+        try:
+            symbol = coin['symbol']
+            bot_detection = coin.get('bot_detection')
+            
+            # Get only 1D klines
+            df_1d = self.binance.get_klines(symbol, '1d', limit=100)
+            
+            if df_1d is None or len(df_1d) < 14:
+                logger.warning(f"No 1D data for {symbol}")
+                return
+            
+            # Calculate both RSI and MFI
+            from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
+            
+            hlcc4 = calculate_hlcc4(df_1d)
+            rsi_series = calculate_rsi(hlcc4, period=14)
+            mfi_series = calculate_mfi(df_1d, period=14)
+            
+            # Get current values
+            current_rsi = rsi_series.iloc[-1]
+            current_mfi = mfi_series.iloc[-1] if mfi_series is not None else None
+            last_rsi = rsi_series.iloc[-2] if len(rsi_series) >= 2 else current_rsi
+            last_mfi = mfi_series.iloc[-2] if mfi_series is not None and len(mfi_series) >= 2 else current_mfi
+            
+            # Get signal based on both RSI and MFI (for display)
+            from indicators import get_signal
+            signal = get_signal(
+                current_rsi, 
+                current_mfi if current_mfi is not None else 50,  # Default MFI to neutral if None
+                self.rsi_lower, 
+                self.rsi_upper,
+                self.mfi_lower, 
+                self.mfi_upper
+            )
+            
+            # Determine consensus with bot/pump consideration
+            base_consensus = "BUY" if signal == 1 else ("SELL" if signal == -1 else "NEUTRAL")
+            consensus_strength = 1 if signal != 0 else 0
+            
+            # Enhance signal with bot detection
+            enhanced_signal = base_consensus
+            if bot_detection:
+                pump_score = bot_detection.get('pump_score', 0)
+                bot_score = bot_detection.get('bot_score', 0)
+                
+                # Strong pump + oversold RSI = Strong BUY
+                if pump_score >= 60 and current_rsi <= self.rsi_lower:
+                    enhanced_signal = "🚀 STRONG BUY (PUMP + OVERSOLD)"
+                    consensus_strength = 2
+                # Pump + overbought RSI = DUMP WARNING
+                elif pump_score >= 60 and current_rsi >= self.rsi_upper:
+                    enhanced_signal = "⚠️ DUMP WARNING (PUMP + OVERBOUGHT)"
+                    consensus_strength = 2
+                # High bot activity + signal
+                elif bot_score >= 70:
+                    if base_consensus == "BUY":
+                        enhanced_signal = "🤖 BOT BUY SIGNAL"
+                    elif base_consensus == "SELL":
+                        enhanced_signal = "🤖 BOT SELL SIGNAL"
+            
+            # Get price and market data
+            price = self.binance.get_current_price(symbol)
+            market_data = self.binance.get_24h_data(symbol)
+            
+            # Build enhanced message with bot analysis
+            msg = f"<b>📊 {symbol} - MARKET SCAN + BOT ANALYSIS</b>\n\n"
+            
+            # RSI/MFI Section
+            msg += f"<b>📈 Technical Indicators (1D):</b>\n"
+            msg += f"RSI: {current_rsi:.2f} ({'+' if current_rsi > last_rsi else ''}{current_rsi - last_rsi:.2f})\n"
+            if current_mfi is not None:
+                msg += f"MFI: {current_mfi:.2f} ({'+' if current_mfi > last_mfi else ''}{current_mfi - last_mfi:.2f})\n"
+            
+            # Signal
+            msg += f"\n<b>📍 Signal: {enhanced_signal}</b>\n"
+            
+            # Bot Detection Section
+            if bot_detection:
+                msg += f"\n<b>🤖 BOT ANALYSIS:</b>\n"
+                bot_score = bot_detection.get('bot_score', 0)
+                pump_score = bot_detection.get('pump_score', 0)
+                
+                msg += f"Bot Activity: {bot_score:.1f}% {'✅ DETECTED' if bot_score >= 40 else '❌'}\n"
+                msg += f"Pump Pattern: {pump_score:.1f}% {'🚀 DETECTED' if pump_score >= 45 else '❌'}\n"
+                
+                # Add specific warnings
+                if pump_score >= 60 and current_rsi <= self.rsi_lower:
+                    msg += f"\n⚡ <b>EARLY ENTRY OPPORTUNITY!</b>\n"
+                    msg += f"   • Pump pattern forming\n"
+                    msg += f"   • RSI oversold - potential bounce\n"
+                    msg += f"   • Consider entry within 3 minutes\n"
+                elif pump_score >= 60 and current_rsi >= self.rsi_upper:
+                    msg += f"\n⚠️ <b>DUMP WARNING!</b>\n"
+                    msg += f"   • Pump pattern + Overbought\n"
+                    msg += f"   • High risk of dump\n"
+                    msg += f"   • Avoid buy / Consider exit\n"
+                elif bot_score >= 70:
+                    msg += f"\n🤖 <b>HIGH BOT ACTIVITY!</b>\n"
+                    msg += f"   • Potential manipulation\n"
+                    msg += f"   • Watch for sudden moves\n"
+            
+            # Price and Market Data
+            if price and market_data:
+                msg += f"\n<b>💰 Price Info:</b>\n"
+                msg += f"Current: ${price:,.8f}\n"
+                change_24h = market_data.get('priceChangePercent', 0)
+                msg += f"24h Change: {change_24h:+.2f}%\n"
+                volume_24h = market_data.get('quoteVolume', 0)
+                msg += f"24h Volume: ${float(volume_24h):,.0f}\n"
+            
+            self.bot.send_message(msg)
+            logger.info(f"✅ Sent 1D analysis with bot detection for {symbol}")
+            
+        except Exception as e:
+            logger.error(f"Error in 1D analysis with bot detection for {coin.get('symbol', 'UNKNOWN')}: {e}")
     
     def _send_1d_analysis(self, coin):
         """
