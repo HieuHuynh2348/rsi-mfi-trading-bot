@@ -1,6 +1,6 @@
 """
-Market Scanner - Automatic Extreme RSI/MFI Detection
-Scans all Binance USDT pairs for extreme overbought/oversold conditions on 1D timeframe
+Market Scanner - Automatic Extreme RSI Detection
+Scans all Binance USDT pairs for extreme overbought/oversold RSI conditions on 1D timeframe
 """
 
 import logging
@@ -31,13 +31,11 @@ class MarketScanner:
         self.thread = None
         self.last_alerts = {}  # Track last alerts to avoid duplicates
         
-        # Extreme levels for 1D timeframe
+        # Extreme levels for 1D timeframe (RSI only)
         self.rsi_upper = 80
         self.rsi_lower = 20
-        self.mfi_upper = 80
-        self.mfi_lower = 20
         
-        logger.info(f"Market scanner initialized (interval: {scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper}, MFI: {self.mfi_lower}-{self.mfi_upper})")
+        logger.info(f"Market scanner initialized (interval: {scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
     
     def start(self):
         """Start market scanner"""
@@ -98,7 +96,7 @@ class MarketScanner:
     
     def _scan_market(self):
         """
-        Scan all Binance USDT pairs for extreme RSI/MFI on 1D
+        Scan all Binance USDT pairs for extreme RSI on 1D (MFI not checked)
         
         Returns:
             List of coins with extreme conditions
@@ -135,7 +133,7 @@ class MarketScanner:
                         result = future.result()
                         if result and result.get('is_extreme'):
                             extreme_coins.append(result)
-                            logger.info(f"⚡ EXTREME: {symbol} - RSI: {result.get('rsi_1d', 0):.1f}, MFI: {result.get('mfi_1d', 0):.1f}")
+                            logger.info(f"⚡ EXTREME: {symbol} - RSI: {result.get('rsi_1d', 0):.1f}")
                     except Exception as e:
                         logger.debug(f"Error analyzing {symbol}: {e}")
             
@@ -147,7 +145,7 @@ class MarketScanner:
     
     def _analyze_coin_1d(self, symbol):
         """
-        Analyze single coin for extreme RSI/MFI on 1D timeframe
+        Analyze single coin for extreme RSI on 1D timeframe (MFI not checked)
         
         Args:
             symbol: Trading symbol
@@ -167,25 +165,21 @@ class MarketScanner:
                 logger.debug(f"Skipping {symbol} - contains invalid data")
                 return None
             
-            # Calculate RSI and MFI for 1D
-            from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
+            # Calculate RSI only for 1D
+            from indicators import calculate_rsi, calculate_hlcc4
             
             hlcc4 = calculate_hlcc4(df_1d)
             rsi_1d = calculate_rsi(hlcc4, period=14)
-            mfi_1d = calculate_mfi(df_1d, period=14)
             
-            if rsi_1d is None or mfi_1d is None:
+            if rsi_1d is None:
                 return None
             
             current_rsi = rsi_1d.iloc[-1]
-            current_mfi = mfi_1d.iloc[-1]
             
-            # Check if extreme
+            # Check if extreme (RSI only)
             is_extreme = (
                 current_rsi >= self.rsi_upper or 
-                current_rsi <= self.rsi_lower or
-                current_mfi >= self.mfi_upper or
-                current_mfi <= self.mfi_lower
+                current_rsi <= self.rsi_lower
             )
             
             if not is_extreme:
@@ -200,16 +194,11 @@ class MarketScanner:
                 conditions.append(f"RSI Overbought ({current_rsi:.1f})")
             if current_rsi <= self.rsi_lower:
                 conditions.append(f"RSI Oversold ({current_rsi:.1f})")
-            if current_mfi >= self.mfi_upper:
-                conditions.append(f"MFI Overbought ({current_mfi:.1f})")
-            if current_mfi <= self.mfi_lower:
-                conditions.append(f"MFI Oversold ({current_mfi:.1f})")
             
             return {
                 'symbol': symbol,
                 'is_extreme': True,
                 'rsi_1d': current_rsi,
-                'mfi_1d': current_mfi,
                 'price': current_price,
                 'conditions': conditions,
                 'timestamp': datetime.now()
@@ -246,22 +235,21 @@ class MarketScanner:
             
             # Send summary first
             summary = f"<b>🔍 MARKET SCAN ALERT</b>\n\n"
-            summary += f"⚡ Found <b>{len(new_alerts)}</b> coins with extreme 1D RSI/MFI:\n\n"
+            summary += f"⚡ Found <b>{len(new_alerts)}</b> coins with extreme 1D RSI:\n\n"
             
             for coin in new_alerts:
                 symbol = coin['symbol']
                 rsi = coin['rsi_1d']
-                mfi = coin['mfi_1d']
                 conditions_text = ", ".join(coin['conditions'])
                 
                 # Emoji based on condition
-                if rsi <= self.rsi_lower or mfi <= self.mfi_lower:
+                if rsi <= self.rsi_lower:
                     emoji = "🟢"  # Oversold - potential buy
                 else:
                     emoji = "🔴"  # Overbought - potential sell
                 
                 summary += f"{emoji} <b>{symbol}</b>\n"
-                summary += f"   📊 RSI: {rsi:.1f} | MFI: {mfi:.1f}\n"
+                summary += f"   📊 RSI: {rsi:.1f}\n"
                 summary += f"   ⚡ {conditions_text}\n\n"
             
             summary += f"📤 Sending detailed analysis for each coin...\n"
@@ -285,10 +273,10 @@ class MarketScanner:
     
     def _send_1d_analysis(self, coin):
         """
-        Send 1D-only analysis for a coin (no multi-timeframe)
+        Send 1D-only analysis for a coin (RSI only, no MFI)
         
         Args:
-            coin: Coin data dict with symbol, rsi_1d, mfi_1d, price, conditions
+            coin: Coin data dict with symbol, rsi_1d, price, conditions
         """
         try:
             symbol = coin['symbol']
@@ -300,54 +288,47 @@ class MarketScanner:
                 logger.warning(f"No 1D data for {symbol}")
                 return
             
-            # Calculate RSI and MFI
-            from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
+            # Calculate RSI only
+            from indicators import calculate_rsi, calculate_hlcc4
             
             hlcc4 = calculate_hlcc4(df_1d)
             rsi_series = calculate_rsi(hlcc4, period=14)
-            mfi_series = calculate_mfi(df_1d, period=14)
             
             # Get current values
             current_rsi = rsi_series.iloc[-1]
-            current_mfi = mfi_series.iloc[-1]
             last_rsi = rsi_series.iloc[-2] if len(rsi_series) >= 2 else current_rsi
-            last_mfi = mfi_series.iloc[-2] if len(mfi_series) >= 2 else current_mfi
             
-            # Get signal
-            from indicators import get_signal
-            signal = get_signal(current_rsi, current_mfi, 
-                              self.rsi_lower, self.rsi_upper,
-                              self.mfi_lower, self.mfi_upper)
-            
-            # Determine consensus
-            if signal == 1:
-                consensus = "BUY"
-                consensus_strength = 1
-            elif signal == -1:
+            # Get signal based on RSI only
+            if current_rsi >= self.rsi_upper:
+                signal = -1  # SELL
                 consensus = "SELL"
-                consensus_strength = 1
+            elif current_rsi <= self.rsi_lower:
+                signal = 1  # BUY
+                consensus = "BUY"
             else:
+                signal = 0  # NEUTRAL
                 consensus = "NEUTRAL"
-                consensus_strength = 0
+            
+            consensus_strength = 1 if signal != 0 else 0
             
             # Get price and market data
             price = self.binance.get_current_price(symbol)
             market_data = self.binance.get_24h_data(symbol)
             
-            # Build timeframe_data with ONLY 1D
+            # Build timeframe_data with ONLY 1D and RSI (no MFI)
             timeframe_data = {
                 '1d': {
                     'rsi': round(current_rsi, 2),
-                    'mfi': round(current_mfi, 2),
+                    'mfi': None,  # No MFI
                     'last_rsi': round(last_rsi, 2),
-                    'last_mfi': round(last_mfi, 2),
+                    'last_mfi': None,  # No MFI
                     'rsi_change': round(current_rsi - last_rsi, 2),
-                    'mfi_change': round(current_mfi - last_mfi, 2),
+                    'mfi_change': None,  # No MFI
                     'signal': signal
                 }
             }
             
-            # Send alert with ONLY 1D timeframe
+            # Send alert with ONLY 1D timeframe and RSI
             self.bot.send_signal_alert(
                 symbol,
                 timeframe_data,
@@ -358,7 +339,7 @@ class MarketScanner:
                 None  # No volume data for market scanner
             )
             
-            logger.info(f"✅ Sent 1D-only analysis for {symbol}")
+            logger.info(f"✅ Sent 1D RSI-only analysis for {symbol}")
             
         except Exception as e:
             logger.error(f"Error in 1D analysis for {coin.get('symbol', 'UNKNOWN')}: {e}")
@@ -402,7 +383,6 @@ class MarketScanner:
             'running': self.running,
             'scan_interval': self.scan_interval,
             'rsi_levels': f"{self.rsi_lower}-{self.rsi_upper}",
-            'mfi_levels': f"{self.mfi_lower}-{self.mfi_upper}",
             'tracked_coins': len(self.last_alerts),
             'cooldown': '1 hour'
         }
