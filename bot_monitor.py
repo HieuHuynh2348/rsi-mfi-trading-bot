@@ -12,13 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class BotMonitor:
-    def __init__(self, command_handler, check_interval=1800):
+    def __init__(self, command_handler, check_interval=1800, scan_mode='all'):
         """
         Initialize Bot Monitor
         
         Args:
             command_handler: TelegramCommandHandler instance
             check_interval: Check interval in seconds (default: 1800 = 30 minutes)
+            scan_mode: 'watchlist' for watchlist only, 'all' for all top volume coins (default: 'all')
         """
         self.command_handler = command_handler
         self.binance = command_handler.binance
@@ -26,6 +27,7 @@ class BotMonitor:
         self.bot_detector = command_handler.bot_detector
         self.watchlist = command_handler.watchlist
         self.check_interval = check_interval
+        self.scan_mode = scan_mode  # 'watchlist' or 'all'
         
         # Monitor state
         self.running = False
@@ -37,7 +39,7 @@ class BotMonitor:
         self.pump_score_threshold = 45  # Alert if pump score >= 45%
         self.alert_cooldown = 3600  # 1 hour cooldown per symbol
         
-        logger.info(f"Bot monitor initialized (interval: {check_interval}s)")
+        logger.info(f"Bot monitor initialized (interval: {check_interval}s, mode: {scan_mode})")
     
     def start(self):
         """Start bot monitor"""
@@ -45,7 +47,8 @@ class BotMonitor:
             logger.warning("Bot monitor already running")
             return False
         
-        if self.watchlist.count() == 0:
+        # For 'all' mode, no need to check watchlist
+        if self.scan_mode == 'watchlist' and self.watchlist.count() == 0:
             logger.warning("Cannot start bot monitor: watchlist is empty")
             return False
         
@@ -69,21 +72,67 @@ class BotMonitor:
         logger.info("⛔ Bot monitor stopped")
         return True
     
+    def _get_top_volume_coins(self, limit=50):
+        """
+        Get top coins by 24h volume from Binance
+        
+        Args:
+            limit: Number of top coins to return (default: 50)
+            
+        Returns:
+            List of trading symbols
+        """
+        try:
+            logger.info(f"Fetching top {limit} coins by volume...")
+            
+            # Get all USDT pairs ticker
+            tickers = self.binance.client.get_ticker()
+            
+            # Filter USDT pairs only
+            usdt_pairs = [
+                ticker for ticker in tickers 
+                if ticker['symbol'].endswith('USDT')
+                and not any(x in ticker['symbol'] for x in ['UP', 'DOWN', 'BULL', 'BEAR'])  # Exclude leveraged tokens
+            ]
+            
+            # Sort by 24h quote volume (volume in USDT)
+            sorted_pairs = sorted(
+                usdt_pairs, 
+                key=lambda x: float(x.get('quoteVolume', 0)), 
+                reverse=True
+            )
+            
+            # Get top N symbols
+            top_symbols = [pair['symbol'] for pair in sorted_pairs[:limit]]
+            
+            logger.info(f"✅ Found {len(top_symbols)} top volume coins")
+            return top_symbols
+            
+        except Exception as e:
+            logger.error(f"Error getting top volume coins: {e}")
+            return []
+    
     def _monitor_loop(self):
         """Main monitoring loop"""
-        logger.info("Bot monitor loop started")
+        logger.info(f"Bot monitor loop started (mode: {self.scan_mode})")
         
         while self.running:
             try:
-                # Get watchlist symbols
-                symbols = self.watchlist.get_all()
+                # Get symbols based on scan mode
+                if self.scan_mode == 'watchlist':
+                    symbols = self.watchlist.get_all()
+                    if not symbols:
+                        logger.warning("Watchlist is empty, stopping monitor")
+                        self.running = False
+                        break
+                else:  # 'all' mode
+                    symbols = self._get_top_volume_coins(limit=50)
+                    if not symbols:
+                        logger.error("Failed to get top volume coins, retrying in 5 minutes...")
+                        time.sleep(300)
+                        continue
                 
-                if not symbols:
-                    logger.warning("Watchlist is empty, stopping monitor")
-                    self.running = False
-                    break
-                
-                logger.info(f"🔍 Checking {len(symbols)} symbols for bot activity...")
+                logger.info(f"🔍 Checking {len(symbols)} symbols for bot activity (mode: {self.scan_mode})...")
                 start_time = time.time()
                 
                 # Scan for bot activity
@@ -238,12 +287,17 @@ class BotMonitor:
             List of detections
         """
         try:
-            symbols = self.watchlist.get_all()
+            # Get symbols based on scan mode
+            if self.scan_mode == 'watchlist':
+                symbols = self.watchlist.get_all()
+                if not symbols:
+                    return []
+            else:  # 'all' mode
+                symbols = self._get_top_volume_coins(limit=50)
+                if not symbols:
+                    return []
             
-            if not symbols:
-                return []
-            
-            logger.info(f"Manual bot scan for {len(symbols)} symbols")
+            logger.info(f"Manual bot scan for {len(symbols)} symbols (mode: {self.scan_mode})")
             detections = []
             
             for symbol in symbols:
@@ -276,6 +330,7 @@ class BotMonitor:
         """
         return {
             'running': self.running,
+            'scan_mode': self.scan_mode,
             'check_interval': self.check_interval,
             'watchlist_count': self.watchlist.count(),
             'bot_threshold': self.bot_score_threshold,

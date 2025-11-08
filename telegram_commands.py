@@ -56,8 +56,9 @@ class TelegramCommandHandler:
         self.bot_detector = BotDetector(binance_client)
         
         # Initialize bot activity monitor (requires bot_detector)
+        # Default mode: 'all' - scan top 50 coins by volume independently
         from bot_monitor import BotMonitor
-        self.bot_monitor = BotMonitor(self, check_interval=1800)  # 30 minutes
+        self.bot_monitor = BotMonitor(self, check_interval=1800, scan_mode='all')  # 30 minutes, all mode
         
         # Setup command handlers
         self.setup_handlers()
@@ -1573,8 +1574,10 @@ class TelegramCommandHandler:
                 
                 status_icon = "🟢" if status['running'] else "🔴"
                 status_text = "ĐANG CHẠY" if status['running'] else "ĐÃ DỪNG"
+                mode_text = "📋 Watchlist" if status['scan_mode'] == 'watchlist' else "🌐 Top 50 Coins (Độc Lập)"
                 
                 msg = f"{status_icon} <b>Trạng Thái Giám Sát Bot: {status_text}</b>\n\n"
+                msg += f"📍 <b>Chế độ quét:</b> {mode_text}\n"
                 msg += f"⏱️ <b>Khoảng kiểm tra:</b> {status['check_interval']//60} phút ({status['check_interval']}s)\n"
                 msg += f"📊 <b>Watchlist:</b> {status['watchlist_count']} symbols\n"
                 msg += f"🤖 <b>Ngưỡng bot:</b> {status['bot_threshold']}%\n"
@@ -1605,37 +1608,43 @@ class TelegramCommandHandler:
         
         @self.telegram_bot.message_handler(commands=['botscan'])
         def handle_botscan(message):
-            """Manual bot activity scan of watchlist"""
+            """Manual bot activity scan"""
             if not check_authorized(message):
                 return
             
             try:
-                symbols = self.watchlist.get_all()
+                # Get scan mode
+                scan_mode = self.bot_monitor.scan_mode
                 
-                if not symbols:
-                    self.bot.send_message("⚠️ <b>Watchlist trống!</b>\n\n"
-                                        "Thêm coin trước với /watch SYMBOL")
-                    return
+                if scan_mode == 'watchlist':
+                    symbols = self.watchlist.get_all()
+                    if not symbols:
+                        self.bot.send_message("⚠️ <b>Watchlist trống!</b>\n\n"
+                                            "Thêm coin trước với /watch SYMBOL")
+                        return
+                    scan_text = f"watchlist ({len(symbols)} symbols)"
+                else:
+                    scan_text = "top 50 coins theo volume"
                 
-                self.bot.send_message(f"🔍 <b>Đang quét {len(symbols)} symbols tìm bot...</b>\n\n"
+                self.bot.send_message(f"🔍 <b>Đang quét {scan_text} tìm bot...</b>\n\n"
                                     f"⏳ Vui lòng chờ...")
                 
                 # Perform manual scan
                 detections = self.bot_monitor.manual_scan()
                 
                 if not detections:
-                    self.bot.send_message("✅ <b>Quét Hoàn Tất</b>\n\n"
-                                        f"Không phát hiện hoạt động bot đáng kể trong {len(symbols)} symbols.\n\n"
+                    self.bot.send_message(f"✅ <b>Quét Hoàn Tất</b>\n\n"
+                                        f"Không phát hiện hoạt động bot đáng kể trong {scan_text}.\n\n"
                                         f"Tất cả symbols đều có mẫu giao dịch bình thường.")
                     return
                 
                 # Count alerts
-                pump_alerts = [d for d in detections if d.get('pump_score', 0) >= 60]
-                bot_alerts = [d for d in detections if d.get('bot_score', 0) >= 70]
+                pump_alerts = [d for d in detections if d.get('pump_score', 0) >= 45]
+                bot_alerts = [d for d in detections if d.get('bot_score', 0) >= 40]
                 
                 # Send summary
                 summary = f"<b>🤖 KẾT QUẢ QUÉT BOT</b>\n\n"
-                summary += f"📊 Đã quét: {len(symbols)} symbols\n"
+                summary += f"� Chế độ: {scan_text}\n"
                 summary += f"⚠️ Cảnh báo: {len(pump_alerts) + len(bot_alerts)}\n\n"
                 
                 if pump_alerts:
