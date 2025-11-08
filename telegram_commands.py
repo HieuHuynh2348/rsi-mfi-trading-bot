@@ -439,6 +439,102 @@ class TelegramCommandHandler:
                 
                 # Pump scan callbacks
                 elif data.startswith("pumpscan_"):
+                    if data == "pumpscan_all":
+                        # Scan all coins for pump signals
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"🌐 <b>QUÉT TẤT CẢ THỊ TRƯỜNG</b>\n\n"
+                                 f"🔍 Đang quét tất cả USDT coins qua Layer 1...\n"
+                                 f"⏳ Quá trình có thể mất 2-5 phút\n\n"
+                                 f"💡 Chỉ hiển thị coins có Layer 1 >= 60%",
+                            parse_mode='HTML'
+                        )
+                        
+                        # Get all USDT symbols
+                        symbols = self.binance.get_all_usdt_symbols()
+                        if not symbols:
+                            self.telegram_bot.send_message(
+                                chat_id=call.message.chat.id,
+                                text="❌ Không thể lấy danh sách coins",
+                                parse_mode='HTML'
+                            )
+                            return
+                        
+                        logger.info(f"Pump scan all: scanning {len(symbols)} coins...")
+                        
+                        # Scan Layer 1 for all coins (parallel)
+                        from concurrent.futures import ThreadPoolExecutor, as_completed
+                        detections = []
+                        
+                        with ThreadPoolExecutor(max_workers=10) as executor:
+                            futures = {
+                                executor.submit(self.pump_detector._analyze_layer1, symbol): symbol 
+                                for symbol in symbols[:200]  # Limit to top 200 by volume
+                            }
+                            
+                            for future in as_completed(futures):
+                                try:
+                                    result = future.result()
+                                    if result and result.get('pump_score', 0) >= 60:
+                                        detections.append(result)
+                                except Exception as e:
+                                    logger.debug(f"Error in Layer 1 scan: {e}")
+                        
+                        # Sort by score
+                        detections.sort(key=lambda x: x.get('pump_score', 0), reverse=True)
+                        
+                        if not detections:
+                            self.telegram_bot.send_message(
+                                chat_id=call.message.chat.id,
+                                text=f"✅ <b>QUÉT HOÀN TẤT</b>\n\n"
+                                     f"🔍 Đã quét {len(symbols[:200])} coins\n"
+                                     f"❌ Không tìm thấy pump signals >= 60%\n\n"
+                                     f"💡 Thử lại sau 15-30 phút",
+                                parse_mode='HTML'
+                            )
+                            return
+                        
+                        # Send summary
+                        summary = f"<b>🚀 PHÁT HIỆN PUMP SIGNALS</b>\n\n"
+                        summary += f"🔍 Quét: {len(symbols[:200])} coins\n"
+                        summary += f"⚡ Tìm thấy: <b>{len(detections)}</b> signals >= 60%\n\n"
+                        summary += f"<b>TOP {min(10, len(detections))} PUMP CANDIDATES:</b>\n\n"
+                        
+                        # Show top 10
+                        for i, detection in enumerate(detections[:10], 1):
+                            symbol = detection['symbol']
+                            score = detection['pump_score']
+                            indicators = detection.get('indicators', {})
+                            
+                            volume_spike = indicators.get('volume_spike', 0)
+                            price_change = indicators.get('price_change_5m', 0)
+                            rsi = indicators.get('current_rsi', 0)
+                            
+                            if score >= 80:
+                                emoji = "🔴"
+                            elif score >= 70:
+                                emoji = "🟡"
+                            else:
+                                emoji = "🟢"
+                            
+                            summary += f"{emoji} <b>{i}. {symbol}</b> - {score:.0f}%\n"
+                            summary += f"   💧 Vol: {volume_spike:.1f}x | 📈 +{price_change:.1f}% | RSI: {rsi:.0f}\n\n"
+                        
+                        if len(detections) > 10:
+                            summary += f"ℹ️ +{len(detections) - 10} coins khác\n\n"
+                        
+                        summary += f"💡 <i>Dùng /pumpscan SYMBOL để phân tích chi tiết</i>"
+                        
+                        keyboard = self.bot.create_pump_detector_keyboard()
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=summary,
+                            parse_mode='HTML',
+                            reply_markup=keyboard
+                        )
+                        return
+                    
+                    # Single symbol scan
                     symbol = data.replace("pumpscan_", "")
                     self.telegram_bot.send_message(
                         chat_id=call.message.chat.id,

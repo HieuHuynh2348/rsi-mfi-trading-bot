@@ -323,6 +323,9 @@ class TelegramBot:
             types.InlineKeyboardButton("📊 Trạng Thái", callback_data="cmd_pumpstatus")
         )
         keyboard.row(
+            types.InlineKeyboardButton("🌐 Quét TẤT CẢ Coins", callback_data="pumpscan_all")
+        )
+        keyboard.row(
             types.InlineKeyboardButton("🔍 Quét BTC", callback_data="pumpscan_BTCUSDT"),
             types.InlineKeyboardButton("🔍 Quét ETH", callback_data="pumpscan_ETHUSDT")
         )
