@@ -1574,7 +1574,7 @@ class TelegramCommandHandler:
                 
                 status_icon = "🟢" if status['running'] else "🔴"
                 status_text = "ĐANG CHẠY" if status['running'] else "ĐÃ DỪNG"
-                mode_text = "📋 Watchlist" if status['scan_mode'] == 'watchlist' else "🌐 Top 50 Coins (Độc Lập)"
+                mode_text = "📋 Watchlist" if status['scan_mode'] == 'watchlist' else "🌐 ALL Market (Tất Cả USDT Coins)"
                 
                 msg = f"{status_icon} <b>Trạng Thái Giám Sát Bot: {status_text}</b>\n\n"
                 msg += f"📍 <b>Chế độ quét:</b> {mode_text}\n"
@@ -1624,7 +1624,7 @@ class TelegramCommandHandler:
                         return
                     scan_text = f"watchlist ({len(symbols)} symbols)"
                 else:
-                    scan_text = "top 50 coins theo volume"
+                    scan_text = "ALL market (tất cả USDT coins)"
                 
                 self.bot.send_message(f"🔍 <b>Đang quét {scan_text} tìm bot...</b>\n\n"
                                     f"⏳ Vui lòng chờ...")

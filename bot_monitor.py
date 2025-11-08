@@ -72,18 +72,21 @@ class BotMonitor:
         logger.info("⛔ Bot monitor stopped")
         return True
     
-    def _get_top_volume_coins(self, limit=50):
+    def _get_top_volume_coins(self, limit=None):
         """
-        Get top coins by 24h volume from Binance
+        Get all USDT coins from Binance (or top N if limit specified)
         
         Args:
-            limit: Number of top coins to return (default: 50)
+            limit: Number of top coins to return (None = all coins)
             
         Returns:
             List of trading symbols
         """
         try:
-            logger.info(f"Fetching top {limit} coins by volume...")
+            if limit:
+                logger.info(f"Fetching top {limit} coins by volume...")
+            else:
+                logger.info(f"Fetching ALL USDT coins...")
             
             # Get all USDT pairs ticker
             tickers = self.binance.client.get_ticker()
@@ -102,14 +105,17 @@ class BotMonitor:
                 reverse=True
             )
             
-            # Get top N symbols
-            top_symbols = [pair['symbol'] for pair in sorted_pairs[:limit]]
+            # Get top N symbols or all
+            if limit:
+                top_symbols = [pair['symbol'] for pair in sorted_pairs[:limit]]
+            else:
+                top_symbols = [pair['symbol'] for pair in sorted_pairs]
             
-            logger.info(f"✅ Found {len(top_symbols)} top volume coins")
+            logger.info(f"✅ Found {len(top_symbols)} USDT coins")
             return top_symbols
             
         except Exception as e:
-            logger.error(f"Error getting top volume coins: {e}")
+            logger.error(f"Error getting USDT coins: {e}")
             return []
     
     def _monitor_loop(self):
@@ -125,10 +131,10 @@ class BotMonitor:
                         logger.warning("Watchlist is empty, stopping monitor")
                         self.running = False
                         break
-                else:  # 'all' mode
-                    symbols = self._get_top_volume_coins(limit=50)
+                else:  # 'all' mode - get ALL USDT coins
+                    symbols = self._get_top_volume_coins(limit=None)  # None = all coins
                     if not symbols:
-                        logger.error("Failed to get top volume coins, retrying in 5 minutes...")
+                        logger.error("Failed to get USDT coins, retrying in 5 minutes...")
                         time.sleep(300)
                         continue
                 
@@ -292,8 +298,8 @@ class BotMonitor:
                 symbols = self.watchlist.get_all()
                 if not symbols:
                     return []
-            else:  # 'all' mode
-                symbols = self._get_top_volume_coins(limit=50)
+            else:  # 'all' mode - get ALL USDT coins
+                symbols = self._get_top_volume_coins(limit=None)  # None = all coins
                 if not symbols:
                     return []
             
