@@ -34,10 +34,11 @@ class BotMonitor:
         self.thread = None
         self.last_alerts = {}  # Track last alerts to avoid spam
         
-        # Alert thresholds (more sensitive)
-        self.bot_score_threshold = 40  # Alert if bot score >= 40%
-        self.pump_score_threshold = 45  # Alert if pump score >= 45%
-        self.alert_cooldown = 3600  # 1 hour cooldown per symbol
+        # Alert thresholds (HIGH CONFIDENCE ONLY - reduced false positives)
+        self.bot_score_threshold = 70   # Alert if bot score >= 70% (high confidence)
+        self.pump_score_threshold = 70  # Alert if pump score >= 70% (high confidence)
+        self.alert_cooldown = 3600      # 1 hour cooldown per symbol
+        self.max_alerts_per_scan = 10   # Max 10 alerts per scan (top signals only)
         
         logger.info(f"Bot monitor initialized (interval: {check_interval}s, mode: {scan_mode})")
     
@@ -226,6 +227,14 @@ class BotMonitor:
                 logger.error(f"Error scanning {symbol}: {e}")
                 continue
         
+        # Sort detections by combined score (highest first)
+        detections.sort(key=lambda d: d.get('bot_score', 0) + d.get('pump_score', 0), reverse=True)
+        
+        # Limit to max alerts per scan (top signals only)
+        if len(detections) > self.max_alerts_per_scan:
+            logger.info(f"Limiting alerts from {len(detections)} to {self.max_alerts_per_scan} (top signals only)")
+            detections = detections[:self.max_alerts_per_scan]
+        
         return detections
     
     def _send_bot_alerts(self, detections):
@@ -236,37 +245,57 @@ class BotMonitor:
             detections: List of detection results
         """
         try:
-            # Send summary first
-            summary = f"<b>🤖 BOT ACTIVITY ALERT</b>\n\n"
-            summary += f"⚠️ Detected <b>{len(detections)}</b> symbols with bot activity:\n\n"
+            # Sort by priority: PUMP alerts first, then by score
+            pump_detections = [d for d in detections if 'PUMP' in d.get('alert_type', [])]
+            bot_detections = [d for d in detections if 'BOT' in d.get('alert_type', []) and 'PUMP' not in d.get('alert_type', [])]
             
-            pump_count = sum(1 for d in detections if 'PUMP' in d.get('alert_type', []))
-            bot_count = sum(1 for d in detections if 'BOT' in d.get('alert_type', []))
+            sorted_detections = pump_detections + bot_detections
+            
+            # Send summary first
+            summary = f"<b>🤖 CẢNH BÁO BOT - TÍNH HIỆU CAO</b>\n\n"
+            summary += f"⚠️ Phát hiện <b>{len(sorted_detections)}</b> coin có bot hoạt động mạnh:\n\n"
+            
+            pump_count = len(pump_detections)
+            bot_count = len(bot_detections)
             
             if pump_count > 0:
-                summary += f"🚀 <b>PUMP BOTS:</b> {pump_count}\n"
+                summary += f"🚀 <b>PUMP BOTS:</b> {pump_count} (Nguy cơ cao)\n"
             if bot_count > 0:
-                summary += f"🤖 <b>Trading BOTS:</b> {bot_count}\n"
+                summary += f"🤖 <b>Trading BOTS:</b> {bot_count} (Thao túng)\n"
             
-            summary += f"\n📤 Sending detailed analysis...\n"
+            summary += f"\n� <b>Lưu ý:</b> Chỉ hiển thị tín hiệu >= 70% (độ chính xác cao)\n"
+            summary += f"📤 Đang gửi phân tích chi tiết...\n"
             
             self.bot.send_message(summary)
             time.sleep(1)
             
-            # Send detailed analysis for each detection
-            for i, detection in enumerate(detections, 1):
+            # Send detailed analysis for each detection (sorted by priority)
+            for i, detection in enumerate(sorted_detections, 1):
                 try:
                     symbol = detection['symbol']
                     alert_types = detection.get('alert_type', [])
+                    bot_score = detection.get('bot_score', 0)
+                    pump_score = detection.get('pump_score', 0)
+                    
+                    # Priority badge
+                    if pump_score >= 85:
+                        priority = "🔴 CỰC KỲ NGUY HIỂM"
+                    elif pump_score >= 70:
+                        priority = "🟡 NGUY HIỂM CAO"
+                    elif bot_score >= 85:
+                        priority = "⚠️ BOT MẠNH"
+                    else:
+                        priority = "ℹ️ THEO DÕI"
                     
                     # Add alert header
-                    alert_header = "⚠️ "
+                    alert_header = f"<b>{priority}</b>\n\n"
                     if 'PUMP' in alert_types:
-                        alert_header += "🚀 <b>PUMP BOT ALERT!</b>\n"
+                        alert_header += "🚀 <b>PHÁT HIỆN PUMP BOT!</b>\n"
                     if 'BOT' in alert_types:
-                        alert_header += "🤖 <b>Trading BOT Alert</b>\n"
+                        alert_header += "🤖 <b>Phát Hiện Bot Giao Dịch</b>\n"
                     
-                    alert_header += f"Symbol: {symbol} ({i}/{len(detections)})\n\n"
+                    alert_header += f"💎 Symbol: <b>{symbol}</b> ({i}/{len(sorted_detections)})\n"
+                    alert_header += f"📊 Bot: {bot_score:.0f}% | Pump: {pump_score:.0f}%\n\n"
                     
                     # Get formatted analysis
                     analysis_msg = self.bot_detector.get_formatted_analysis(detection)
@@ -342,6 +371,7 @@ class BotMonitor:
             'bot_threshold': self.bot_score_threshold,
             'pump_threshold': self.pump_score_threshold,
             'alert_cooldown': self.alert_cooldown,
+            'max_alerts_per_scan': self.max_alerts_per_scan,
             'tracked_symbols': len(self.last_alerts)
         }
     
