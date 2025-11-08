@@ -93,6 +93,30 @@ class BinanceClient:
         except Exception as e:
             logger.error(f"Error getting symbols: {e}")
             return []
+
+    def get_all_usdt_symbols(self, limit=None, min_volume=0, excluded_keywords=None):
+        """
+        Convenience wrapper that returns a list of USDT symbol strings sorted by 24h quote volume (descending).
+
+        Args:
+            limit: If provided, returns only the top-N symbols by volume.
+            min_volume: Minimum 24h volume in quote asset (USDT) to include.
+            excluded_keywords: List of keywords to exclude from symbols.
+
+        Returns:
+            List of symbol strings (e.g., ['BTCUSDT', 'ETHUSDT', ...])
+        """
+        try:
+            symbols = self.get_all_symbols(quote_asset='USDT', excluded_keywords=excluded_keywords, min_volume=min_volume)
+            # symbols is a list of dicts with 'symbol' and 'volume'
+            symbols_sorted = sorted(symbols, key=lambda x: x.get('volume', 0), reverse=True)
+            symbol_list = [s['symbol'] for s in symbols_sorted]
+            if limit is not None:
+                return symbol_list[:limit]
+            return symbol_list
+        except Exception as e:
+            logger.error(f"Error in get_all_usdt_symbols: {e}")
+            return []
     
     def get_klines(self, symbol, interval, limit=500):
         """
