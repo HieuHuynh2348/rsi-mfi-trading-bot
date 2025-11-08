@@ -1354,20 +1354,20 @@ class TelegramCommandHandler:
                 msg += f"💾 <b>Tracked coins:</b> {status['tracked_coins']}\n\n"
                 
                 if status['running']:
-                    msg += "🔍 <b>Alert condition (RSI only):</b>\n"
-                    msg += "   🟢 Oversold: RSI &lt; 20\n"
-                    msg += "   🔴 Overbought: RSI &gt; 80\n"
-                    msg += "   ℹ️ MFI calculated but not used for alerts\n\n"
-                    msg += "🤖 <b>Bot Analysis:</b>\n"
-                    msg += "   • Detects bot trading activity\n"
-                    msg += "   • Identifies pump patterns\n"
-                    msg += "   • Warns about dump risks\n"
-                    msg += "   • Provides early entry signals\n\n"
-                    msg += "🚀 Scanner active in background\n"
-                    msg += "💡 Use /stopmarketscan to stop"
+                    msg += "🔍 <b>Điều kiện cảnh báo (chỉ RSI):</b>\n"
+                    msg += "   🟢 Quá bán: RSI &lt; 20\n"
+                    msg += "   🔴 Quá mua: RSI &gt; 80\n"
+                    msg += "   ℹ️ MFI được tính nhưng không dùng cho cảnh báo\n\n"
+                    msg += "🤖 <b>Phân Tích Bot:</b>\n"
+                    msg += "   • Phát hiện hoạt động giao dịch bot\n"
+                    msg += "   • Nhận diện mẫu pump\n"
+                    msg += "   • Cảnh báo rủi ro dump\n"
+                    msg += "   • Cung cấp tín hiệu vào lệnh sớm\n\n"
+                    msg += "🚀 Scanner đang hoạt động nền\n"
+                    msg += "💡 Dùng /stopmarketscan để dừng"
                 else:
-                    msg += "🔕 Auto-scanning: OFF\n"
-                    msg += "💡 Use /startmarketscan to start"
+                    msg += "🔕 Quét tự động: TẮT\n"
+                    msg += "💡 Dùng /startmarketscan để bắt đầu"
                 
                 keyboard = self.bot.create_main_menu_keyboard()
                 logger.info("/marketstatus: Sending status message...")
@@ -1378,9 +1378,9 @@ class TelegramCommandHandler:
                 logger.error(f"Error in /marketstatus: {e}", exc_info=True)
                 keyboard = self.bot.create_main_menu_keyboard()
                 self.bot.send_message(
-                    f"❌ <b>Error getting market status</b>\n\n"
-                    f"Details: {str(e)}\n\n"
-                    f"Please try again or contact support.",
+                    f"❌ <b>Lỗi lấy trạng thái thị trường</b>\n\n"
+                    f"Chi tiết: {str(e)}\n\n"
+                    f"Vui lòng thử lại hoặc liên hệ hỗ trợ.",
                     reply_markup=keyboard
                 )
         

@@ -265,9 +265,9 @@ class MarketScanner:
                 logger.info("No new alerts (all in cooldown period)")
                 return
             
-            # Send summary first
-            summary = f"<b>🔍 MARKET SCAN ALERT</b>\n\n"
-            summary += f"⚡ Found <b>{len(new_alerts)}</b> coins with extreme 1D RSI:\n\n"
+            # Send summary first in Vietnamese
+            summary = f"<b>🔍 CẢNH BÁO QUÉT THỊ TRƯỜNG</b>\n\n"
+            summary += f"⚡ Tìm thấy <b>{len(new_alerts)}</b> coin có RSI 1D cực đoan:\n\n"
             
             # Count bot/pump detections
             pump_count = sum(1 for c in new_alerts if c.get('bot_detection') and c['bot_detection'].get('pump_score', 0) >= 45)
@@ -295,25 +295,25 @@ class MarketScanner:
                 if mfi is not None:
                     summary += f" | MFI: {mfi:.1f}"
                 
-                # Add bot/pump scores
+                # Add bot/pump scores only if significant
                 if bot_data:
                     bot_score = bot_data.get('bot_score', 0)
                     pump_score = bot_data.get('pump_score', 0)
-                    if pump_score >= 45 or bot_score >= 40:
+                    if pump_score >= 20 or bot_score >= 20:
                         summary += f"\n   🤖 Bot: {bot_score:.0f}% | Pump: {pump_score:.0f}%"
                 
                 summary += f"\n   ⚡ {conditions_text}\n\n"
             
             # Add summary stats
             if pump_count > 0 or bot_count > 0:
-                summary += f"<b>⚠️ DETECTED:</b>\n"
+                summary += f"<b>⚠️ PHÁT HIỆN:</b>\n"
                 if pump_count > 0:
-                    summary += f"🚀 {pump_count} PUMP pattern(s)\n"
+                    summary += f"🚀 {pump_count} mẫu PUMP\n"
                 if bot_count > 0:
-                    summary += f"🤖 {bot_count} Bot activity\n"
+                    summary += f"🤖 {bot_count} hoạt động Bot\n"
                 summary += f"\n"
             
-            summary += f"📤 Sending detailed analysis for each coin...\n"
+            summary += f"📤 Đang gửi phân tích chi tiết cho từng coin...\n"
             
             # Send detailed analysis for each coin (1D ONLY - no multi-timeframe)
             self.bot.send_message(summary)
@@ -403,51 +403,78 @@ class MarketScanner:
             price = self.binance.get_current_price(symbol)
             market_data = self.binance.get_24h_data(symbol)
             
-            # Build enhanced message with bot analysis
-            msg = f"<b>📊 {symbol} - MARKET SCAN + BOT ANALYSIS</b>\n\n"
+            # Map signal names to Vietnamese
+            signal_map = {
+                "BUY": "MUA",
+                "SELL": "BÁN", 
+                "NEUTRAL": "TRUNG LẬP",
+                "🚀 STRONG BUY (PUMP + OVERSOLD)": "🚀 MUA MẠNH (PUMP + QUÁ BÁN)",
+                "⚠️ DUMP WARNING (PUMP + OVERBOUGHT)": "⚠️ CẢNH BÁO DUMP (PUMP + QUÁ MUA)",
+                "🤖 BOT BUY SIGNAL": "🤖 TÍN HIỆU MUA BOT",
+                "🤖 BOT SELL SIGNAL": "🤖 TÍN HIỆU BÁN BOT"
+            }
+            enhanced_signal_vi = signal_map.get(enhanced_signal, enhanced_signal)
+            
+            # Build enhanced message with bot analysis in Vietnamese
+            msg = f"<b>📊 {symbol} - QUÉT THỊ TRƯỜNG + PHÂN TÍCH BOT</b>\n\n"
             
             # RSI/MFI Section
-            msg += f"<b>📈 Technical Indicators (1D):</b>\n"
-            msg += f"RSI: {current_rsi:.2f} ({'+' if current_rsi > last_rsi else ''}{current_rsi - last_rsi:.2f})\n"
+            msg += f"<b>📈 Chỉ Báo Kỹ Thuật (1D):</b>\n"
+            rsi_change_text = f"({'+' if current_rsi > last_rsi else ''}{current_rsi - last_rsi:.2f})"
+            msg += f"RSI: {current_rsi:.2f} {rsi_change_text}\n"
             if current_mfi is not None:
-                msg += f"MFI: {current_mfi:.2f} ({'+' if current_mfi > last_mfi else ''}{current_mfi - last_mfi:.2f})\n"
+                mfi_change_text = f"({'+' if current_mfi > last_mfi else ''}{current_mfi - last_mfi:.2f})"
+                msg += f"MFI: {current_mfi:.2f} {mfi_change_text}\n"
             
             # Signal
-            msg += f"\n<b>📍 Signal: {enhanced_signal}</b>\n"
+            msg += f"\n<b>📍 Tín Hiệu: {enhanced_signal_vi}</b>\n"
             
-            # Bot Detection Section
+            # Bot Detection Section - Only show if detected
             if bot_detection:
-                msg += f"\n<b>🤖 BOT ANALYSIS:</b>\n"
                 bot_score = bot_detection.get('bot_score', 0)
                 pump_score = bot_detection.get('pump_score', 0)
                 
-                msg += f"Bot Activity: {bot_score:.1f}% {'✅ DETECTED' if bot_score >= 40 else '❌'}\n"
-                msg += f"Pump Pattern: {pump_score:.1f}% {'🚀 DETECTED' if pump_score >= 45 else '❌'}\n"
+                # Only show bot analysis if there's something detected
+                if bot_score >= 20 or pump_score >= 20:
+                    msg += f"\n<b>🤖 PHÂN TÍCH BOT:</b>\n"
+                    
+                    if bot_score >= 20:
+                        status = "✅ PHÁT HIỆN" if bot_score >= 40 else "⚠️ Có dấu hiệu"
+                        msg += f"Hoạt động Bot: {bot_score:.1f}% {status}\n"
+                    
+                    if pump_score >= 20:
+                        status = "🚀 PHÁT HIỆN" if pump_score >= 45 else "⚠️ Có dấu hiệu"
+                        msg += f"Mẫu Pump: {pump_score:.1f}% {status}\n"
                 
                 # Add specific warnings
                 if pump_score >= 60 and current_rsi <= self.rsi_lower:
-                    msg += f"\n⚡ <b>EARLY ENTRY OPPORTUNITY!</b>\n"
-                    msg += f"   • Pump pattern forming\n"
-                    msg += f"   • RSI oversold - potential bounce\n"
-                    msg += f"   • Consider entry within 3 minutes\n"
+                    msg += f"\n⚡ <b>CƠ HỘI VÀO LỆNH SỚM!</b>\n"
+                    msg += f"   • Mẫu pump đang hình thành\n"
+                    msg += f"   • RSI quá bán - có thể tăng\n"
+                    msg += f"   • Cân nhắc vào lệnh trong 3 phút\n"
                 elif pump_score >= 60 and current_rsi >= self.rsi_upper:
-                    msg += f"\n⚠️ <b>DUMP WARNING!</b>\n"
-                    msg += f"   • Pump pattern + Overbought\n"
-                    msg += f"   • High risk of dump\n"
-                    msg += f"   • Avoid buy / Consider exit\n"
+                    msg += f"\n⚠️ <b>CẢNH BÁO DUMP!</b>\n"
+                    msg += f"   • Mẫu pump + Quá mua\n"
+                    msg += f"   • Rủi ro dump cao\n"
+                    msg += f"   • Tránh mua / Cân nhắc thoát lệnh\n"
                 elif bot_score >= 70:
-                    msg += f"\n🤖 <b>HIGH BOT ACTIVITY!</b>\n"
-                    msg += f"   • Potential manipulation\n"
-                    msg += f"   • Watch for sudden moves\n"
+                    msg += f"\n🤖 <b>HOẠT ĐỘNG BOT CAO!</b>\n"
+                    msg += f"   • Có thể bị thao túng\n"
+                    msg += f"   • Theo dõi biến động đột ngột\n"
             
-            # Price and Market Data
+            # Price and Market Data - Only show meaningful data
             if price and market_data:
-                msg += f"\n<b>💰 Price Info:</b>\n"
-                msg += f"Current: ${price:,.8f}\n"
-                change_24h = market_data.get('priceChangePercent', 0)
-                msg += f"24h Change: {change_24h:+.2f}%\n"
-                volume_24h = market_data.get('quoteVolume', 0)
-                msg += f"24h Volume: ${float(volume_24h):,.0f}\n"
+                msg += f"\n<b>💰 Thông Tin Giá:</b>\n"
+                msg += f"Giá hiện tại: ${price:,.8f}\n"
+                
+                change_24h = float(market_data.get('priceChangePercent', 0))
+                if abs(change_24h) >= 0.01:  # Only show if change >= 0.01%
+                    change_emoji = "📈" if change_24h > 0 else "📉" if change_24h < 0 else "➡️"
+                    msg += f"Thay đổi 24h: {change_emoji} {change_24h:+.2f}%\n"
+                
+                volume_24h = float(market_data.get('quoteVolume', 0))
+                if volume_24h >= 1000:  # Only show if volume >= $1000
+                    msg += f"Khối lượng 24h: ${volume_24h:,.0f}\n"
             
             self.bot.send_message(msg)
             logger.info(f"✅ Sent 1D analysis with bot detection for {symbol}")
