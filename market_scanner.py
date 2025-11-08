@@ -34,8 +34,11 @@ class MarketScanner:
         # Extreme levels for 1D timeframe (RSI only)
         self.rsi_upper = 80
         self.rsi_lower = 20
-        
-        logger.info(f"Market scanner initialized (interval: {scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
+        # Keep MFI attributes present (disabled) to avoid attribute errors elsewhere
+        self.mfi_upper = None
+        self.mfi_lower = None
+
+        logger.info(f"Market scanner initialized (interval: {self.scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
     
     def start(self):
         """Start market scanner"""
