@@ -38,10 +38,6 @@ class TelegramCommandHandler:
         # Initialize watchlist monitor (auto-notification)
         self.monitor = WatchlistMonitor(self, check_interval=300)  # 5 minutes
         
-        # Initialize market scanner (extreme RSI/MFI detection)
-        from market_scanner import MarketScanner
-        self.market_scanner = MarketScanner(self, scan_interval=900)  # 15 minutes
-        
         # Use monitor's volume detector for signal alerts (shared instance)
         self.volume_detector = self.monitor.volume_detector
         
@@ -52,8 +48,12 @@ class TelegramCommandHandler:
         self._config = config
         self._analyze_multi_timeframe = analyze_multi_timeframe
         
-        # Initialize bot detector BEFORE bot monitor
+        # Initialize bot detector BEFORE bot monitor and market scanner
         self.bot_detector = BotDetector(binance_client)
+        
+        # Initialize market scanner (extreme RSI/MFI detection) - AFTER bot_detector
+        from market_scanner import MarketScanner
+        self.market_scanner = MarketScanner(self, scan_interval=900)  # 15 minutes
         
         # Initialize bot activity monitor (requires bot_detector)
         # Default mode: 'all' - scan top 50 coins by volume independently
