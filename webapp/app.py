@@ -37,7 +37,8 @@ except Exception as e:
 @app.route('/')
 def index():
     """Serve main webapp page"""
-    return send_file('webapp/chart.html')
+    chart_path = os.path.join(os.path.dirname(__file__), 'chart.html')
+    return send_file(chart_path)
 
 
 @app.route('/api/chart')
