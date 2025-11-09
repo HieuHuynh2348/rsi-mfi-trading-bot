@@ -1011,7 +1011,24 @@ Provide a comprehensive trading analysis in JSON format with the following struc
   "warnings": ["Warning 1", ...] or [],
   "market_sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
   "technical_score": 0-100,
-  "fundamental_score": 0-100
+  "fundamental_score": 0-100,
+  "historical_analysis": {{
+    "h1_context": {{
+      "rsi_interpretation": "RSI avg vs current, oversold/overbought zones",
+      "volume_trend": "Increasing/Decreasing và ý nghĩa",
+      "price_position": "Vị trí trong range và trend 7 ngày"
+    }},
+    "h4_context": {{
+      "rsi_interpretation": "RSI context 30 ngày",
+      "volume_trend": "Volume pattern analysis",
+      "price_position": "Vị trí trong range và xu hướng"
+    }},
+    "d1_context": {{
+      "rsi_mfi_correlation": "RSI & MFI alignment analysis",
+      "long_term_trend": "Xu hướng 90 ngày và momentum",
+      "volatility_assessment": "Đánh giá độ biến động"
+    }}
+  }}
 }}
 
 IMPORTANT GUIDELINES:
@@ -1022,13 +1039,30 @@ IMPORTANT GUIDELINES:
    - Volume patterns and 24h trading activity
    - Pump detection signals (if >=80%, consider high risk/reward)
    - Previous candle patterns on H4 and D1 (wick analysis, body size, bullish/bearish)
-3. **Candle Pattern Analysis (CRITICAL):**
+   - **HISTORICAL DATA ANALYSIS (CRITICAL):** Xem section "DỮ LIỆU LỊCH SỬ MỞ RỘNG" bên trên
+
+3. **Historical Data Analysis (REQUIRED - Fill historical_analysis in JSON):**
+   - **1H Context (7 days):** 
+     * Compare current RSI vs average RSI (oversold/overbought interpretation)
+     * Volume trend increasing/decreasing và ý nghĩa cho momentum
+     * Price position in range (near support/resistance zones)
+   - **4H Context (30 days):**
+     * RSI context over 30 days (trending or mean-reverting)
+     * Volume pattern (accumulation/distribution)
+     * Price position và xu hướng trung hạn
+   - **1D Context (90 days):**
+     * RSI & MFI correlation (aligned bullish/bearish or diverging)
+     * Long-term trend direction và strength
+     * Volatility assessment (high/low và impact on risk)
+
+4. **Candle Pattern Analysis (CRITICAL):**
    - D1/H4 previous candles show institutional behavior
    - Large wicks indicate rejection or absorption zones
    - Bullish candles with small upper wicks = continuation potential
    - Bearish candles with long lower wicks = support testing
    - Compare body size to average - larger bodies = stronger momentum
-4. **Institutional Indicators (CRITICAL - Weight 40% - JSON FORMAT ABOVE):**
+
+5. **Institutional Indicators (CRITICAL - Weight 40% - JSON FORMAT ABOVE):**
    
    **READ THE JSON DATA CAREFULLY - Each field has specific meaning:**
    
@@ -1316,6 +1350,46 @@ Return ONLY valid JSON, no markdown formatting.
                 tech += "\n<b>🚨 Cảnh Báo:</b>\n"
                 for warning in warnings:
                     tech += f"   ⚠️ {warning}\n"
+            
+            # Historical Analysis
+            hist_analysis = analysis.get('historical_analysis', {})
+            if hist_analysis:
+                tech += "\n<b>📊 Phân Tích Dữ Liệu Lịch Sử:</b>\n\n"
+                
+                # 1H Context
+                h1 = hist_analysis.get('h1_context', {})
+                if h1:
+                    tech += "<b>⏰ Khung 1H (7 ngày):</b>\n"
+                    if h1.get('rsi_interpretation'):
+                        tech += f"   • RSI: {h1['rsi_interpretation']}\n"
+                    if h1.get('volume_trend'):
+                        tech += f"   • Volume: {h1['volume_trend']}\n"
+                    if h1.get('price_position'):
+                        tech += f"   • Vị trí: {h1['price_position']}\n"
+                    tech += "\n"
+                
+                # 4H Context
+                h4 = hist_analysis.get('h4_context', {})
+                if h4:
+                    tech += "<b>⏰ Khung 4H (30 ngày):</b>\n"
+                    if h4.get('rsi_interpretation'):
+                        tech += f"   • RSI: {h4['rsi_interpretation']}\n"
+                    if h4.get('volume_trend'):
+                        tech += f"   • Volume: {h4['volume_trend']}\n"
+                    if h4.get('price_position'):
+                        tech += f"   • Vị trí: {h4['price_position']}\n"
+                    tech += "\n"
+                
+                # 1D Context
+                d1 = hist_analysis.get('d1_context', {})
+                if d1:
+                    tech += "<b>⏰ Khung 1D (90 ngày):</b>\n"
+                    if d1.get('rsi_mfi_correlation'):
+                        tech += f"   • RSI/MFI: {d1['rsi_mfi_correlation']}\n"
+                    if d1.get('long_term_trend'):
+                        tech += f"   • Xu hướng: {d1['long_term_trend']}\n"
+                    if d1.get('volatility_assessment'):
+                        tech += f"   • Biến động: {d1['volatility_assessment']}\n"
             
             tech += "\n═══════════════════════════════════"
             
