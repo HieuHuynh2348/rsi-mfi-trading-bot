@@ -872,21 +872,36 @@ class TelegramCommandHandler:
                         )
                         
                         if chart_path and os.path.exists(chart_path):
-                            # Send chart photo
+                            # Get current price for caption
+                            try:
+                                ticker = self.binance.get_ticker_24h(symbol)
+                                current_price = float(ticker.get('last_price', 0))
+                                price_change = float(ticker.get('price_change_percent', 0))
+                            except:
+                                current_price = None
+                                price_change = None
+                            
+                            # Create caption with Live Chart prompt
+                            from chart_generator import format_chart_caption
+                            caption = format_chart_caption(symbol, current_price, price_change)
+                            
+                            # Create keyboard with Live Chart buttons
+                            keyboard = self.bot.create_chart_keyboard(symbol)
+                            
+                            # Send chart photo with buttons
                             logger.info(f"Sending chart photo for {symbol}...")
                             with open(chart_path, 'rb') as photo:
                                 self.telegram_bot.send_photo(
                                     chat_id=call.message.chat.id,
                                     photo=photo,
-                                    caption=f"📊 <b>{symbol} - 1H Chart</b>\n"
-                                            f"📈 RSI + MFI Indicators\n"
-                                            f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M')}",
-                                    parse_mode='HTML'
+                                    caption=caption,
+                                    parse_mode='Markdown',
+                                    reply_markup=keyboard
                                 )
                             
                             # Clean up
                             os.remove(chart_path)
-                            logger.info(f"✅ Sent chart for {symbol}")
+                            logger.info(f"✅ Sent chart for {symbol} with live chart buttons")
                         else:
                             logger.error(f"Chart path invalid for {symbol}: {chart_path}")
                             self.telegram_bot.send_message(
@@ -903,6 +918,17 @@ class TelegramCommandHandler:
                             text=f"❌ Lỗi khi tạo chart: {str(e)}",
                             parse_mode='HTML'
                         )
+                
+                # Handle refresh chart request
+                elif data.startswith("refresh_chart_"):
+                    symbol = data.replace("refresh_chart_", "")
+                    # Trigger chart generation again
+                    handle_callback(type('obj', (object,), {
+                        'data': f'chart_{symbol}',
+                        'message': call.message,
+                        'id': call.id
+                    })())
+                    return
                 
             except Exception as e:
                 logger.error(f"Error handling callback: {e}")

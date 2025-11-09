@@ -248,6 +248,29 @@ class TelegramBot:
         
         return keyboard
     
+    def create_chart_keyboard(self, symbol):
+        """Create keyboard with Live Chart and timeframe options"""
+        from chart_generator import get_tradingview_chart_url
+        
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Live Chart buttons - multiple timeframes
+        keyboard.row(
+            types.InlineKeyboardButton("📈 Live 1H", url=get_tradingview_chart_url(symbol, '60')),
+            types.InlineKeyboardButton("📈 Live 4H", url=get_tradingview_chart_url(symbol, '240'))
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("📈 Live 1D", url=get_tradingview_chart_url(symbol, 'D')),
+            types.InlineKeyboardButton("🔄 Refresh", callback_data=f"refresh_chart_{symbol}")
+        )
+        
+        # Back to analysis
+        keyboard.row(
+            types.InlineKeyboardButton("🤖 AI Phân Tích", callback_data=f"ai_analyze_{symbol}")
+        )
+        
+        return keyboard
+    
     def create_monitor_keyboard(self):
         """Create monitor control keyboard"""
         keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -449,24 +472,32 @@ class TelegramBot:
         
         return keyboard
     
-    def send_photo(self, photo_bytes, caption=''):
+    def send_photo(self, chat_id=None, photo_bytes=None, caption='', parse_mode='HTML', reply_markup=None):
         """
         Send a photo
         
         Args:
+            chat_id: Chat ID (optional, uses default if not provided)
             photo_bytes: Bytes of image data
             caption: Optional caption
+            parse_mode: Parse mode for caption ('HTML' or 'Markdown')
+            reply_markup: Optional inline keyboard
         """
         try:
+            # Use default chat_id if not provided (backward compatibility)
+            if chat_id is None:
+                chat_id = self.chat_id
+            
             sent = False
             retries = 0
             while not sent and retries < 3:
                 try:
                     self.bot.send_photo(
-                        chat_id=self.chat_id,
+                        chat_id=chat_id,
                         photo=photo_bytes,
                         caption=caption,
-                        parse_mode='HTML'
+                        parse_mode=parse_mode,
+                        reply_markup=reply_markup
                     )
                     logger.info("Photo sent successfully")
                     sent = True

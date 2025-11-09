@@ -1,0 +1,41 @@
+{
+  "recommendation": "SELL",
+  "confidence": 75,
+  "trading_style": "swing",
+  "entry_point": 102179.98,
+  "stop_loss": 104000.0,
+  "take_profit": [
+    99260.86,
+    98944.36,
+    97500.0
+  ],
+  "expected_holding_period": "3-5 days",
+  "risk_level": "MEDIUM",
+  "reasoning_vietnamese": "Phân tích BTCUSDT cho thấy tín hiệu bán dựa trên nhiều yếu tố kỹ thuật và dữ liệu từ các tổ chức lớn. Trên khung thời gian hàng ngày, xu hướng chính (swing trend) là giảm, mặc dù xu hướng ngắn hạn (internal trend) có dấu hiệu phục hồi nhẹ. Tuy nhiên, sự phân kỳ này cho thấy khả năng đảo chiều giảm giá. Các chỉ báo RSI và MFI trên khung thời gian ngày cho thấy tình trạng quá bán (RSI = 23), nhưng điều này có thể là dấu hiệu của một xu hướng giảm mạnh tiếp diễn hơn là một sự đảo chiều tăng giá. \n\nDữ liệu Volume Profile cho thấy giá hiện tại đang ở dưới Value Area và gần Point of Control (POC) trên khung 1 giờ. Điều này có nghĩa là vùng giá này có thể đóng vai trò là kháng cự mạnh. Các Fair Value Gap (FVG) trên khung thời gian ngày và 4 giờ đều cho thấy số lượng gap giảm giá (bearish gaps) lớn hơn gap tăng giá (bullish gaps), cho thấy áp lực bán đang chiếm ưu thế. Đặc biệt, có một bearish FVG gần nhất ở mức 105306.56 - 104534.74 trên khung ngày, cho thấy mục tiêu tiềm năng cho giá nếu đà giảm tiếp tục.\n\nPhân tích Order Block cho thấy không có active swing order block, nhưng có một internal bullish order block gần nhất ở mức 101253.99 - 100353.45 trên khung 1 giờ. Mặc dù vậy, với xu hướng giảm chiếm ưu thế, order block này có thể bị phá vỡ.\n\nCác vùng hỗ trợ và kháng cự cũng củng cố quan điểm giảm giá. Vùng hỗ trợ gần nhất là 102000.0 trên khung ngày, nhưng với áp lực bán hiện tại, vùng này có khả năng bị phá vỡ. Các chỉ báo Smart Money Concepts (SMC) trên khung thời gian 4 giờ cho thấy xu hướng giảm mạnh (STRONG_BEARISH) với độ tin cậy cao (90%), do cả xu hướng swing và internal đều giảm.\n\nCuối cùng, dữ liệu lịch sử cho thấy giá đã giảm 7.56% so với tuần trước, và volume giao dịch tăng mạnh (+50.91%), cho thấy sự quan tâm lớn từ thị trường đối với xu hướng giảm này. Dữ liệu nến trước đó trên khung thời gian ngày là một nến giảm (bearish candle) với thân nến lớn, cho thấy động lực giảm giá mạnh mẽ. Do đó, tất cả các yếu tố này kết hợp lại cho thấy cơ hội bán khống (short) BTCUSDT.",
+  "key_points": [
+    "Xu hướng giảm giá chiếm ưu thế trên khung thời gian lớn (D1, 4H).",
+    "Giá đang ở dưới Value Area và gần POC, đóng vai trò kháng cự.",
+    "Nhiều bearish FVG cho thấy áp lực bán mạnh.",
+    "Chỉ báo SMC cho thấy xu hướng giảm mạnh với độ tin cậy cao.",
+    "Volume giao dịch tăng, xác nhận xu hướng giảm."
+  ],
+  "conflicting_signals": [
+    "RSI quá bán trên khung thời gian ngày có thể dẫn đến phục hồi ngắn hạn.",
+    "Internal bullish trend trên khung thời gian 1 giờ có thể tạo ra sự điều chỉnh tăng giá tạm thời."
+  ],
+  "warnings": [
+    "Thị trường tiền điện tử biến động mạnh, quản lý rủi ro chặt chẽ.",
+    "Theo dõi sát các tin tức và sự kiện có thể ảnh hưởng đến giá BTC."
+  ],
+  "market_sentiment": "BEARISH",
+  "technical_score": 65,
+  "fundamental_score": 70,
+  "symbol": "BTCUSDT",
+  "analyzed_at": "2025-11-09T19:34:14.418828",
+  "data_used": {
+    "rsi_mfi_consensus": "NEUTRAL",
+    "stoch_rsi_consensus": "NEUTRAL",
+    "pump_score": 0,
+    "current_price": 102179.98
+  }
+}

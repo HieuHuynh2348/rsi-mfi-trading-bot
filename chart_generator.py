@@ -1,6 +1,7 @@
 """
 Chart Generator Module
 Creates technical analysis charts with candlesticks, RSI, and MFI
+Also provides TradingView live chart URLs
 """
 
 import matplotlib
@@ -15,6 +16,7 @@ import io
 import logging
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 
@@ -906,3 +908,88 @@ class ChartGenerator:
         except Exception as e:
             logger.error(f"❌ Error generating chart with indicators for {symbol}: {e}", exc_info=True)
             return None
+
+
+# ============================================================================
+# LIVE CHART UTILITIES
+# ============================================================================
+
+def get_tradingview_chart_url(symbol: str, interval: str = '60') -> str:
+    """
+    Generate TradingView live chart URL with indicators
+    
+    Args:
+        symbol: Trading pair (e.g., 'BTCUSDT')
+        interval: Timeframe - '1', '5', '15', '60', '240', 'D', 'W', 'M'
+                  1=1min, 5=5min, 15=15min, 60=1hour, 240=4hour, D=1day
+    
+    Returns:
+        Full TradingView chart URL
+    """
+    # Convert to TradingView format
+    tv_symbol = f"BINANCE:{symbol}"
+    
+    # Build URL with parameters
+    base_url = "https://www.tradingview.com/chart/"
+    params = {
+        'symbol': tv_symbol,
+        'interval': interval
+    }
+    
+    # Construct URL
+    url = f"{base_url}?{urlencode(params)}"
+    
+    logger.info(f"Generated TradingView URL for {symbol} ({interval}): {url}")
+    return url
+
+
+def get_tradingview_urls_multi_timeframe(symbol: str) -> dict:
+    """
+    Generate TradingView URLs for multiple timeframes
+    
+    Args:
+        symbol: Trading pair (e.g., 'BTCUSDT')
+    
+    Returns:
+        Dict with timeframe labels and URLs
+    """
+    timeframes = {
+        '5m': '5',
+        '1h': '60',
+        '4h': '240',
+        '1d': 'D'
+    }
+    
+    urls = {}
+    for label, interval in timeframes.items():
+        urls[label] = get_tradingview_chart_url(symbol, interval)
+    
+    return urls
+
+
+def format_chart_caption(symbol: str, current_price: float = None, 
+                        price_change_24h: float = None) -> str:
+    """
+    Format caption for chart message with live chart prompt
+    
+    Args:
+        symbol: Trading pair
+        current_price: Current price (optional)
+        price_change_24h: 24h price change % (optional)
+    
+    Returns:
+        Formatted caption text
+    """
+    caption = f"📊 **{symbol} Technical Analysis**\n\n"
+    
+    if current_price:
+        caption += f"💰 Price: ${current_price:,.2f}\n"
+    
+    if price_change_24h is not None:
+        change_emoji = "📈" if price_change_24h >= 0 else "📉"
+        caption += f"{change_emoji} 24h: {price_change_24h:+.2f}%\n"
+    
+    caption += "\n👆 Click **Live Chart** button for interactive analysis"
+    
+    return caption
+
