@@ -255,8 +255,6 @@
                     pinch: true,  // Enable pinch zoom for mobile
                 },
             });
-            
-            const colors = getThemeColors();
             candlestickSeries = chart.addCandlestickSeries({
                 upColor: colors.upColor,
                 downColor: colors.downColor,
@@ -294,15 +292,27 @@
             try {
                 showLoading();
                 
+                console.log(`Fetching data: ${API_BASE}/api/chart?symbol=${symbol}&timeframe=${tf}`);
+                
                 // Fetch data from your backend
                 const response = await fetch(`${API_BASE}/api/chart?symbol=${symbol}&timeframe=${tf}`);
                 
+                console.log('Response status:', response.status);
+                
                 if (!response.ok) {
                     const errorText = await response.text();
-                    throw new Error(`Failed to fetch: ${errorText}`);
+                    console.error('Error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
                 
                 const data = await response.json();
+                console.log('Received data:', data);
+                console.log('Number of candles:', data.candles?.length);
+                
+                // Validate data
+                if (!data.candles || data.candles.length === 0) {
+                    throw new Error('No candle data received');
+                }
                 
                 // Haptic feedback on success
                 hapticFeedback('success');
@@ -324,6 +334,9 @@
                     close: c.close,
                 }));
                 
+                console.log('First candle:', candleData[0]);
+                console.log('Last candle:', candleData[candleData.length - 1]);
+                
                 const volumeData = data.candles.map(c => ({
                     time: c.time,
                     value: c.volume,
@@ -335,11 +348,13 @@
                 
                 chart.timeScale().fitContent();
                 
+                console.log('Chart updated successfully');
                 hideLoading();
                 
             } catch (error) {
                 hideLoading();
                 console.error('Error loading chart data:', error);
+                console.error('Error stack:', error.stack);
                 
                 // Haptic feedback on error
                 hapticFeedback('error');

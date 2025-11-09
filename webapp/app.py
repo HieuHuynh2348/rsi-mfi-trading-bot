@@ -107,14 +107,20 @@ def get_chart_data():
         # Format candles for chart
         candles = []
         for idx, row in df.iterrows():
-            # Use index as timestamp (it's already datetime)
+            # LightweightCharts needs Unix timestamp in SECONDS (not milliseconds)
             if isinstance(idx, int):
-                time = idx
+                # If already integer, assume it's milliseconds, convert to seconds
+                time = int(idx / 1000) if idx > 10000000000 else idx
             elif hasattr(idx, 'timestamp'):
+                # Pandas Timestamp - convert to Unix seconds
                 time = int(idx.timestamp())
             else:
-                # Fallback to close_time if available
-                time = int(row.get('close_time', idx) / 1000) if 'close_time' in row else idx
+                # Fallback - try to parse as milliseconds from close_time
+                try:
+                    time = int(row.get('close_time', 0) / 1000)
+                except:
+                    # Last resort - use current index position
+                    time = int(datetime.now().timestamp()) - (len(df) - candles.__len__()) * 3600
             
             candles.append({
                 'time': time,
@@ -124,6 +130,10 @@ def get_chart_data():
                 'close': float(row['close']),
                 'volume': float(row['volume'])
             })
+        
+        # Log first and last candle times for debugging
+        if candles:
+            logger.info(f"📅 First candle time: {candles[0]['time']}, Last candle time: {candles[-1]['time']}")
         
         # Get latest indicator values
         latest_rsi = float(df['rsi'].iloc[-1])
