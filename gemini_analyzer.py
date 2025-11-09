@@ -143,11 +143,17 @@ class GeminiAnalyzer:
             # Get multi-timeframe klines
             timeframes = ['5m', '1h', '4h', '1d']
             klines_dict = self.binance.get_multi_timeframe_data(symbol, timeframes, limit=200)
-            if not klines_dict or not any(klines_dict.values()):
+            if not klines_dict or len(klines_dict) == 0:
                 logger.error(f"Failed to get klines data for {symbol}")
                 return None
             
-            logger.info(f"Got klines for {symbol}: {list(klines_dict.keys())}")
+            # Check if we have valid DataFrames
+            valid_dfs = [tf for tf, df in klines_dict.items() if df is not None and not df.empty]
+            if not valid_dfs:
+                logger.error(f"No valid klines data for {symbol}")
+                return None
+            
+            logger.info(f"Got klines for {symbol}: {valid_dfs}")
             
             # RSI+MFI analysis
             from indicators import analyze_multi_timeframe

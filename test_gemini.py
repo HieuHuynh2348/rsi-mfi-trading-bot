@@ -57,7 +57,14 @@ def test_gemini_with_binance():
         from gemini_analyzer import GeminiAnalyzer
         
         logger.info("Initializing Binance client...")
-        binance = BinanceClient()
+        binance_api_key = os.getenv('BINANCE_API_KEY')
+        binance_api_secret = os.getenv('BINANCE_API_SECRET')
+        
+        if not binance_api_key or not binance_api_secret:
+            logger.error("❌ Binance credentials not found in .env")
+            return False
+        
+        binance = BinanceClient(binance_api_key, binance_api_secret)
         
         logger.info("Initializing StochRSI analyzer...")
         stoch_rsi = StochRSIAnalyzer(binance)
