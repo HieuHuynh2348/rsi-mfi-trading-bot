@@ -663,29 +663,34 @@
                 }
                 
                 try {
-                    // Call API to get AI analysis
-                    const response = await fetch(`${API_BASE}/api/ai-analyze?symbol=${symbol}&timeframe=${currentTimeframe}`);
+                    // Send command to Telegram bot
+                    // Bot will process and send AI analysis to chat
+                    const command = `/${symbol.toLowerCase()}`;
                     
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    // Close the webapp and show success message
+                    if (aiLoadingEl) {
+                        aiLoadingEl.innerHTML = `
+                            <div style="text-align: center; color: #26A69A; padding: 24px;">
+                                <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+                                <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px;">Request Sent!</div>
+                                <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
+                                    <strong>Your AI analysis request for ${symbol} has been sent.</strong><br><br>
+                                    The bot will send you the complete Gemini AI analysis in the chat within <strong>10-20 seconds</strong>.<br><br>
+                                    📱 <em>You can close this window and check your Telegram chat for the results.</em>
+                                </div>
+                            </div>
+                        `;
                     }
                     
-                    const data = await response.json();
+                    // Send the command via Telegram WebApp API
+                    setTimeout(() => {
+                        tg.sendData(command);
+                        tg.close();
+                    }, 2000);
                     
-                    if (data.success && data.analysis) {
-                        // Hide loading, show content
-                        if (aiLoadingEl) aiLoadingEl.style.display = 'none';
-                        if (aiContentEl) {
-                            aiContentEl.innerHTML = formatAIAnalysis(data.analysis);
-                            aiContentEl.style.display = 'block';
-                        }
-                        
-                        // Success haptic
-                        if (tg.HapticFeedback) {
-                            tg.HapticFeedback.notificationOccurred('success');
-                        }
-                    } else {
-                        throw new Error(data.error || 'Failed to get AI analysis');
+                    // Success haptic
+                    if (tg.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('success');
                     }
                     
                 } catch (error) {

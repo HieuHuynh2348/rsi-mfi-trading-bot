@@ -453,25 +453,8 @@ def main():
         print("\n⚠️  WARNING: Please configure your API keys in config.py first!\n")
         sys.exit(1)
     
-    # Initialize bot
+    # Start bot
     bot = TradingBot()
-    
-    # Start Flask API in background thread
-    import os
-    from api_server import create_app
-    
-    flask_app = create_app(bot)
-    port = int(os.getenv('PORT', 8080))
-    
-    # Run Flask in separate thread
-    flask_thread = threading.Thread(
-        target=lambda: flask_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False),
-        daemon=True
-    )
-    flask_thread.start()
-    logger.info(f"🌐 Flask API started on port {port}")
-    
-    # Run Telegram bot in main thread
     bot.run()
 
 

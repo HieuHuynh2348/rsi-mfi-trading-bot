@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 try:
     from gemini_analyzer import GeminiAnalyzer
     from binance_client import BinanceClient
-    from indicators import StochRSIAnalyzer
+    from stoch_rsi_analyzer import StochRSIAnalyzer
 except ImportError as e:
     print(f"Import error: {e}")
     GeminiAnalyzer = None
