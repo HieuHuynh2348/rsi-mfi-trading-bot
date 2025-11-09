@@ -32,7 +32,7 @@ class RealtimePumpDetector:
     - API efficient: ~200-300 requests/minute
     """
     
-    def __init__(self, binance_client, telegram_bot, bot_detector):
+    def __init__(self, binance_client, telegram_bot, bot_detector, watchlist_manager=None):
         """
         Initialize real-time pump detector
         
@@ -40,10 +40,12 @@ class RealtimePumpDetector:
             binance_client: Binance API client
             telegram_bot: Telegram bot for alerts
             bot_detector: Bot detection system
+            watchlist_manager: Optional watchlist manager for auto-save
         """
         self.binance = binance_client
         self.bot = telegram_bot
         self.bot_detector = bot_detector
+        self.watchlist = watchlist_manager
         
         # Scan intervals for each layer
         self.layer1_interval = 180  # 3 minutes (5m detection)
@@ -61,6 +63,10 @@ class RealtimePumpDetector:
         self.layer1_threshold = 60  # 60% score to trigger Layer 1
         self.layer2_threshold = 70  # 70% score to confirm
         self.final_threshold = 80   # 80% combined score to alert
+        
+        # Auto-save to watchlist settings
+        self.auto_save_threshold = 80  # Auto-save coins with score >= 80%
+        self.max_watchlist_size = 20   # Max coins to keep in watchlist
         
         # Alert cooldown (prevent spam)
         self.alert_cooldown = 1800  # 30 minutes
@@ -694,6 +700,22 @@ class RealtimePumpDetector:
                 msg += f"   • 🛡️ Stop loss: -3%\n"
             
             msg += f"\n⚠️ <i>Đây là phân tích kỹ thuật, không phải tư vấn tài chính</i>"
+            
+            # Auto-save to watchlist if score is high
+            if self.watchlist and score >= self.auto_save_threshold:
+                try:
+                    # Check if watchlist is too full
+                    if self.watchlist.count() < self.max_watchlist_size:
+                        success, add_msg = self.watchlist.add(symbol)
+                        if success:
+                            msg += f"\n\n✅ <b>Đã tự động thêm vào Watchlist</b>"
+                            logger.info(f"Auto-saved {symbol} to watchlist (score: {score:.0f}%)")
+                        else:
+                            logger.debug(f"Symbol {symbol} already in watchlist")
+                    else:
+                        logger.debug(f"Watchlist full ({self.watchlist.count()}/{self.max_watchlist_size}), skipping auto-save for {symbol}")
+                except Exception as e:
+                    logger.error(f"Error auto-saving {symbol} to watchlist: {e}")
             
             # Send to Telegram
             self.bot.send_message(msg)

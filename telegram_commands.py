@@ -62,7 +62,7 @@ class TelegramCommandHandler:
         
         # Initialize real-time pump detector (3-layer detection system)
         from pump_detector_realtime import RealtimePumpDetector
-        self.pump_detector = RealtimePumpDetector(binance_client, bot, self.bot_detector)
+        self.pump_detector = RealtimePumpDetector(binance_client, bot, self.bot_detector, self.watchlist)
         
         # Setup command handlers
         self.setup_handlers()
@@ -2028,6 +2028,15 @@ class TelegramCommandHandler:
                 msg += f"   🎯 Ngưỡng cảnh báo: {status['final_threshold']}%\n"
                 msg += f"   🔔 Thời gian chờ: {status['alert_cooldown']//60} phút\n"
                 msg += f"   📤 Đã gửi cảnh báo: {status['last_alerts']}\n\n"
+                
+                # Auto-save watchlist info
+                msg += f"<b>💾 Auto-Save Watchlist:</b>\n"
+                msg += f"   ✅ Tự động lưu: {'BẬT' if self.pump_detector.watchlist else 'TẮT'}\n"
+                if self.pump_detector.watchlist:
+                    msg += f"   🎯 Ngưỡng lưu: >= {self.pump_detector.auto_save_threshold}%\n"
+                    msg += f"   📋 Watchlist: {self.pump_detector.watchlist.count()}/{self.pump_detector.max_watchlist_size} coins\n\n"
+                else:
+                    msg += "\n"
                 
                 if status['running']:
                     msg += "<b>🎯 Hệ Thống 3-Layer:</b>\n"
