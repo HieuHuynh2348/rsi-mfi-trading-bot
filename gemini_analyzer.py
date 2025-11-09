@@ -173,7 +173,7 @@ class GeminiAnalyzer:
             logger.info(f"Calculating Stoch+RSI for {symbol}...")
             stoch_rsi_result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
                 symbol,
-                timeframes=['1m', '5m', '4h', '1d']
+                timeframes=['1m', '5m', '1h', '4h', '1d']
             )
             
             # Volume data
@@ -595,8 +595,8 @@ H4 Previous Candle Analysis:
         prompt = f"""You are an expert cryptocurrency trading analyst with 10+ years of experience in technical analysis and market psychology.
 
 TRADING STYLE: {trading_style.upper()}
-- If scalping: Focus on 1m-15m timeframes, quick entries/exits, tight stop losses
-- If swing: Focus on 4h-1D timeframes, position holding 2-7 days, wider stop losses
+- If scalping: Focus on 1m-5m-15m timeframes, quick entries/exits, tight stop losses
+- If swing: Focus on 1h-4h-1D timeframes, position holding 2-7 days, wider stop losses
 
 ANALYZE THIS CRYPTOCURRENCY:
 
