@@ -64,6 +64,10 @@ class TelegramCommandHandler:
         from pump_detector_realtime import RealtimePumpDetector
         self.pump_detector = RealtimePumpDetector(binance_client, bot, self.bot_detector, self.watchlist)
         
+        # Initialize Stoch+RSI multi-timeframe analyzer
+        from stoch_rsi_analyzer import StochRSIAnalyzer
+        self.stoch_rsi_analyzer = StochRSIAnalyzer(binance_client)
+        
         # Setup command handlers
         self.setup_handlers()
         logger.info("Telegram command handler initialized")
@@ -223,7 +227,8 @@ class TelegramCommandHandler:
             'volumescan', 'volumesensitivity',
             'startmarketscan', 'stopmarketscan', 'marketstatus',
             'startbotmonitor', 'stopbotmonitor', 'botmonitorstatus', 'botscan', 'botthreshold',
-            'startpumpwatch', 'stoppumpwatch', 'pumpstatus', 'pumpscan'
+            'startpumpwatch', 'stoppumpwatch', 'pumpstatus', 'pumpscan',
+            'stochrsi'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -585,6 +590,108 @@ class TelegramCommandHandler:
                     msg += f"\n\n⚠️ <i>Phân tích kỹ thuật - không phải tư vấn tài chính</i>"
                     
                     keyboard = self.bot.create_pump_detector_keyboard()
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=msg,
+                        parse_mode='HTML',
+                        reply_markup=keyboard
+                    )
+                
+                # Stoch+RSI callbacks
+                elif data.startswith("stochrsi_"):
+                    symbol = data.replace("stochrsi_", "")
+                    
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=f"🔍 <b>STOCH+RSI MULTI-TF ANALYSIS</b>\n\n"
+                             f"📊 Đang phân tích {symbol} trên 4 timeframes...\n"
+                             f"⏳ Vui lòng chờ...",
+                        parse_mode='HTML'
+                    )
+                    
+                    # Perform multi-timeframe analysis
+                    result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
+                        symbol, 
+                        timeframes=['1m', '5m', '4h', '1d']
+                    )
+                    
+                    if not result or 'error' in result:
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"❌ <b>Không thể phân tích {symbol}</b>\n\n"
+                                 "Symbol có thể không tồn tại hoặc thiếu dữ liệu.",
+                            parse_mode='HTML'
+                        )
+                        return
+                    
+                    # Format message
+                    msg = self.stoch_rsi_analyzer.format_analysis_message(result, include_details=True)
+                    
+                    keyboard = self.bot.create_stoch_rsi_keyboard()
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=msg,
+                        parse_mode='HTML',
+                        reply_markup=keyboard
+                    )
+                
+                elif data == "cmd_stochrsi_menu":
+                    # Show Stoch+RSI menu
+                    msg = f"<b>📊 STOCH+RSI MULTI-TIMEFRAME ANALYZER</b>\n\n"
+                    msg += f"<b>Phân tích kết hợp Stochastic + RSI trên 4 khung thời gian:</b>\n"
+                    msg += f"   • 1 phút (1m)\n"
+                    msg += f"   • 5 phút (5m)\n"
+                    msg += f"   • 4 giờ (4h)\n"
+                    msg += f"   • 1 ngày (1D)\n\n"
+                    msg += f"<b>✨ Tính Năng:</b>\n"
+                    msg += f"   ✅ OHLC/4 smoother signals\n"
+                    msg += f"   ✅ Custom RSI với RMA\n"
+                    msg += f"   ✅ Stochastic oscillator\n"
+                    msg += f"   ✅ Consensus từ 4 timeframes\n\n"
+                    msg += f"<b>🎯 Signals:</b>\n"
+                    msg += f"   🟢 BUY - Khi cả RSI và Stoch oversold\n"
+                    msg += f"   🔴 SELL - Khi cả RSI và Stoch overbought\n"
+                    msg += f"   ⚪ NEUTRAL - Không có consensus\n\n"
+                    msg += f"💡 <i>Chọn coin bên dưới để phân tích hoặc dùng /stochrsi SYMBOL</i>"
+                    
+                    keyboard = self.bot.create_stoch_rsi_keyboard()
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=msg,
+                        parse_mode='HTML',
+                        reply_markup=keyboard
+                    )
+                
+                elif data == "cmd_stochrsi_info":
+                    # Show info about Stoch+RSI
+                    msg = f"<b>ℹ️ STOCH+RSI MULTI-TF - THÔNG TIN</b>\n\n"
+                    msg += f"<b>📊 Cách Hoạt Động:</b>\n\n"
+                    msg += f"<b>1. OHLC/4:</b>\n"
+                    msg += f"   Tính trung bình (O+H+L+C)/4\n"
+                    msg += f"   Giảm nhiễu, tín hiệu mượt hơn close price\n\n"
+                    msg += f"<b>2. RSI (RMA):</b>\n"
+                    msg += f"   Length: 6\n"
+                    msg += f"   Oversold: < 20\n"
+                    msg += f"   Overbought: > 80\n\n"
+                    msg += f"<b>3. Stochastic:</b>\n"
+                    msg += f"   %K Period: 6\n"
+                    msg += f"   Smooth: 6\n"
+                    msg += f"   %D Period: 6\n"
+                    msg += f"   Oversold: < 20, Overbought: > 80\n\n"
+                    msg += f"<b>4. Consensus Signal:</b>\n"
+                    msg += f"   ✅ Cả RSI và Stoch phải đồng ý\n"
+                    msg += f"   ✅ Tính signal cho 4 timeframes\n"
+                    msg += f"   ✅ Tổng hợp consensus cuối cùng\n\n"
+                    msg += f"<b>💡 Cách Sử Dụng:</b>\n"
+                    msg += f"   • Tín hiệu BUY mạnh: 3-4/4 TF đồng thuận\n"
+                    msg += f"   • Tín hiệu SELL mạnh: 3-4/4 TF đồng thuận\n"
+                    msg += f"   • Kết hợp với Pump Detector để xác nhận\n"
+                    msg += f"   • Kiểm tra Volume trước khi vào lệnh\n\n"
+                    msg += f"<b>⚙️ Command:</b>\n"
+                    msg += f"   /stochrsi BTCUSDT\n"
+                    msg += f"   /stochrsi ETH"
+                    
+                    keyboard = self.bot.create_stoch_rsi_keyboard()
                     self.telegram_bot.send_message(
                         chat_id=call.message.chat.id,
                         text=msg,
@@ -2147,6 +2254,66 @@ class TelegramCommandHandler:
                 
             except Exception as e:
                 logger.error(f"Error in /pumpscan: {e}")
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)))
+        
+        @self.telegram_bot.message_handler(commands=['stochrsi'])
+        def handle_stochrsi(message):
+            """Stochastic + RSI multi-timeframe analysis"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                # Parse symbol from command
+                parts = message.text.split()
+                
+                if len(parts) < 2:
+                    self.bot.send_message("❌ <b>Vui lòng chỉ định symbol</b>\n\n"
+                                        "Cú pháp: /stochrsi BTCUSDT\n"
+                                        "Hoặc: /stochrsi BTC\n\n"
+                                        "💡 Phân tích Stochastic + RSI trên 4 timeframes")
+                    return
+                
+                symbol_raw = parts[1].upper()
+                
+                # Auto-add USDT if not present
+                if not symbol_raw.endswith('USDT'):
+                    symbol = symbol_raw + 'USDT'
+                else:
+                    symbol = symbol_raw
+                
+                self.bot.send_message(f"🔍 <b>STOCH+RSI MULTI-TIMEFRAME ANALYSIS</b>\n\n"
+                                    f"📊 Đang phân tích {symbol} trên 4 timeframes...\n"
+                                    f"⏳ Vui lòng chờ...")
+                
+                # Perform multi-timeframe analysis
+                result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
+                    symbol, 
+                    timeframes=['1m', '5m', '4h', '1d']
+                )
+                
+                if not result or 'error' in result:
+                    self.bot.send_message(f"❌ <b>Không thể phân tích {symbol}</b>\n\n"
+                                        "Symbol có thể không tồn tại hoặc thiếu dữ liệu.\n"
+                                        f"Error: {result.get('error', 'Unknown')}")
+                    return
+                
+                # Format message using analyzer's format function
+                msg = self.stoch_rsi_analyzer.format_analysis_message(result, include_details=True)
+                
+                # Add integration hints if pump detector is running
+                if self.pump_detector.running:
+                    consensus = result['consensus']
+                    if consensus == 'BUY':
+                        msg += f"\n\n💡 <b>TIP:</b> Kết hợp với /pumpscan {symbol_raw} để xác nhận pump"
+                    elif consensus == 'SELL':
+                        msg += f"\n\n⚠️ <b>WARNING:</b> Stoch+RSI cho tín hiệu SELL, tránh vào lệnh"
+                
+                keyboard = self.bot.create_main_menu_keyboard()
+                self.bot.send_message(msg, reply_markup=keyboard)
+                
+            except Exception as e:
+                logger.error(f"Error in /stochrsi: {e}")
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)))
         

@@ -186,7 +186,12 @@ class TelegramBot:
             types.InlineKeyboardButton("🚀 Pump Scan", callback_data="cmd_pumpstatus")
         )
         
-        # Row 12: Performance & Help
+        # Row 12: Stoch+RSI Analysis (NEW)
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Stoch+RSI (4 TF)", callback_data="cmd_stochrsi_menu")
+        )
+        
+        # Row 13: Performance & Help
         keyboard.row(
             types.InlineKeyboardButton("⚡ Hiệu Suất", callback_data="cmd_performance"),
             types.InlineKeyboardButton("ℹ️ Trợ Giúp", callback_data="cmd_help")
@@ -382,6 +387,38 @@ class TelegramBot:
         # Status
         keyboard.row(
             types.InlineKeyboardButton("📊 Trạng Thái (15 phút/lần)", callback_data="cmd_marketstatus")
+        )
+        
+        keyboard.row(
+            types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu")
+        )
+        
+        return keyboard
+    
+    def create_stoch_rsi_keyboard(self):
+        """Create Stoch+RSI multi-timeframe analysis keyboard"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Stoch+RSI Analysis", callback_data="cmd_stochrsi_info")
+        )
+        
+        # Quick analysis for popular coins
+        keyboard.row(
+            types.InlineKeyboardButton("₿ BTC", callback_data="stochrsi_BTCUSDT"),
+            types.InlineKeyboardButton("Ξ ETH", callback_data="stochrsi_ETHUSDT")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔶 BNB", callback_data="stochrsi_BNBUSDT"),
+            types.InlineKeyboardButton("🟣 SOL", callback_data="stochrsi_SOLUSDT")
+        )
+        keyboard.row(
+            types.InlineKeyboardButton("🔗 LINK", callback_data="stochrsi_LINKUSDT"),
+            types.InlineKeyboardButton("🔵 ADA", callback_data="stochrsi_ADAUSDT")
+        )
+        
+        keyboard.row(
+            types.InlineKeyboardButton("💡 Combines: Stoch + RSI (4 TF)", callback_data="cmd_stochrsi_info")
         )
         
         keyboard.row(

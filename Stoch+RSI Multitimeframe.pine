@@ -1,0 +1,271 @@
+//@version=6
+indicator(title = 'Stoch+RSI Multitimeframe', shorttitle = 'Stoch+RSI Multi-TF', format = format.price, precision = 2, overlay=false)
+
+// ============================================================================
+// INPUT PARAMETERS
+// ============================================================================
+
+// Stochastic Settings
+odk = input.int(6, title = 'Stochastic K', minval = 1)
+dP = input.int(6, title = 'Stochastic D', minval = 1)
+sK = input.int(6, title = 'Stochastic Smooth', minval = 1)
+
+// RSI Settings
+rrfxlen = input.int(6, minval = 1, title = 'RSI Length')
+rsi_lower = input.int(20, "RSI Lower Level", minval=0, maxval=100)
+rsi_upper = input.int(80, "RSI Upper Level", minval=0, maxval=100)
+
+// Stochastic Levels
+stoch_lower = input.int(20, "Stochastic Lower Level", minval=0, maxval=100)
+stoch_upper = input.int(80, "Stochastic Upper Level", minval=0, maxval=100)
+
+// Multi-Timeframe Settings
+tf1 = input.timeframe("", "Timeframe 1 (Current)", tooltip="Leave blank for current timeframe")
+tf2 = input.timeframe("5", "Timeframe 2")
+tf3 = input.timeframe("240", "Timeframe 3")
+tf4 = input.timeframe("D", "Timeframe 4")
+
+// Table Settings
+table_position = input.string("top_right", "Table Position", options=["top_left", "top_center", "top_right", "middle_left", "middle_center", "middle_right", "bottom_left", "bottom_center", "bottom_right"])
+table_text_size = input.string("small", "Table Text Size", options=["tiny", "small", "normal", "large", "huge"])
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// Convert timeframe to readable format
+f_format_timeframe(tf) =>
+    result = tf
+    if tf == "1"
+        result := "1M"
+    else if tf == "3"
+        result := "3M"
+    else if tf == "5"
+        result := "5M"
+    else if tf == "15"
+        result := "15M"
+    else if tf == "30"
+        result := "30M"
+    else if tf == "45"
+        result := "45M"
+    else if tf == "60"
+        result := "1H"
+    else if tf == "120"
+        result := "2H"
+    else if tf == "180"
+        result := "3H"
+    else if tf == "240"
+        result := "4H"
+    else if tf == "360"
+        result := "6H"
+    else if tf == "480"
+        result := "8H"
+    else if tf == "720"
+        result := "12H"
+    else if tf == "D"
+        result := "D"
+    else if tf == "W"
+        result := "W"
+    else if tf == "M"
+        result := "M"
+    result
+
+// Function to calculate OHLC/4
+f_ohlc4() =>
+    (open + high + low + close) / 4
+
+// ============================================================================
+// CUSTOM RSI CALCULATION (OHLC/4)
+// ============================================================================
+
+f_custom_rsi(src, len) =>
+    delta = ta.change(src)
+    gain = delta > 0 ? delta : 0.0
+    loss = delta < 0 ? -delta : 0.0
+    avg_gain = ta.rma(gain, len)
+    avg_loss = ta.rma(loss, len)
+    rs = avg_loss == 0 ? 100 : avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    rsi
+
+// ============================================================================
+// STOCHASTIC CALCULATION (OHLC/4)
+// ============================================================================
+
+f_custom_stoch(src, k_period, smooth) =>
+    stoch_val = ta.stoch(src, src, src, k_period)
+    smooth_stoch = ta.sma(stoch_val, smooth)
+    smooth_stoch
+
+f_stoch_d(stoch_k, d_period) =>
+    ta.sma(stoch_k, d_period)
+
+// ============================================================================
+// SIGNAL GENERATION FUNCTION
+// ============================================================================
+
+f_get_signal(rsi_val, stoch_val, rsi_low, rsi_high, stoch_low, stoch_high) =>
+    rsi_signal = rsi_val < rsi_low ? 1 : rsi_val > rsi_high ? -1 : 0
+    stoch_signal = stoch_val < stoch_low ? 1 : stoch_val > stoch_high ? -1 : 0
+    
+    // Consensus: both must agree
+    signal = 0
+    if rsi_signal == 1 and stoch_signal == 1
+        signal := 1  // BUY
+    else if rsi_signal == -1 and stoch_signal == -1
+        signal := -1  // SELL
+    signal
+
+// ============================================================================
+// MULTI-TIMEFRAME CALCULATIONS
+// ============================================================================
+
+// Current Timeframe (or TF1)
+ohlc4_tf1 = tf1 == "" ? f_ohlc4() : request.security(syminfo.tickerid, tf1, f_ohlc4())
+rsi_tf1 = tf1 == "" ? f_custom_rsi(ohlc4_tf1, rrfxlen) : request.security(syminfo.tickerid, tf1, f_custom_rsi(f_ohlc4(), rrfxlen))
+stoch_k_tf1 = tf1 == "" ? f_custom_stoch(ohlc4_tf1, odk, sK) : request.security(syminfo.tickerid, tf1, f_custom_stoch(f_ohlc4(), odk, sK))
+stoch_d_tf1 = f_stoch_d(stoch_k_tf1, dP)
+signal_tf1 = f_get_signal(rsi_tf1, stoch_k_tf1, rsi_lower, rsi_upper, stoch_lower, stoch_upper)
+
+// Timeframe 2
+rsi_tf2 = request.security(syminfo.tickerid, tf2, f_custom_rsi(f_ohlc4(), rrfxlen))
+stoch_k_tf2 = request.security(syminfo.tickerid, tf2, f_custom_stoch(f_ohlc4(), odk, sK))
+stoch_d_tf2 = f_stoch_d(stoch_k_tf2, dP)
+signal_tf2 = f_get_signal(rsi_tf2, stoch_k_tf2, rsi_lower, rsi_upper, stoch_lower, stoch_upper)
+
+// Timeframe 3
+rsi_tf3 = request.security(syminfo.tickerid, tf3, f_custom_rsi(f_ohlc4(), rrfxlen))
+stoch_k_tf3 = request.security(syminfo.tickerid, tf3, f_custom_stoch(f_ohlc4(), odk, sK))
+stoch_d_tf3 = f_stoch_d(stoch_k_tf3, dP)
+signal_tf3 = f_get_signal(rsi_tf3, stoch_k_tf3, rsi_lower, rsi_upper, stoch_lower, stoch_upper)
+
+// Timeframe 4
+rsi_tf4 = request.security(syminfo.tickerid, tf4, f_custom_rsi(f_ohlc4(), rrfxlen))
+stoch_k_tf4 = request.security(syminfo.tickerid, tf4, f_custom_stoch(f_ohlc4(), odk, sK))
+stoch_d_tf4 = f_stoch_d(stoch_k_tf4, dP)
+signal_tf4 = f_get_signal(rsi_tf4, stoch_k_tf4, rsi_lower, rsi_upper, stoch_lower, stoch_upper)
+
+// ============================================================================
+// OVERALL CONSENSUS
+// ============================================================================
+
+total_signal = signal_tf1 + signal_tf2 + signal_tf3 + signal_tf4
+consensus = total_signal > 0 ? "BUY" : total_signal < 0 ? "SELL" : "NEUTRAL"
+consensus_strength = math.abs(total_signal)
+
+// ============================================================================
+// PLOTTING
+// ============================================================================
+
+// Plot Stochastic %D and RSI for current timeframe
+plot(stoch_d_tf1, title = '%D', color = color.new(#FF6A00, 0), linewidth=2)
+plot(rsi_tf1, 'RSI', color = color.new(#008902, 0), linewidth=2)
+
+// Plot levels
+hline(100, "Max Level", color=color.new(color.gray, 80), linestyle=hline.style_solid)
+hline(rsi_upper, "Upper Level", color=color.red, linestyle=hline.style_dashed)
+hline(50, "Middle", color=color.gray, linestyle=hline.style_dotted)
+hline(rsi_lower, "Lower Level", color=color.green, linestyle=hline.style_dashed)
+hline(0, "Min Level", color=color.new(color.gray, 80), linestyle=hline.style_solid)
+
+// Band & Fill Color
+rrband1 = hline(80, '80 Band', color = #FF0000)
+rrband0 = hline(70, '70 Band', color = #FF5353)
+rrh0 = hline(30, '30 Band', color = #00B90E)
+rrh1 = hline(20, '20 Band', color = #00B90E)
+fill(rrband1, rrband0, color = color.new(#FF0000, 60), title = 'Background')
+fill(rrh0, rrh1, color = color.new(#05AC00, 60), title = 'Background')
+
+// Background coloring based on consensus
+bgcolor(signal_tf1 == 1 ? color.new(color.green, 90) : signal_tf1 == -1 ? color.new(color.red, 90) : na)
+
+// BUY and SELL signals
+plotshape(signal_tf1 == 1 ? rsi_tf1 - 3 : na, title="BUY Signal", text="BUY", textcolor=color.white, style=shape.labelup, location=location.absolute, color=color.new(color.green, 0), size=size.small)
+plotshape(signal_tf1 == -1 ? rsi_tf1 + 3 : na, title="SELL Signal", text="SELL", textcolor=color.white, style=shape.labeldown, location=location.absolute, color=color.new(color.red, 0), size=size.small)
+
+// Plot zones
+buy_zone = signal_tf1 == 1 ? rsi_lower : na
+sell_zone = signal_tf1 == -1 ? rsi_upper : na
+
+plot(buy_zone, "BUY Zone", color=color.new(color.green, 0), linewidth=3, style=plot.style_linebr)
+plot(sell_zone, "SELL Zone", color=color.new(color.red, 0), linewidth=3, style=plot.style_linebr)
+
+// Arrows
+plotchar(signal_tf1 == 1 ? rsi_tf1 - 5 : na, title="BUY Arrow", char="▲", location=location.absolute, color=color.new(color.lime, 0), size=size.tiny)
+plotchar(signal_tf1 == -1 ? rsi_tf1 + 5 : na, title="SELL Arrow", char="▼", location=location.absolute, color=color.new(color.red, 0), size=size.tiny)
+
+// ============================================================================
+// CONSENSUS TABLE
+// ============================================================================
+
+// Determine table position
+table_pos = table_position == "top_left" ? position.top_left : table_position == "top_center" ? position.top_center : table_position == "top_right" ? position.top_right : table_position == "middle_left" ? position.middle_left : table_position == "middle_center" ? position.middle_center : table_position == "middle_right" ? position.middle_right : table_position == "bottom_left" ? position.bottom_left : table_position == "bottom_center" ? position.bottom_center : position.bottom_right
+
+// Determine text size
+txt_size = table_text_size == "tiny" ? size.tiny : table_text_size == "small" ? size.small : table_text_size == "normal" ? size.normal : table_text_size == "large" ? size.large : size.huge
+
+var table consensusTable = table.new(table_pos, 4, 5, bgcolor=color.new(color.black, 10), border_width=2, border_color=color.new(color.gray, 50))
+
+if barstate.islast
+    // Header Row
+    table.cell(consensusTable, 0, 0, "Timeframe", bgcolor=color.new(color.gray, 70), text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 1, 0, "RSI", bgcolor=color.new(color.blue, 70), text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 2, 0, "Stoch", bgcolor=color.new(color.orange, 70), text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 3, 0, "Consensus", bgcolor=color.new(color.purple, 70), text_color=color.white, text_size=txt_size)
+    
+    // TF1 Row
+    tf1_display = tf1 == "" ? f_format_timeframe(timeframe.period) : f_format_timeframe(tf1)
+    tf1_consensus = signal_tf1 == 1 ? "🟢 BUY" : signal_tf1 == -1 ? "🔴 SELL" : "⚪ NEUTRAL"
+    tf1_consensus_color = signal_tf1 == 1 ? color.new(color.green, 70) : signal_tf1 == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)
+    tf1_rsi_color = rsi_tf1 <= rsi_lower ? color.new(color.green, 70) : rsi_tf1 >= rsi_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    tf1_stoch_color = stoch_k_tf1 <= stoch_lower ? color.new(color.green, 70) : stoch_k_tf1 >= stoch_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    
+    table.cell(consensusTable, 0, 1, tf1_display, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 1, 1, str.tostring(math.round(rsi_tf1, 2)), bgcolor=tf1_rsi_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 2, 1, str.tostring(math.round(stoch_k_tf1, 2)), bgcolor=tf1_stoch_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 3, 1, tf1_consensus, bgcolor=tf1_consensus_color, text_color=color.white, text_size=txt_size)
+    
+    // TF2 Row
+    tf2_display = f_format_timeframe(tf2)
+    tf2_consensus = signal_tf2 == 1 ? "🟢 BUY" : signal_tf2 == -1 ? "🔴 SELL" : "⚪ NEUTRAL"
+    tf2_consensus_color = signal_tf2 == 1 ? color.new(color.green, 70) : signal_tf2 == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)
+    tf2_rsi_color = rsi_tf2 <= rsi_lower ? color.new(color.green, 70) : rsi_tf2 >= rsi_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    tf2_stoch_color = stoch_k_tf2 <= stoch_lower ? color.new(color.green, 70) : stoch_k_tf2 >= stoch_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    
+    table.cell(consensusTable, 0, 2, tf2_display, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 1, 2, str.tostring(math.round(rsi_tf2, 2)), bgcolor=tf2_rsi_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 2, 2, str.tostring(math.round(stoch_k_tf2, 2)), bgcolor=tf2_stoch_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 3, 2, tf2_consensus, bgcolor=tf2_consensus_color, text_color=color.white, text_size=txt_size)
+    
+    // TF3 Row
+    tf3_display = f_format_timeframe(tf3)
+    tf3_consensus = signal_tf3 == 1 ? "🟢 BUY" : signal_tf3 == -1 ? "🔴 SELL" : "⚪ NEUTRAL"
+    tf3_consensus_color = signal_tf3 == 1 ? color.new(color.green, 70) : signal_tf3 == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)
+    tf3_rsi_color = rsi_tf3 <= rsi_lower ? color.new(color.green, 70) : rsi_tf3 >= rsi_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    tf3_stoch_color = stoch_k_tf3 <= stoch_lower ? color.new(color.green, 70) : stoch_k_tf3 >= stoch_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    
+    table.cell(consensusTable, 0, 3, tf3_display, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 1, 3, str.tostring(math.round(rsi_tf3, 2)), bgcolor=tf3_rsi_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 2, 3, str.tostring(math.round(stoch_k_tf3, 2)), bgcolor=tf3_stoch_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 3, 3, tf3_consensus, bgcolor=tf3_consensus_color, text_color=color.white, text_size=txt_size)
+    
+    // TF4 Row
+    tf4_display = f_format_timeframe(tf4)
+    tf4_consensus = signal_tf4 == 1 ? "🟢 BUY" : signal_tf4 == -1 ? "🔴 SELL" : "⚪ NEUTRAL"
+    tf4_consensus_color = signal_tf4 == 1 ? color.new(color.green, 70) : signal_tf4 == -1 ? color.new(color.red, 70) : color.new(color.gray, 70)
+    tf4_rsi_color = rsi_tf4 <= rsi_lower ? color.new(color.green, 70) : rsi_tf4 >= rsi_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    tf4_stoch_color = stoch_k_tf4 <= stoch_lower ? color.new(color.green, 70) : stoch_k_tf4 >= stoch_upper ? color.new(color.red, 70) : color.new(color.gray, 80)
+    
+    table.cell(consensusTable, 0, 4, tf4_display, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 1, 4, str.tostring(math.round(rsi_tf4, 2)), bgcolor=tf4_rsi_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 2, 4, str.tostring(math.round(stoch_k_tf4, 2)), bgcolor=tf4_stoch_color, text_color=color.white, text_size=txt_size)
+    table.cell(consensusTable, 3, 4, tf4_consensus, bgcolor=tf4_consensus_color, text_color=color.white, text_size=txt_size)
+
+// ============================================================================
+// ALERTS
+// ============================================================================
+
+alertcondition(signal_tf1 == 1, title="BUY Signal", message="Stoch+RSI BUY Signal on {{ticker}}")
+alertcondition(signal_tf1 == -1, title="SELL Signal", message="Stoch+RSI SELL Signal on {{ticker}}")
+alertcondition(consensus == "BUY" and consensus_strength >= 3, title="Strong BUY Consensus", message="Strong BUY Consensus ({{plot_0}}/4) on {{ticker}}")
+alertcondition(consensus == "SELL" and consensus_strength >= 3, title="Strong SELL Consensus", message="Strong SELL Consensus ({{plot_0}}/4) on {{ticker}}")

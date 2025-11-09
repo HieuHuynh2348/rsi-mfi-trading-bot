@@ -285,3 +285,184 @@ def analyze_multi_timeframe(klines_dict, rsi_period, mfi_period, rsi_lower, rsi_
         'consensus_strength': consensus_strength,
         'total_signal': total_signal
     }
+
+
+def calculate_ohlc4(df):
+    """
+    Calculate OHLC/4 (smoother than close price)
+    (Open + High + Low + Close) / 4
+    
+    Args:
+        df: DataFrame with OHLC data
+        
+    Returns:
+        Series with OHLC/4 values
+    """
+    # Ensure numeric types
+    open_price = pd.to_numeric(df['open'], errors='coerce')
+    high = pd.to_numeric(df['high'], errors='coerce')
+    low = pd.to_numeric(df['low'], errors='coerce')
+    close = pd.to_numeric(df['close'], errors='coerce')
+    
+    return (open_price + high + low + close) / 4
+
+
+def calculate_stochastic(src, k_period=14, smooth=3):
+    """
+    Calculate Stochastic oscillator
+    
+    Args:
+        src: Source data (price series)
+        k_period: Lookback period for %K
+        smooth: Smoothing period for %K
+        
+    Returns:
+        Smoothed Stochastic %K values
+    """
+    # Calculate raw stochastic
+    lowest_low = src.rolling(window=k_period).min()
+    highest_high = src.rolling(window=k_period).max()
+    
+    # Avoid division by zero
+    denominator = highest_high - lowest_low
+    stoch = 100 * (src - lowest_low) / denominator.replace(0, np.nan)
+    stoch = stoch.fillna(50)  # Fill NaN with neutral value
+    
+    # Smooth the stochastic
+    smooth_stoch = stoch.rolling(window=smooth).mean()
+    
+    return smooth_stoch
+
+
+def calculate_stochastic_d(stoch_k, d_period=3):
+    """
+    Calculate Stochastic %D (signal line)
+    This is a moving average of %K
+    
+    Args:
+        stoch_k: Stochastic %K series
+        d_period: Smoothing period
+        
+    Returns:
+        Stochastic %D values
+    """
+    return stoch_k.rolling(window=d_period).mean()
+
+
+def calculate_rsi_rma(src, length=14):
+    """
+    Calculate RSI using RMA (same as Pine Script ta.rma)
+    This is the exact implementation from TradingView
+    
+    Args:
+        src: Source data series
+        length: RSI period
+        
+    Returns:
+        RSI values
+    """
+    # Calculate price changes
+    delta = src.diff()
+    
+    # Separate gains and losses
+    gain = delta.where(delta > 0, 0.0)
+    loss = -delta.where(delta < 0, 0.0)
+    
+    # Calculate RMA (Exponential Moving Average with alpha=1/length)
+    # This matches Pine Script's ta.rma() exactly
+    alpha = 1.0 / length
+    avg_gain = gain.ewm(alpha=alpha, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=alpha, adjust=False).mean()
+    
+    # Calculate RS and RSI
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    
+    # Handle division by zero (when avg_loss is 0, RSI = 100)
+    rsi = rsi.fillna(100)
+    
+    return rsi
+
+
+def analyze_stoch_rsi(df, stoch_k_period=14, stoch_smooth=3, stoch_d_period=3,
+                      rsi_length=14, stoch_lower=20, stoch_upper=80, 
+                      rsi_lower=30, rsi_upper=70):
+    """
+    Analyze Stochastic + RSI on OHLC/4 data
+    This matches the Pine Script Stoch+RSI Multi-TF logic
+    
+    Args:
+        df: DataFrame with OHLC data
+        stoch_k_period: Stochastic %K period
+        stoch_smooth: Smoothing for %K
+        stoch_d_period: %D period (signal line)
+        rsi_length: RSI period
+        stoch_lower: Stochastic oversold level
+        stoch_upper: Stochastic overbought level
+        rsi_lower: RSI oversold level
+        rsi_upper: RSI overbought level
+        
+    Returns:
+        Dict with Stochastic, RSI, and signal
+    """
+    try:
+        # Validate DataFrame
+        df = validate_dataframe(df)
+        if df is None:
+            return None
+        
+        # Calculate OHLC/4 (smoother than close)
+        ohlc4 = calculate_ohlc4(df)
+        
+        # Calculate RSI on OHLC/4 using RMA
+        rsi = calculate_rsi_rma(ohlc4, rsi_length)
+        
+        # Calculate Stochastic on OHLC/4
+        stoch_k = calculate_stochastic(ohlc4, stoch_k_period, stoch_smooth)
+        stoch_d = calculate_stochastic_d(stoch_k, stoch_d_period)
+        
+        # Get latest values
+        latest_rsi = float(rsi.iloc[-1])
+        latest_stoch_k = float(stoch_k.iloc[-1])
+        latest_stoch_d = float(stoch_d.iloc[-1])
+        
+        # Determine signals
+        rsi_signal = 0
+        if latest_rsi < rsi_lower:
+            rsi_signal = 1  # Oversold - BUY
+        elif latest_rsi > rsi_upper:
+            rsi_signal = -1  # Overbought - SELL
+        
+        stoch_signal = 0
+        if latest_stoch_k < stoch_lower:
+            stoch_signal = 1  # Oversold - BUY
+        elif latest_stoch_k > stoch_upper:
+            stoch_signal = -1  # Overbought - SELL
+        
+        # Consensus signal (both must agree)
+        if rsi_signal == 1 and stoch_signal == 1:
+            final_signal = 1  # BUY
+        elif rsi_signal == -1 and stoch_signal == -1:
+            final_signal = -1  # SELL
+        else:
+            final_signal = 0  # NEUTRAL
+        
+        return {
+            'rsi': round(latest_rsi, 2),
+            'stoch_k': round(latest_stoch_k, 2),
+            'stoch_d': round(latest_stoch_d, 2),
+            'rsi_signal': rsi_signal,
+            'stoch_signal': stoch_signal,
+            'signal': final_signal,
+            'signal_text': 'BUY' if final_signal == 1 else 'SELL' if final_signal == -1 else 'NEUTRAL',
+            'rsi_series': rsi,
+            'stoch_k_series': stoch_k,
+            'stoch_d_series': stoch_d
+        }
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in analyze_stoch_rsi: {e}")
+        return None
+
