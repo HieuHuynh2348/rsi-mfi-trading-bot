@@ -817,7 +817,7 @@ class TelegramCommandHandler:
                             return
                         
                         # Generate chart with indicators
-                        chart_path = self.chart_generator.generate_chart_with_indicators(
+                        chart_path = self.chart_gen.generate_chart_with_indicators(
                             symbol, 
                             klines, 
                             rsi_period=14, 
