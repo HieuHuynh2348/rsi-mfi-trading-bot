@@ -4,6 +4,7 @@ Handles user commands from Telegram
 """
 
 import logging
+import os
 from datetime import datetime
 import time
 from watchlist import WatchlistManager
@@ -781,6 +782,67 @@ class TelegramCommandHandler:
                             text=f"❌ <b>Lỗi trong quá trình phân tích AI</b>\n\n"
                                  f"Error: {str(e)}\n\n"
                                  f"💡 Vui lòng báo admin hoặc thử lại sau.",
+                            parse_mode='HTML'
+                        )
+                
+                # Chart button callback
+                elif data.startswith("chart_"):
+                    symbol = data.replace("chart_", "")
+                    
+                    try:
+                        # Send processing message
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"📊 <b>Đang tạo chart cho {symbol}...</b>\n⏳ Vui lòng chờ...",
+                            parse_mode='HTML'
+                        )
+                        
+                        # Get klines data for chart
+                        klines = self.binance.get_klines(symbol, '1h', limit=100)
+                        
+                        if not klines or len(klines) < 10:
+                            self.telegram_bot.send_message(
+                                chat_id=call.message.chat.id,
+                                text=f"❌ Không thể lấy dữ liệu chart cho {symbol}",
+                                parse_mode='HTML'
+                            )
+                            return
+                        
+                        # Generate chart with indicators
+                        chart_path = self.chart_generator.generate_chart_with_indicators(
+                            symbol, 
+                            klines, 
+                            rsi_period=14, 
+                            mfi_period=14
+                        )
+                        
+                        if chart_path and os.path.exists(chart_path):
+                            # Send chart photo
+                            with open(chart_path, 'rb') as photo:
+                                self.telegram_bot.send_photo(
+                                    chat_id=call.message.chat.id,
+                                    photo=photo,
+                                    caption=f"📊 <b>{symbol} - 1H Chart</b>\n"
+                                            f"📈 RSI + MFI Indicators\n"
+                                            f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                                    parse_mode='HTML'
+                                )
+                            
+                            # Clean up
+                            os.remove(chart_path)
+                            logger.info(f"✅ Sent chart for {symbol}")
+                        else:
+                            self.telegram_bot.send_message(
+                                chat_id=call.message.chat.id,
+                                text=f"❌ Không thể tạo chart cho {symbol}",
+                                parse_mode='HTML'
+                            )
+                    
+                    except Exception as e:
+                        logger.error(f"Error generating chart for {symbol}: {e}", exc_info=True)
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"❌ Lỗi khi tạo chart: {str(e)}",
                             parse_mode='HTML'
                         )
                 
@@ -2916,11 +2978,11 @@ class TelegramCommandHandler:
                 
                 msg += "\n⚠️ <i>Đây là phân tích kỹ thuật tự động, không phải tư vấn tài chính</i>"
                 
-                # Create AI Analysis button
-                ai_keyboard = self.bot.create_ai_analysis_keyboard(symbol)
+                # Create keyboard with AI Analysis and Chart buttons
+                analysis_keyboard = self.bot.create_symbol_analysis_keyboard(symbol)
                 
                 # Send comprehensive analysis
-                self.bot.send_message(msg, reply_markup=ai_keyboard)
+                self.bot.send_message(msg, reply_markup=analysis_keyboard)
                 
                 logger.info(f"✅ Sent comprehensive analysis for {symbol}")
                 
