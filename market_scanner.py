@@ -551,14 +551,28 @@ class MarketScanner:
                 }
             }
             
-            # Send alert with ONLY 1D timeframe
+            # Send alert with ONLY 1D timeframe (format prices for display)
+            formatted_price = None
+            try:
+                formatted_price = self.binance.format_price(symbol, price) if price is not None else None
+            except Exception:
+                formatted_price = None
+            md = market_data
+            if md:
+                md = md.copy()
+                try:
+                    md['high'] = self.binance.format_price(symbol, md.get('high'))
+                    md['low'] = self.binance.format_price(symbol, md.get('low'))
+                except Exception:
+                    pass
+
             self.bot.send_signal_alert(
                 symbol,
                 timeframe_data,
                 consensus,
                 consensus_strength,
-                price,
-                market_data,
+                formatted_price,
+                md,
                 None  # No volume data for market scanner
             )
             
@@ -577,15 +591,30 @@ class MarketScanner:
         try:
             # Use command handler's analysis function
             result = self.command_handler._analyze_symbol_full(symbol)
-            
+
             if result:
+                # Format price and market_data for display
+                formatted_price = None
+                try:
+                    formatted_price = self.command_handler.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                except Exception:
+                    formatted_price = None
+                md = result.get('market_data')
+                if md:
+                    md = md.copy()
+                    try:
+                        md['high'] = self.command_handler.binance.format_price(result['symbol'], md.get('high'))
+                        md['low'] = self.command_handler.binance.format_price(result['symbol'], md.get('low'))
+                    except Exception:
+                        pass
+
                 self.bot.send_signal_alert(
                     result['symbol'],
                     result['timeframe_data'],
                     result['consensus'],
                     result['consensus_strength'],
-                    result['price'],
-                    result.get('market_data'),
+                    formatted_price,
+                    md,
                     result.get('volume_data')
                 )
                 logger.info(f"✅ Sent detailed analysis for {symbol}")

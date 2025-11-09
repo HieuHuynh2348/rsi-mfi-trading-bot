@@ -289,13 +289,21 @@ class TelegramCommandHandler:
                     )
                     result = self._analyze_symbol_full(symbol)
                     if result:
+                        # Pre-format price and market_data for nicer display
+                        formatted_price = self.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                        md = result.get('market_data')
+                        if md:
+                            md = md.copy()
+                            md['high'] = self.binance.format_price(result['symbol'], md.get('high'))
+                            md['low'] = self.binance.format_price(result['symbol'], md.get('low'))
+
                         self.bot.send_signal_alert(
                             result['symbol'],
                             result['timeframe_data'],
                             result['consensus'],
                             result['consensus_strength'],
-                            result['price'],
-                            result.get('market_data'),
+                            formatted_price,
+                            md,
                             result.get('volume_data')
                         )
 
@@ -928,7 +936,8 @@ class TelegramCommandHandler:
                 
                 if price:
                     keyboard = self.bot.create_quick_analysis_keyboard()
-                    self.bot.send_message(f"💰 <b>{symbol}</b>\nGiá: ${price:,.4f}", reply_markup=keyboard)
+                    formatted = self.binance.format_price(symbol, price)
+                    self.bot.send_message(f"💰 <b>{symbol}</b>\nGiá: ${formatted}", reply_markup=keyboard)
                 else:
                     keyboard = self.bot.create_main_menu_keyboard()
                     self.bot.send_message(f"❌ Không thể lấy giá cho {symbol}", reply_markup=keyboard)
@@ -975,14 +984,22 @@ class TelegramCommandHandler:
                     else:
                         vol_str = f"${volume:.2f}"
                     
+                    # Format prices with symbol precision
+                    last_price = data.get('last_price', 0)
+                    high_p = data.get('high', 0)
+                    low_p = data.get('low', 0)
+                    formatted_last = self.binance.format_price(symbol, last_price)
+                    formatted_high = self.binance.format_price(symbol, high_p)
+                    formatted_low = self.binance.format_price(symbol, low_p)
+
                     msg = f"""
 <b>📊 {symbol} - Dữ liệu 24h</b>
 
-💰 <b>Giá:</b> ${data.get('last_price', 0):,.4f}
+💰 <b>Giá:</b> ${formatted_last}
 {emoji} <b>Thay đổi:</b> {change:+.2f}%
 
-⬆️ <b>Cao nhất:</b> ${data.get('high', 0):,.4f}
-⬇️ <b>Thấp nhất:</b> ${data.get('low', 0):,.4f}
+⬆️ <b>Cao nhất:</b> ${formatted_high}
+⬇️ <b>Thấp nhất:</b> ${formatted_low}
 
 💵 <b>Khối lượng:</b> {vol_str}
                     """
@@ -1507,14 +1524,21 @@ class TelegramCommandHandler:
                     # Send ALL analysis results (not just signals)
                     for i, result in enumerate(analysis_results, 1):
                         try:
-                            # Send text alert for ALL coins
+                            # Send text alert for ALL coins (format prices for display)
+                            formatted_price = self.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                            md = result.get('market_data')
+                            if md:
+                                md = md.copy()
+                                md['high'] = self.binance.format_price(result['symbol'], md.get('high'))
+                                md['low'] = self.binance.format_price(result['symbol'], md.get('low'))
+
                             self.bot.send_signal_alert(
                                 result['symbol'],
                                 result['timeframe_data'],
                                 result['consensus'],
                                 result['consensus_strength'],
-                                result['price'],
-                                result.get('market_data'),
+                                formatted_price,
+                                md,
                                 result.get('volume_data')
                             )
                             
@@ -2545,7 +2569,9 @@ class TelegramCommandHandler:
                     price_change_24h = ticker_24h['price_change_percent']
                     volume_24h = ticker_24h['volume']
                     
-                    msg += f"<b>💰 Giá Hiện Tại:</b> ${current_price:,.8f}\n"
+                    # Format price with symbol-appropriate precision
+                    formatted_price = self.binance.format_price(symbol, current_price)
+                    msg += f"<b>💰 Giá Hiện Tại:</b> ${formatted_price}\n"
                     msg += f"<b>📈 24h Change:</b> {price_change_24h:+.2f}%\n"
                     msg += f"<b>💧 24h Volume:</b> ${volume_24h:,.0f}\n\n"
                 

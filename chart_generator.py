@@ -78,7 +78,7 @@ class ChartGenerator:
     
     def create_rsi_mfi_chart(self, symbol, df, rsi_series, mfi_series, 
                             rsi_lower=20, rsi_upper=80, mfi_lower=20, mfi_upper=80,
-                            timeframe='5m'):
+                            timeframe='5m', price_precision=None):
         """
         Create a professional chart with candlesticks, RSI, and MFI
         
@@ -117,8 +117,12 @@ class ChartGenerator:
             
             # Add current price line
             current_price = df_display['close'].iloc[-1]
+            if price_precision is None:
+                price_label = f"${current_price:,.4f}"
+            else:
+                price_label = f"${current_price:,.{price_precision}f}"
             ax1.axhline(y=current_price, color='blue', linestyle='--', 
-                       linewidth=1, alpha=0.7, label=f'Current: ${current_price:,.4f}')
+                       linewidth=1, alpha=0.7, label=f'Current: {price_label}')
             
             # Title and labels
             price_change = ((df_display['close'].iloc[-1] - df_display['open'].iloc[0]) / 
@@ -127,7 +131,7 @@ class ChartGenerator:
             
             ax1.set_title(
                 f'{symbol} | {timeframe.upper()} | {datetime.now().strftime("%Y-%m-%d %H:%M")}\n'
-                f'Price: ${current_price:,.4f} ({price_change:+.2f}%)',
+                f'Price: {price_label} ({price_change:+.2f}%)',
                 fontsize=13, fontweight='bold', pad=10
             )
             ax1.set_ylabel('Price (USDT)', fontsize=10, fontweight='bold')
@@ -384,8 +388,15 @@ class ChartGenerator:
                     
                     # Add current price line if this is the last timeframe
                     if price and idx == n_tf - 1:
+                        # Try to infer precision from price magnitude if not provided
+                        try:
+                            # Default to 4 decimals
+                            prec = 4
+                            label_price = f"${price:,.{prec}f}"
+                        except Exception:
+                            label_price = f"${price}"
                         ax.axhline(y=price, color='blue', linestyle='--', 
-                                 linewidth=1.5, alpha=0.7, label=f'Current: ${price:,.2f}')
+                                 linewidth=1.5, alpha=0.7, label=f'Current: {label_price}')
                         ax.legend(loc='upper left', fontsize=9)
                     
                     # Get signal from analysis

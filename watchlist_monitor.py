@@ -203,13 +203,28 @@ class WatchlistMonitor:
                 try:
                     logger.info(f"📤 Sending detailed analysis {i}/{len(signals)} for {result['symbol']}")
                     # Send text alert
+                    # Format price and market_data for display
+                    formatted_price = None
+                    try:
+                        formatted_price = self.command_handler.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                    except Exception:
+                        formatted_price = None
+                    md = result.get('market_data')
+                    if md:
+                        md = md.copy()
+                        try:
+                            md['high'] = self.command_handler.binance.format_price(result['symbol'], md.get('high'))
+                            md['low'] = self.command_handler.binance.format_price(result['symbol'], md.get('low'))
+                        except Exception:
+                            pass
+
                     self.command_handler.bot.send_signal_alert(
                         result['symbol'],
                         result['timeframe_data'],
                         result['consensus'],
                         result['consensus_strength'],
-                        result['price'],
-                        result.get('market_data'),
+                        formatted_price,
+                        md,
                         result.get('volume_data')
                     )
                     logger.info(f"✅ Successfully sent alert for {result['symbol']}")
@@ -348,13 +363,28 @@ class WatchlistMonitor:
                     time.sleep(1)
                     
                     # Send full technical analysis
+                    # Format price and market_data
+                    formatted_price = None
+                    try:
+                        formatted_price = self.command_handler.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                    except Exception:
+                        formatted_price = None
+                    md = result.get('market_data')
+                    if md:
+                        md = md.copy()
+                        try:
+                            md['high'] = self.command_handler.binance.format_price(result['symbol'], md.get('high'))
+                            md['low'] = self.command_handler.binance.format_price(result['symbol'], md.get('low'))
+                        except Exception:
+                            pass
+
                     self.command_handler.bot.send_signal_alert(
                         result['symbol'],
                         result['timeframe_data'],
                         result['consensus'],
                         result['consensus_strength'],
-                        result['price'],
-                        result.get('market_data'),
+                        formatted_price,
+                        md,
                         result.get('volume_data')
                     )
                     

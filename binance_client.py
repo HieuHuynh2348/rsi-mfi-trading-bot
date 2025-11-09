@@ -16,7 +16,58 @@ class BinanceClient:
     def __init__(self, api_key, api_secret):
         """Initialize Binance client"""
         self.client = Client(api_key, api_secret)
+        # Cache for symbol exchange info (to get precisions)
+        self._symbol_info_cache = {}
         logger.info("Binance client initialized")
+
+    def _load_symbol_info(self, symbol):
+        """Load and cache symbol info from exchange info for precision calculation"""
+        try:
+            if not self._symbol_info_cache:
+                exchange_info = self.client.get_exchange_info()
+                for s in exchange_info.get('symbols', []):
+                    self._symbol_info_cache[s['symbol']] = s
+            return self._symbol_info_cache.get(symbol)
+        except Exception as e:
+            logger.error(f"Error loading exchange info: {e}")
+            return None
+
+    def get_price_precision(self, symbol):
+        """Return number of decimal places for price for given symbol based on PRICE_FILTER.tickSize
+
+        Falls back to 8 decimals if unknown.
+        """
+        try:
+            info = self._load_symbol_info(symbol)
+            if not info:
+                return 8
+
+            for f in info.get('filters', []):
+                if f.get('filterType') == 'PRICE_FILTER':
+                    tick = f.get('tickSize', '0.00000001')
+                    # Count decimals in tickSize
+                    if '.' in tick:
+                        return max(0, len(tick.rstrip('0').split('.')[-1]))
+                    else:
+                        return 0
+            return 8
+        except Exception as e:
+            logger.error(f"Error getting price precision for {symbol}: {e}")
+            return 8
+
+    def format_price(self, symbol, price):
+        """Format price according to symbol precision, including thousand separators.
+
+        Returns formatted string (no currency symbol).
+        """
+        try:
+            if price is None:
+                return '0'
+            precision = self.get_price_precision(symbol)
+            return f"{price:,.{precision}f}"
+        except Exception as e:
+            logger.error(f"Error formatting price for {symbol}: {e}")
+            return str(price)
     
     def get_all_symbols(self, quote_asset='USDT', excluded_keywords=None, min_volume=0):
         """

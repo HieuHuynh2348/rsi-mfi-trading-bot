@@ -679,9 +679,12 @@ class RealtimePumpDetector:
             
             # Price info
             msg += f"<b>💰 Thông Tin Giá:</b>\n"
-            msg += f"   • Giá hiện tại: ${layer3['indicators']['current_price']:,.8f}\n"
-            msg += f"   • Cao 30D: ${layer3['indicators']['high_30d']:,.8f}\n"
-            msg += f"   • Thấp 30D: ${layer3['indicators']['low_30d']:,.8f}\n\n"
+            cur = layer3['indicators'].get('current_price')
+            high30 = layer3['indicators'].get('high_30d')
+            low30 = layer3['indicators'].get('low_30d')
+            msg += f"   • Giá hiện tại: ${self.binance.format_price(symbol, cur)}\n"
+            msg += f"   • Cao 30D: ${self.binance.format_price(symbol, high30)}\n"
+            msg += f"   • Thấp 30D: ${self.binance.format_price(symbol, low30)}\n\n"
             
             # Trading advice
             if score >= 90:

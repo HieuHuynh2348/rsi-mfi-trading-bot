@@ -262,15 +262,27 @@ def get_signal_alert(symbol, timeframe_data, consensus, strength, price, market_
     
     # Price info
     if price:
-        msg += f"💰 <b>Giá:</b> ${price:,.4f}\n"
+        # If caller pre-formatted price as string use it directly, otherwise format with default 4 decimals
+        if isinstance(price, str):
+            msg += f"💰 <b>Giá:</b> ${price}\n"
+        else:
+            msg += f"💰 <b>Giá:</b> ${price:,.4f}\n"
     
     # 24h data
     if market_data:
         change = market_data.get('price_change_percent', 0)
         emoji = "📈" if change >= 0 else "📉"
         msg += f"{emoji} <b>Thay đổi 24h:</b> {change:+.2f}%\n"
-        msg += f"⬆️ <b>Cao 24h:</b> ${market_data.get('high', 0):,.4f}\n"
-        msg += f"⬇️ <b>Thấp 24h:</b> ${market_data.get('low', 0):,.4f}\n"
+        high_v = market_data.get('high', 0)
+        low_v = market_data.get('low', 0)
+        if isinstance(high_v, str):
+            msg += f"⬆️ <b>Cao 24h:</b> ${high_v}\n"
+        else:
+            msg += f"⬆️ <b>Cao 24h:</b> ${high_v:,.4f}\n"
+        if isinstance(low_v, str):
+            msg += f"⬇️ <b>Thấp 24h:</b> ${low_v}\n"
+        else:
+            msg += f"⬇️ <b>Thấp 24h:</b> ${low_v:,.4f}\n"
         
         # Volume
         volume = market_data.get('volume', 0)

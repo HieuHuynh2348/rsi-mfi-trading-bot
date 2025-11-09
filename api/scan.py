@@ -87,13 +87,18 @@ class handler(BaseHTTPRequestHandler):
                         
                         price = binance.get_current_price(symbol)
                         market_data = binance.get_24h_data(symbol)
+                        # Pre-format prices for downstream Telegram messages
+                        formatted_price = binance.format_price(symbol, price) if price is not None else None
+                        if market_data:
+                            market_data['high'] = binance.format_price(symbol, market_data.get('high'))
+                            market_data['low'] = binance.format_price(symbol, market_data.get('low'))
                         
                         signal_data = {
                             'symbol': symbol,
                             'timeframe_data': analysis['timeframes'],
                             'consensus': analysis['consensus'],
                             'consensus_strength': analysis['consensus_strength'],
-                            'price': price,
+                            'price': formatted_price,
                             'market_data': market_data,
                             'klines_dict': klines_dict
                         }

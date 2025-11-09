@@ -374,13 +374,28 @@ class TradingBot:
         # Send ALL signals (no limit) - sorted by priority
         for i, signal in enumerate(signals_list_sorted, 1):
             # Send text alert only
+            # Format price and market_data for display
+            formatted_price = None
+            try:
+                formatted_price = self.binance.format_price(signal['symbol'], signal.get('price')) if signal.get('price') is not None else None
+            except Exception:
+                formatted_price = None
+            md = signal.get('market_data')
+            if md:
+                md = md.copy()
+                try:
+                    md['high'] = self.binance.format_price(signal['symbol'], md.get('high'))
+                    md['low'] = self.binance.format_price(signal['symbol'], md.get('low'))
+                except Exception:
+                    pass
+
             self.telegram.send_signal_alert(
                 signal['symbol'],
                 signal['timeframe_data'],
                 signal['consensus'],
                 signal['consensus_strength'],
-                signal['price'],
-                signal.get('market_data'),
+                formatted_price,
+                md,
                 signal.get('volume_data')
             )
             
