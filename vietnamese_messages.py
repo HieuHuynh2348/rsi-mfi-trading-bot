@@ -30,9 +30,6 @@ Ví dụ: /BTC /ETH /LINK
 /pumpstatus - Trạng thái & settings
 /top - Top 10 coin khối lượng cao
 
-<b>📊 STOCH+RSI:</b>
-/stochrsi <b>SYMBOL</b> - Stochastic + RSI 4 TF
-
 <b>⚙️ ĐIỀU KHIỂN BOT:</b>
 /status - Trạng thái bot & cài đặt
 /scan - Quét thị trường ngay
