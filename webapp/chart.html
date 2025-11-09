@@ -178,38 +178,42 @@
         }
         
         #indicators {
-            position: absolute;
-            top: 10px;  /* Top of chart container */
-            left: 10px;
+            display: none;  /* Hidden by default */
+            padding: 20px;
+            background: #1a1a1a;
+            height: calc(100vh - 155px);
+            overflow-y: auto;
+        }
+        
+        #indicators.active {
+            display: block;
+        }
+        
+        .indicator-section {
             background: rgba(37, 37, 37, 0.90);
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            z-index: 10;
-            backdrop-filter: blur(8px);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 180px;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            display: none;  /* Hidden by default, shown in indicators tab */
+            backdrop-filter: blur(8px);
         }
         
-        /* Make children interactive */
-        #indicators * {
-            pointer-events: auto;
-        }
-        
-        /* Auto-hide on interaction (TradingView pattern) */
-        body.chart-interacting #indicators {
-            opacity: 0.3;
+        .indicator-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #D1D4DC;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .indicator-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 6px 0;
+            margin: 10px 0;
             gap: 12px;
+            font-size: 15px;
         }
         
         .indicator-label {
@@ -217,12 +221,13 @@
             font-weight: 500;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            font-size: 15px;
         }
         
         .indicator-value {
             font-weight: 700;
-            font-size: 14px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             gap: 4px;
@@ -254,18 +259,16 @@
             50% { opacity: 0.85; }
         }
         
-        /* Signal badge - Move to left side, below indicators */
-        .signal-badge {
-            position: absolute;
-            top: 280px;  /* Below indicators panel (~110px top + ~150px height) */
-            left: 10px;
-            padding: 8px 16px;
-            border-radius: 20px;
+        /* Signal badge in indicators panel */
+        #indicators .signal-badge {
+            padding: 12px 20px;
+            border-radius: 24px;
             font-weight: bold;
-            font-size: 14px;
-            z-index: 10;
+            font-size: 16px;
             backdrop-filter: blur(8px);
             border: 2px solid;
+            text-align: center;
+            width: 100%;
         }
         
         .signal-buy {
@@ -368,14 +371,6 @@
                 font-size: 10px;
                 gap: 6px;
             }
-            
-            /* Move signal badge higher on mobile to avoid blocking chart */
-            .signal-badge {
-                top: 250px;  /* Below indicators on mobile */
-                left: 8px;
-                font-size: 12px;
-                padding: 6px 12px;
-            }
         }
         
         /* Zone indicator dots - No animation */
@@ -436,10 +431,6 @@
         <button class="tf-btn" data-tf="1d">1D</button>
     </div>
     
-    <div id="signal-badge" class="signal-badge signal-neutral" style="display: none;">
-        NEUTRAL
-    </div>
-    
     <!-- OHLCV Legend (Phase 2) -->
     <div id="ohlcv-legend">
         <div class="legend-symbol" id="legend-symbol">BTCUSDT</div>
@@ -467,23 +458,33 @@
     </div>
     
     <div id="indicators">
-        <div class="indicator-row">
-            <span class="indicator-label">
-                <span class="zone-dot" id="rsi-dot" style="background: #777;"></span>
-                RSI(14)
-            </span>
-            <span class="indicator-value" id="rsi-value">--</span>
+        <div class="indicator-section">
+            <div class="indicator-title">Technical Indicators</div>
+            <div class="indicator-row">
+                <span class="indicator-label">
+                    <span class="zone-dot" id="rsi-dot" style="background: #777;"></span>
+                    RSI(14)
+                </span>
+                <span class="indicator-value" id="rsi-value">--</span>
+            </div>
+            <div class="indicator-row">
+                <span class="indicator-label">
+                    <span class="zone-dot" id="mfi-dot" style="background: #777;"></span>
+                    MFI(14)
+                </span>
+                <span class="indicator-value" id="mfi-value">--</span>
+            </div>
         </div>
-        <div class="indicator-row">
-            <span class="indicator-label">
-                <span class="zone-dot" id="mfi-dot" style="background: #777;"></span>
-                MFI(14)
-            </span>
-            <span class="indicator-value" id="mfi-value">--</span>
-        </div>
-        <div class="indicator-row" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 6px;">
-            <span class="indicator-label">Signal:</span>
-            <span class="indicator-value" id="signal-text" style="font-size: 13px; color: #aaa;">--</span>
+        
+        <div class="indicator-section">
+            <div class="indicator-title">Trading Signal</div>
+            <div class="indicator-row">
+                <span class="indicator-label">Signal:</span>
+                <span class="indicator-value" id="signal-text" style="font-size: 16px; color: #aaa;">--</span>
+            </div>
+            <div id="signal-badge" class="signal-badge signal-neutral" style="display: none; position: relative; top: 0; left: 0; margin-top: 12px;">
+                NEUTRAL
+            </div>
         </div>
     </div>
     
@@ -529,6 +530,8 @@
         // Tab switching
         const tabBtns = document.querySelectorAll('.tab-btn');
         const indicatorsPanel = document.getElementById('indicators');
+        const chartContainer = document.getElementById('chartContainer');
+        const ohlcvLegend = document.getElementById('ohlcv-legend');
         
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -538,11 +541,15 @@
                 tabBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 
-                // Show/hide indicators based on tab
+                // Show/hide content based on tab
                 if (tab === 'indicators') {
-                    indicatorsPanel.style.display = 'block';
+                    indicatorsPanel.classList.add('active');
+                    chartContainer.style.display = 'none';
+                    ohlcvLegend.style.display = 'none';
                 } else {
-                    indicatorsPanel.style.display = 'none';
+                    indicatorsPanel.classList.remove('active');
+                    chartContainer.style.display = 'block';
+                    ohlcvLegend.style.display = 'block';
                 }
                 
                 // Haptic feedback
