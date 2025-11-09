@@ -15,7 +15,13 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # WebApp URL for live charts (set in Railway environment)
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-app.railway.app/webapp/chart.html")
+# Format: https://your-app-name.up.railway.app
+# Railway will automatically provide RAILWAY_PUBLIC_DOMAIN
+RAILWAY_DOMAIN = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+if RAILWAY_DOMAIN:
+    WEBAPP_URL = f"https://{RAILWAY_DOMAIN}"
+else:
+    WEBAPP_URL = os.getenv("WEBAPP_URL", "")
 
 # ============================================================================
 # TRADING PARAMETERS
