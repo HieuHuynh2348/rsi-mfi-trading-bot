@@ -265,6 +265,12 @@ class TelegramBot:
                     # Format: https://t.me/botname?start=chart_SYMBOL_USERID_CHATID
                     start_param = f"chart_{symbol}_{user_id}_{chat_id}" if user_id and chat_id else f"chart_{symbol}"
                     bot_link = f"https://t.me/{bot_username}?start={start_param}"
+                    
+                    # Debug log
+                    logger.info(f"🔗 Creating group link - Symbol: {symbol}, User: {user_id}, Chat: {chat_id}")
+                    logger.info(f"🔗 Start param: {start_param}")
+                    logger.info(f"🔗 Full link: {bot_link}")
+                    
                     keyboard.row(
                         types.InlineKeyboardButton(
                             "📊 Open Live Chart in Bot", 
@@ -313,6 +319,11 @@ class TelegramBot:
                 if bot_username:
                     start_param = f"chart_{symbol}_{user_id}_{chat_id}" if user_id and chat_id else f"chart_{symbol}"
                     bot_link = f"https://t.me/{bot_username}?start={start_param}"
+                    
+                    # Debug log
+                    logger.info(f"🔗 Creating group link (symbol_analysis) - Symbol: {symbol}, User: {user_id}, Chat: {chat_id}")
+                    logger.info(f"🔗 Start param: {start_param}")
+                    
                     keyboard.row(
                         types.InlineKeyboardButton(
                             "📊 Open Live Chart in Bot", 

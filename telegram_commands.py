@@ -38,6 +38,10 @@ class TelegramCommandHandler:
         self.tracked_users = {}  # {user_id: last_notification_time}
         self.tracking_cooldown = 3600  # 1 hour cooldown per user
         
+        # Usage limits for non-group users
+        self.user_usage = {}  # {user_id: {'date': 'YYYY-MM-DD', 'count': int}}
+        self.daily_limit = 2  # 2 commands per day for non-group users
+        
         # Initialize watchlist manager
         self.watchlist = WatchlistManager()
         
@@ -266,6 +270,8 @@ class TelegramCommandHandler:
         def check_authorized(message):
             """
             Allow anyone to use the bot, but track usage
+            - Group users: Unlimited usage
+            - Private users: 2 commands per day limit
             Send notification to admin for monitoring (with rate limiting)
             """
             try:
@@ -279,6 +285,37 @@ class TelegramCommandHandler:
                 command = message.text.split()[0] if message.text else "N/A"
                 
                 logger.info(f"📨 Bot access - User: {user_id} (@{username}), Chat: {chat_id}, Type: {chat_type}, Command: {command}")
+                
+                # Check usage limits for private chat users (not in groups)
+                if chat_type == 'private' and user_id:
+                    today = datetime.now().strftime('%Y-%m-%d')
+                    
+                    # Initialize or update usage tracking
+                    if user_id not in self.user_usage:
+                        self.user_usage[user_id] = {'date': today, 'count': 0}
+                    else:
+                        # Reset count if new day
+                        if self.user_usage[user_id]['date'] != today:
+                            self.user_usage[user_id] = {'date': today, 'count': 0}
+                    
+                    # Check if user exceeded daily limit
+                    if self.user_usage[user_id]['count'] >= self.daily_limit:
+                        # Send limit exceeded message
+                        self.telegram_bot.send_message(
+                            chat_id=message.chat.id,
+                            text=f"⚠️ <b>Giới hạn sử dụng</b>\n\n"
+                                 f"Bạn đã sử dụng hết <b>{self.daily_limit} lần</b> trong ngày hôm nay.\n\n"
+                                 f"🕐 Vui lòng quay lại vào ngày mai!\n\n"
+                                 f"💡 <b>Tip:</b> Tham gia group để sử dụng không giới hạn!",
+                            parse_mode='HTML'
+                        )
+                        logger.info(f"🚫 User {user_id} exceeded daily limit ({self.user_usage[user_id]['count']}/{self.daily_limit})")
+                        return False
+                    
+                    # Increment usage count
+                    self.user_usage[user_id]['count'] += 1
+                    remaining = self.daily_limit - self.user_usage[user_id]['count']
+                    logger.info(f"✅ User {user_id} usage: {self.user_usage[user_id]['count']}/{self.daily_limit}, Remaining: {remaining}")
                 
                 # Check if we should send tracking notification (rate limiting)
                 current_time = time.time()
@@ -299,6 +336,11 @@ class TelegramCommandHandler:
                 # Send tracking notification to admin (if needed)
                 if should_notify:
                     try:
+                        # Get usage info
+                        usage_info = ""
+                        if chat_type == 'private' and user_id in self.user_usage:
+                            usage_info = f"\n📊 <b>Usage Today:</b> {self.user_usage[user_id]['count']}/{self.daily_limit}"
+                        
                         tracking_message = f"""
 📊 <b>Bot Usage Tracking</b>
 
@@ -308,7 +350,7 @@ class TelegramCommandHandler:
 💬 <b>Chat ID:</b> <code>{chat_id}</code>
 💬 <b>Chat Type:</b> {chat_type}
 📝 <b>Command:</b> <code>{command}</code>
-🕒 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+🕒 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{usage_info}
 
 <i>{"🆕 New user!" if user_id not in self.tracked_users or len(self.tracked_users) == 1 else "Active user"}</i>
 """
@@ -317,7 +359,7 @@ class TelegramCommandHandler:
                     except Exception as track_error:
                         logger.error(f"Error sending tracking notification: {track_error}")
                 
-                # Allow everyone
+                # Allow everyone (if they haven't exceeded limits)
                 return True
                 
             except Exception as e:
