@@ -275,7 +275,7 @@ class TelegramCommandHandler:
                     self.telegram_bot.edit_message_text(
                         chat_id=call.message.chat.id,
                         message_id=call.message.message_id,
-                        text="<b>🤖 MAIN MENU</b>\n\nChoose an option:",
+                        text="<b>🤖 MENU CHÍNH</b>\n\nChọn chức năng:",
                         parse_mode='HTML',
                         reply_markup=keyboard
                     )
@@ -285,7 +285,7 @@ class TelegramCommandHandler:
                     symbol = data.replace("analyze_", "")
                     self.telegram_bot.send_message(
                         chat_id=call.message.chat.id,
-                        text=f"🔍 Analyzing {symbol}..."
+                        text=f"🔍 Đang phân tích {symbol}..."
                     )
                     result = self._analyze_symbol_full(symbol)
                     if result:
@@ -312,7 +312,7 @@ class TelegramCommandHandler:
                     symbol = data.replace("viewchart_", "").upper().strip()
                     symbol = symbol.replace('&AMP;', '&').replace('&amp;', '&')
                     try:
-                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"📈 Generating chart for {symbol}...")
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"📈 Đang tạo biểu đồ cho {symbol}...")
                         # Generate a chart image for the symbol using chart generator
                         # Use last analysis data if available via trading bot, otherwise perform quick analysis
                         if self.trading_bot:
@@ -322,7 +322,7 @@ class TelegramCommandHandler:
                                 if result and 'klines_dict' in result:
                                     buf = self.chart_gen.create_price_chart(symbol, result['klines_dict'])
                                     if buf:
-                                        self.bot.send_photo(buf, caption=f"📈 <b>{symbol}</b> - Price Chart")
+                                        self.bot.send_photo(buf, caption=f"📈 <b>{symbol}</b> - Biểu Đồ Giá")
                                         return
                             except Exception:
                                 pass
@@ -331,12 +331,12 @@ class TelegramCommandHandler:
                         klines = self.binance.get_klines(symbol, '1h', limit=200)
                         buf = self.chart_gen.create_price_chart(symbol, {'1h': klines} if klines is not None else None)
                         if buf:
-                            self.bot.send_photo(buf, caption=f"📈 <b>{symbol}</b> - Price Chart")
+                            self.bot.send_photo(buf, caption=f"📈 <b>{symbol}</b> - Biểu Đồ Giá")
                         else:
-                            self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Could not generate chart for {symbol}")
+                            self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Không thể tạo biểu đồ cho {symbol}")
                     except Exception as e:
                         logger.error(f"Error generating chart for {symbol}: {e}")
-                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Error generating chart: {e}")
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Lỗi khi tạo biểu đồ: {e}")
 
                 # Add to watchlist request
                 elif data.startswith("addwatch_"):
@@ -348,7 +348,7 @@ class TelegramCommandHandler:
                         self.telegram_bot.send_message(chat_id=call.message.chat.id, text=message)
                     except Exception as e:
                         logger.error(f"Error adding {symbol} to watchlist: {e}")
-                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Error adding to watchlist: {e}")
+                        self.telegram_bot.send_message(chat_id=call.message.chat.id, text=f"❌ Lỗi khi thêm vào watchlist: {e}")
                 
                 # Volume sensitivity
                 elif data.startswith("vol_"):
@@ -361,7 +361,7 @@ class TelegramCommandHandler:
                     self.telegram_bot.edit_message_text(
                         chat_id=call.message.chat.id,
                         message_id=call.message.message_id,
-                        text=f"✅ Sensitivity updated: {old.upper()} → {sensitivity.upper()}",
+                        text=f"✅ Đã cập nhật độ nhạy: {old.upper()} → {sensitivity.upper()}",
                         parse_mode='HTML',
                         reply_markup=keyboard
                     )
@@ -389,7 +389,7 @@ class TelegramCommandHandler:
                         keyboard = self.bot.create_volume_keyboard()
                         self.telegram_bot.send_message(
                             chat_id=call.message.chat.id,
-                            text=f"<b>🎯 Volume Sensitivity</b>\n\nCurrent: <b>{current.upper()}</b>\n\nSelect level:",
+                            text=f"<b>🎯 Độ Nhạy Volume</b>\n\nHiện tại: <b>{current.upper()}</b>\n\nChọn mức độ:",
                             parse_mode='HTML',
                             reply_markup=keyboard
                         )
@@ -397,7 +397,7 @@ class TelegramCommandHandler:
                         keyboard = self.bot.create_quick_analysis_keyboard()
                         self.telegram_bot.send_message(
                             chat_id=call.message.chat.id,
-                            text="<b>🔍 Quick Analysis</b>\n\nSelect a coin to analyze:",
+                            text="<b>🔍 Phân Tích Nhanh</b>\n\nChọn coin để phân tích:",
                             parse_mode='HTML',
                             reply_markup=keyboard
                         )
