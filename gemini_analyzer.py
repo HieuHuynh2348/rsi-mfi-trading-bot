@@ -410,7 +410,12 @@ class GeminiAnalyzer:
                 }
             }
             
-            logger.info(f"✅ Analyzed {period_name}: {total_candles} candles, trend={trend_direction}, volatility={volatility:.2f}%")
+            logger.info(f"✅ Analyzed {period_name} ({total_candles} candles): "
+                       f"trend={trend_direction} ({trend_pct:+.2f}%), "
+                       f"volatility={volatility:.2f}%, "
+                       f"RSI={current_rsi:.1f} (avg={avg_rsi:.1f}), "
+                       f"MFI={current_mfi:.1f} (avg={avg_mfi:.1f}), "
+                       f"volume={volume_trend} ({current_volume/avg_volume:.2f}x avg)")
             return stats
             
         except Exception as e:
