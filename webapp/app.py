@@ -148,4 +148,13 @@ def health():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    logger.info(f"🚀 Starting Flask server on port {port}")
+    
+    # Production mode: use Waitress WSGI server
+    try:
+        from waitress import serve
+        logger.info("✅ Using Waitress production WSGI server")
+        serve(app, host='0.0.0.0', port=port, threads=4)
+    except ImportError:
+        logger.warning("⚠️ Waitress not found, falling back to development server")
+        app.run(host='0.0.0.0', port=port, debug=False)
