@@ -74,14 +74,15 @@ def get_chart_data():
         if not binance:
             return jsonify({'error': 'Binance client not initialized'}), 500
         
-        # Convert timeframe to limit
+        # Convert timeframe to limit (increased for better chart display)
         limit_map = {
-            '5m': 100,
-            '1h': 168,
-            '4h': 180,
-            '1d': 90
+            '5m': 288,    # 24 hours (288 candles x 5 minutes = 1440 minutes = 24h)
+            '15m': 288,   # 3 days (288 candles x 15 minutes = 4320 minutes = 72h)
+            '1h': 336,    # 2 weeks (336 candles x 1 hour = 336 hours = 14 days)
+            '4h': 360,    # 60 days (360 candles x 4 hours = 1440 hours = 60 days)
+            '1d': 180     # 6 months (180 candles x 1 day = 180 days = 6 months)
         }
-        limit = limit_map.get(timeframe, 100)
+        limit = limit_map.get(timeframe, 288)
         
         # Get klines
         df = binance.get_klines(symbol, timeframe, limit=limit)
