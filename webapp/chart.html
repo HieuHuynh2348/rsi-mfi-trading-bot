@@ -60,19 +60,20 @@
             padding: 8px 16px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
             border-bottom: 1px solid #2A2E39;  /* TradingView border */
+            min-height: 50px;
         }
         
         #symbol {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
-            color: #D1D4DC;  /* TradingView text */
+            color: #787B86;  /* TradingView secondary text */
             letter-spacing: -0.02em;
         }
         
         #price {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             font-variant-numeric: tabular-nums;  /* Monospace numbers */
         }
@@ -186,6 +187,49 @@
         
         #indicators.active {
             display: block;
+        }
+        
+        #ai-analysis {
+            display: none;  /* Hidden by default */
+            padding: 20px;
+            background: #1a1a1a;
+            height: calc(100vh - 165px);
+            overflow-y: auto;
+        }
+        
+        #ai-analysis.active {
+            display: block;
+        }
+        
+        #ai-content {
+            color: #D1D4DC;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        #ai-loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #787B86;
+        }
+        
+        .ai-section {
+            background: rgba(37, 37, 37, 0.90);
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .ai-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2962FF;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .indicator-section {
@@ -415,15 +459,16 @@
     
     <div id="header">
         <div id="symbol">Loading...</div>
-        <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
             <div id="price">--</div>
-            <div id="price-change" style="font-size: 13px; font-weight: 500;">--</div>
+            <div id="price-change" style="font-size: 12px; font-weight: 500;">--</div>
         </div>
     </div>
     
     <div id="tabs">
         <button class="tab-btn active" data-tab="chart">Chart</button>
         <button class="tab-btn" data-tab="indicators">Indicators</button>
+        <button class="tab-btn" data-tab="ai">AI Analysis</button>
     </div>
     
     <div id="timeframes">
@@ -490,6 +535,14 @@
         </div>
     </div>
     
+    <div id="ai-analysis">
+        <div id="ai-loading">
+            <div style="font-size: 16px; margin-bottom: 10px;">🤖 AI Analysis</div>
+            <div style="color: #555;">Click "AI Analysis" button in chat to load AI insights</div>
+        </div>
+        <div id="ai-content"></div>
+    </div>
+    
     <div id="chartContainer"></div>
     
     <script>
@@ -532,6 +585,7 @@
         // Tab switching
         const tabBtns = document.querySelectorAll('.tab-btn');
         const indicatorsPanel = document.getElementById('indicators');
+        const aiAnalysisPanel = document.getElementById('ai-analysis');
         const chartContainer = document.getElementById('chartContainer');
         const ohlcvLegend = document.getElementById('ohlcv-legend');
         
@@ -544,12 +598,16 @@
                 btn.classList.add('active');
                 
                 // Show/hide content based on tab
+                indicatorsPanel.classList.remove('active');
+                aiAnalysisPanel.classList.remove('active');
+                chartContainer.style.display = 'none';
+                ohlcvLegend.style.display = 'none';
+                
                 if (tab === 'indicators') {
                     indicatorsPanel.classList.add('active');
-                    chartContainer.style.display = 'none';
-                    ohlcvLegend.style.display = 'none';
+                } else if (tab === 'ai') {
+                    aiAnalysisPanel.classList.add('active');
                 } else {
-                    indicatorsPanel.classList.remove('active');
                     chartContainer.style.display = 'block';
                     ohlcvLegend.style.display = 'block';
                 }
@@ -565,6 +623,22 @@
         const urlParams = new URLSearchParams(window.location.search);
         const symbol = urlParams.get('symbol') || 'BTCUSDT';
         const initialTimeframe = urlParams.get('timeframe') || '1h';
+        const aiAnalysis = urlParams.get('ai_analysis');  // Optional AI analysis data
+        
+        // Load AI analysis if provided
+        if (aiAnalysis) {
+            try {
+                const decodedAnalysis = decodeURIComponent(aiAnalysis);
+                const aiContentEl = document.getElementById('ai-content');
+                const aiLoadingEl = document.getElementById('ai-loading');
+                if (aiContentEl && aiLoadingEl) {
+                    aiLoadingEl.style.display = 'none';
+                    aiContentEl.innerHTML = decodedAnalysis;
+                }
+            } catch (e) {
+                console.error('Failed to load AI analysis:', e);
+            }
+        }
         
         // Chart instance
         let chart = null;
