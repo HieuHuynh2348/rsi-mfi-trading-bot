@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 
 from binance_client import BinanceClient
-from indicators import StochRSIAnalyzer
+from stoch_rsi_analyzer import StochRSIAnalyzer
 from gemini_analyzer import GeminiAnalyzer
 import config
 
