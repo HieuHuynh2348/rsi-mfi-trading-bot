@@ -34,6 +34,10 @@ class TelegramCommandHandler:
         self.chat_id = bot.chat_id
         self.trading_bot = trading_bot_instance  # Reference to main bot
         
+        # Track users to avoid spam notifications
+        self.tracked_users = {}  # {user_id: last_notification_time}
+        self.tracking_cooldown = 3600  # 1 hour cooldown per user
+        
         # Initialize watchlist manager
         self.watchlist = WatchlistManager()
         
@@ -260,22 +264,66 @@ class TelegramCommandHandler:
         
         # Allow commands from specific chat/group only (for security)
         def check_authorized(message):
-            """Check if message is from authorized chat"""
-            # Allow both private chat and group chat
-            # Convert both to int for comparison (Telegram uses integers for chat IDs)
+            """
+            Allow anyone to use the bot, but track usage
+            Send notification to admin for monitoring (with rate limiting)
+            """
             try:
-                msg_chat_id = int(message.chat.id)
-                bot_chat_id = int(self.chat_id)
+                user_id = message.from_user.id if message.from_user else None
+                chat_id = message.chat.id
+                chat_type = message.chat.type
+                username = message.from_user.username if message.from_user and message.from_user.username else "N/A"
+                first_name = message.from_user.first_name if message.from_user and message.from_user.first_name else "N/A"
                 
-                logger.info(f"Received message from chat_id: {msg_chat_id}, authorized: {bot_chat_id}, type: {message.chat.type}")
+                # Extract command from message
+                command = message.text.split()[0] if message.text else "N/A"
                 
-                # Allow if match or if it's a private message to the bot
-                is_authorized = (msg_chat_id == bot_chat_id) or (message.chat.type == 'private')
-                logger.info(f"Authorization result: {is_authorized}")
-                return is_authorized
-            except (ValueError, TypeError) as e:
-                logger.error(f"Error checking authorization: {e}")
-                return False
+                logger.info(f"📨 Bot access - User: {user_id} (@{username}), Chat: {chat_id}, Type: {chat_type}, Command: {command}")
+                
+                # Check if we should send tracking notification (rate limiting)
+                current_time = time.time()
+                should_notify = False
+                
+                if user_id:
+                    if user_id not in self.tracked_users:
+                        # New user - always notify
+                        should_notify = True
+                        self.tracked_users[user_id] = current_time
+                    else:
+                        # Existing user - check cooldown
+                        last_notification = self.tracked_users[user_id]
+                        if current_time - last_notification > self.tracking_cooldown:
+                            should_notify = True
+                            self.tracked_users[user_id] = current_time
+                
+                # Send tracking notification to admin (if needed)
+                if should_notify:
+                    try:
+                        tracking_message = f"""
+📊 <b>Bot Usage Tracking</b>
+
+👤 <b>User ID:</b> <code>{user_id}</code>
+👤 <b>Username:</b> @{username}
+👤 <b>Name:</b> {first_name}
+💬 <b>Chat ID:</b> <code>{chat_id}</code>
+💬 <b>Chat Type:</b> {chat_type}
+📝 <b>Command:</b> <code>{command}</code>
+🕒 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+<i>{"🆕 New user!" if user_id not in self.tracked_users or len(self.tracked_users) == 1 else "Active user"}</i>
+"""
+                        # Send to admin (use bot's default chat_id)
+                        self.bot.send_message(tracking_message, parse_mode='HTML')
+                    except Exception as track_error:
+                        logger.error(f"Error sending tracking notification: {track_error}")
+                
+                # Allow everyone
+                return True
+                
+            except Exception as e:
+                logger.error(f"Error in check_authorized: {e}")
+                # Allow by default if error occurs
+                return True
         
         # ===== CALLBACK QUERY HANDLER =====
         @self.telegram_bot.callback_query_handler(func=lambda call: True)
