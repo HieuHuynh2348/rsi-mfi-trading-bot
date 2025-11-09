@@ -947,7 +947,13 @@ class TelegramCommandHandler:
             if message.text and message.text.startswith('/start chart_'):
                 try:
                     # Parse parameters: /start chart_SYMBOL_USERID_CHATID
-                    params = message.text[14:].split('_')  # Skip "/start chart_"
+                    raw_params = message.text[14:]  # Skip "/start chart_"
+                    logger.info(f"🔍 Raw params: {raw_params}")
+                    
+                    # Split with maxsplit=2 to handle negative chat IDs correctly
+                    # Example: "ETHUSDT_1087968824_-1002395637657" -> ["ETHUSDT", "1087968824", "-1002395637657"]
+                    params = raw_params.split('_', 2)  
+                    logger.info(f"🔍 Parsed params: {params}")
                     
                     if len(params) >= 1:
                         symbol = params[0]
