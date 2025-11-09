@@ -628,7 +628,7 @@ class TelegramBot:
         Args:
             chat_id: Chat ID (optional, uses default if not provided)
             photo_bytes: Bytes of image data
-            caption: Optional caption
+            caption: Optional caption (max 1024 chars to avoid HTTP 431)
             parse_mode: Parse mode for caption ('HTML' or 'Markdown')
             reply_markup: Optional inline keyboard
         """
@@ -636,6 +636,13 @@ class TelegramBot:
             # Use default chat_id if not provided (backward compatibility)
             if chat_id is None:
                 chat_id = self.chat_id
+            
+            # Truncate caption to avoid HTTP 431 (Request Header Too Large)
+            # Telegram's limit is 1024 characters for photo captions
+            max_caption_length = 1000  # Leave some buffer
+            if len(caption) > max_caption_length:
+                logger.warning(f"Caption too long ({len(caption)} chars), truncating to {max_caption_length}")
+                caption = caption[:max_caption_length-3] + "..."
             
             sent = False
             retries = 0
@@ -658,6 +665,12 @@ class TelegramBot:
                         retries += 1
                         logger.warning(f"Rate limited by Telegram (photo), retrying after {wait}s (attempt {retries})")
                         time.sleep(wait + 1)
+                        continue
+                    elif 'Request Header Fields Too Large' in err or '431' in err:
+                        # Caption too long, truncate further and retry
+                        logger.warning(f"HTTP 431 error, caption still too long. Truncating to 500 chars")
+                        caption = caption[:497] + "..."
+                        retries += 1
                         continue
                     else:
                         logger.error(f"Error sending photo: {e}")

@@ -20,6 +20,11 @@ from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
 
+# Set matplotlib font to support emojis (fallback to DejaVu Sans)
+import matplotlib.font_manager as fm
+matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+matplotlib.rcParams['axes.unicode_minus'] = False
+
 
 class ChartGenerator:
     def __init__(self, style='default', dpi=100, width=12, height=8):
@@ -184,11 +189,16 @@ class ChartGenerator:
                             where=(rsi_display >= rsi_upper), 
                             alpha=0.3, color='#EF5350', interpolate=True)
             
-            # Current RSI value
+            # Current RSI value (remove emojis for matplotlib compatibility)
             current_rsi = rsi_display.iloc[-1]
-            rsi_status = "🟢 Oversold" if current_rsi <= rsi_lower else ("🔴 Overbought" if current_rsi >= rsi_upper else "⚪ Neutral")
+            if current_rsi <= rsi_lower:
+                rsi_status_text = "Oversold"
+            elif current_rsi >= rsi_upper:
+                rsi_status_text = "Overbought"
+            else:
+                rsi_status_text = "Neutral"
             
-            ax2.set_ylabel(f'RSI: {current_rsi:.1f}\n{rsi_status.split()[1]}', 
+            ax2.set_ylabel(f'RSI: {current_rsi:.1f}\n{rsi_status_text}', 
                           fontsize=9, fontweight='bold')
             ax2.set_ylim(0, 100)
             ax2.legend(loc='upper left', fontsize=8, ncol=3)
@@ -215,11 +225,16 @@ class ChartGenerator:
                             where=(mfi_display >= mfi_upper), 
                             alpha=0.3, color='#EF5350', interpolate=True)
             
-            # Current MFI value
+            # Current MFI value (remove emojis for matplotlib compatibility)
             current_mfi = mfi_display.iloc[-1]
-            mfi_status = "🟢 Oversold" if current_mfi <= mfi_lower else ("🔴 Overbought" if current_mfi >= mfi_upper else "⚪ Neutral")
+            if current_mfi <= mfi_lower:
+                mfi_status_text = "Oversold"
+            elif current_mfi >= mfi_upper:
+                mfi_status_text = "Overbought"
+            else:
+                mfi_status_text = "Neutral"
             
-            ax3.set_ylabel(f'MFI: {current_mfi:.1f}\n{mfi_status.split()[1]}', 
+            ax3.set_ylabel(f'MFI: {current_mfi:.1f}\n{mfi_status_text}', 
                           fontsize=9, fontweight='bold')
             ax3.set_xlabel('Time', fontsize=10)
             ax3.set_ylim(0, 100)
@@ -255,22 +270,22 @@ class ChartGenerator:
                 # Fallback to index if no timestamp
                 ax3.set_xticklabels([f'{i}' for i in tick_positions], fontsize=8)
             
-            # Add consensus indicator
+            # Add consensus indicator (remove emojis for matplotlib compatibility)
             avg_indicator = (current_rsi + current_mfi) / 2
             if avg_indicator <= 20:
-                consensus = "🟢 STRONG BUY"
+                consensus = "STRONG BUY"
                 consensus_color = '#26A69A'
             elif avg_indicator >= 80:
-                consensus = "🔴 STRONG SELL"
+                consensus = "STRONG SELL"
                 consensus_color = '#EF5350'
             elif avg_indicator <= 30:
-                consensus = "🟢 BUY"
+                consensus = "BUY"
                 consensus_color = '#66BB6A'
             elif avg_indicator >= 70:
-                consensus = "🔴 SELL"
+                consensus = "SELL"
                 consensus_color = '#FF7043'
             else:
-                consensus = "⚪ NEUTRAL"
+                consensus = "NEUTRAL"
                 consensus_color = 'gray'
             
             # Add text box with consensus
@@ -407,15 +422,15 @@ class ChartGenerator:
                     rsi = tf_data.get('rsi', 0)
                     mfi = tf_data.get('mfi', 0)
                     
-                    # Determine signal text and color
+                    # Determine signal text and color (use text instead of emojis for matplotlib)
                     if signal == 1:
-                        signal_text = f'🟢 BUY'
+                        signal_text = 'BUY'
                         signal_color = '#26A69A'
                     elif signal == -1:
-                        signal_text = f'🔴 SELL'
+                        signal_text = 'SELL'
                         signal_color = '#EF5350'
                     else:
-                        signal_text = f'⚪ NEUTRAL'
+                        signal_text = 'NEUTRAL'
                         signal_color = 'gray'
                     
                     # Title with timeframe and signal
@@ -438,9 +453,13 @@ class ChartGenerator:
                     ax.set_title(f'{symbol} - {tf.upper()}', fontsize=11, fontweight='bold')
                     ax.axis('off')
             
-            # Save to BytesIO
+            # Save to BytesIO (suppress tight_layout warning)
             buf = io.BytesIO()
-            plt.tight_layout()
+            try:
+                plt.tight_layout()
+            except UserWarning:
+                pass  # Ignore tight_layout warnings
+            
             plt.savefig(buf, format='png', dpi=self.dpi, bbox_inches='tight',
                        facecolor='white', edgecolor='none')
             buf.seek(0)
