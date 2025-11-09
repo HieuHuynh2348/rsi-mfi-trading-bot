@@ -1,5 +1,5 @@
 python-binance==1.0.19
-pyTelegramBotAPI==4.23.0
+pyTelegramBotAPI==4.18.0
 pandas>=1.3.0,<2.0.0
 numpy>=1.21.0,<1.24.0
 matplotlib>=3.4.0,<3.7.0
@@ -9,4 +9,4 @@ google-generativeai>=0.3.0
 flask>=2.3.0
 flask-cors>=4.0.0
 waitress>=2.1.2
-importlib-metadata>=4.0.0,<5.0.0
+importlib-metadata>=6.0.0
