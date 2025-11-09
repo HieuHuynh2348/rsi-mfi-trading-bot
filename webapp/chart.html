@@ -633,23 +633,28 @@
         // AI Analyze button click handler
         const aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
         if (aiAnalyzeBtn) {
-            aiAnalyzeBtn.addEventListener('click', () => {
+            aiAnalyzeBtn.addEventListener('click', async () => {
                 // Show loading state
                 aiAnalyzeBtn.disabled = true;
                 aiAnalyzeBtn.innerHTML = '⏳ Analyzing...';
                 aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
                 
-                // Send message back to Telegram bot to trigger AI analysis
-                const message = `Requesting AI analysis for ${symbol}`;
-                console.log(message);
+                const aiLoadingEl = document.getElementById('ai-loading');
+                const aiContentEl = document.getElementById('ai-content');
                 
-                // Try to trigger bot command via Telegram WebApp
-                if (tg && tg.sendData) {
-                    tg.sendData(JSON.stringify({
-                        action: 'ai_analyze',
-                        symbol: symbol,
-                        timeframe: currentTimeframe
-                    }));
+                // Show loading message
+                if (aiLoadingEl) {
+                    aiLoadingEl.innerHTML = `
+                        <div style="text-align: center; color: #2962FF;">
+                            <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">🤖 Analyzing with Gemini AI...</div>
+                            <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
+                                📊 Collecting market data<br>
+                                🧠 Processing indicators<br>
+                                🔮 Generating insights<br><br>
+                                <strong>This may take 10-20 seconds...</strong>
+                            </div>
+                        </div>
+                    `;
                 }
                 
                 // Haptic feedback
@@ -657,31 +662,124 @@
                     tg.HapticFeedback.impactOccurred('medium');
                 }
                 
-                // Show instruction to user
-                const aiLoadingEl = document.getElementById('ai-loading');
-                if (aiLoadingEl) {
-                    aiLoadingEl.innerHTML = `
-                        <div style="text-align: center; color: #2962FF;">
-                            <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">🤖 AI Analysis Requested</div>
-                            <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
-                                Please go back to chat and click the<br>
-                                <strong>"AI Analysis"</strong> button in the message<br>
-                                to view the full analysis.
+                try {
+                    // Call API to get AI analysis
+                    const response = await fetch(`${API_BASE}/api/ai-analyze?symbol=${symbol}&timeframe=${currentTimeframe}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.analysis) {
+                        // Hide loading, show content
+                        if (aiLoadingEl) aiLoadingEl.style.display = 'none';
+                        if (aiContentEl) {
+                            aiContentEl.innerHTML = formatAIAnalysis(data.analysis);
+                            aiContentEl.style.display = 'block';
+                        }
+                        
+                        // Success haptic
+                        if (tg.HapticFeedback) {
+                            tg.HapticFeedback.notificationOccurred('success');
+                        }
+                    } else {
+                        throw new Error(data.error || 'Failed to get AI analysis');
+                    }
+                    
+                } catch (error) {
+                    console.error('AI Analysis error:', error);
+                    
+                    // Show error message
+                    if (aiLoadingEl) {
+                        aiLoadingEl.innerHTML = `
+                            <div style="text-align: center; color: #EF5350;">
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">❌ Analysis Failed</div>
+                                <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
+                                    ${error.message}<br><br>
+                                    <strong>Please try again or contact support</strong>
+                                </div>
+                                <button id="retry-btn" style="
+                                    margin-top: 20px;
+                                    background: #2962FF;
+                                    color: white;
+                                    border: none;
+                                    padding: 10px 24px;
+                                    border-radius: 6px;
+                                    font-size: 14px;
+                                    cursor: pointer;
+                                ">Try Again</button>
                             </div>
-                            <button onclick="window.Telegram.WebApp.close()" style="
-                                margin-top: 20px;
-                                background: #2962FF;
-                                color: white;
-                                border: none;
-                                padding: 10px 24px;
-                                border-radius: 6px;
-                                font-size: 14px;
-                                cursor: pointer;
-                            ">Back to Chat</button>
-                        </div>
-                    `;
+                        `;
+                        
+                        // Add retry handler
+                        const retryBtn = document.getElementById('retry-btn');
+                        if (retryBtn) {
+                            retryBtn.addEventListener('click', () => {
+                                location.reload();
+                            });
+                        }
+                    }
+                    
+                    // Error haptic
+                    if (tg.HapticFeedback) {
+                        tg.HapticFeedback.notificationOccurred('error');
+                    }
                 }
             });
+        }
+        
+        // Format AI analysis for display
+        function formatAIAnalysis(analysis) {
+            const rec = analysis.recommendation || 'NEUTRAL';
+            const conf = analysis.confidence || 0;
+            const entry = analysis.entry_point || 0;
+            const stop = analysis.stop_loss || 0;
+            const targets = analysis.take_profit || [];
+            const risk = analysis.risk_level || 'MEDIUM';
+            const reasoning = analysis.reasoning_vietnamese || 'Không có phân tích chi tiết.';
+            
+            const recEmoji = rec === "BUY" ? "🟢" : rec === "SELL" ? "🔴" : "🟡";
+            const recColor = rec === "BUY" ? "#26A69A" : rec === "SELL" ? "#EF5350" : "#FFA726";
+            
+            let html = `
+                <div class="ai-section">
+                    <div class="ai-title">💎 ${symbol}</div>
+                    <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0;">
+                        <div style="font-size: 32px;">${recEmoji}</div>
+                        <div>
+                            <div style="font-size: 24px; font-weight: 700; color: ${recColor};">${rec}</div>
+                            <div style="font-size: 14px; color: #787B86;">Confidence: ${conf}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ai-section">
+                    <div class="ai-title">💰 Trading Plan</div>
+                    <div style="line-height: 1.8;">
+                        <div><strong>Entry Point:</strong> $${formatPrice(entry)}</div>
+                        <div><strong>Stop Loss:</strong> $${formatPrice(stop)}</div>
+                        <div><strong>Take Profit:</strong></div>
+                        <ul style="margin: 8px 0 0 20px;">
+                            ${targets.map((tp, i) => `<li>TP${i+1}: $${formatPrice(tp)}</li>`).join('')}
+                        </ul>
+                        <div style="margin-top: 8px;"><strong>Risk Level:</strong> ${risk}</div>
+                    </div>
+                </div>
+                
+                <div class="ai-section">
+                    <div class="ai-title">🧠 AI Reasoning</div>
+                    <div style="line-height: 1.8; white-space: pre-wrap;">${reasoning}</div>
+                </div>
+                
+                <div style="text-align: center; color: #787B86; font-size: 12px; margin-top: 20px; padding: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    ⚠️ This is AI analysis, not financial advice.<br>
+                    Always DYOR (Do Your Own Research) before investing.
+                </div>
+            `;
+            
+            return html;
         }
         
         // Chart instance
