@@ -145,29 +145,117 @@
             position: absolute;
             top: 120px;
             left: 10px;
-            background: rgba(37, 37, 37, 0.9);
-            padding: 8px 12px;
-            border-radius: 4px;
-            font-size: 12px;
+            background: rgba(37, 37, 37, 0.95);
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
             z-index: 10;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 180px;
         }
         
         .indicator-row {
             display: flex;
-            gap: 15px;
-            margin: 4px 0;
+            justify-content: space-between;
+            align-items: center;
+            margin: 6px 0;
+            gap: 12px;
         }
         
         .indicator-label {
-            color: #aaa;
+            color: #bbb;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
         
         .indicator-value {
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
         
-        .rsi { color: #2962FF; }
-        .mfi { color: #FF6D00; }
+        /* RSI Colors based on zones */
+        .rsi-oversold { color: #26A69A; }  /* Green - Buy zone */
+        .rsi-neutral { color: #2962FF; }    /* Blue - Neutral */
+        .rsi-overbought { color: #EF5350; } /* Red - Sell zone */
+        
+        /* MFI Colors based on zones */
+        .mfi-oversold { color: #26A69A; }   /* Green - Buy zone */
+        .mfi-neutral { color: #FF6D00; }     /* Orange - Neutral */
+        .mfi-overbought { color: #EF5350; }  /* Red - Sell zone */
+        
+        /* Trend arrows */
+        .trend-arrow {
+            font-size: 16px;
+            display: inline-block;
+            animation: pulse 1s ease-in-out infinite;
+        }
+        
+        .trend-up { color: #26A69A; }
+        .trend-down { color: #EF5350; }
+        .trend-neutral { color: #777; opacity: 0.5; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        /* Signal badge */
+        .signal-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 10;
+            backdrop-filter: blur(8px);
+            border: 2px solid;
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        .signal-buy {
+            background: rgba(38, 166, 154, 0.2);
+            color: #26A69A;
+            border-color: #26A69A;
+        }
+        
+        .signal-sell {
+            background: rgba(239, 83, 80, 0.2);
+            color: #EF5350;
+            border-color: #EF5350;
+        }
+        
+        .signal-neutral {
+            background: rgba(119, 119, 119, 0.2);
+            color: #aaa;
+            border-color: #777;
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); }
+            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+        }
+        
+        /* Zone indicator dots */
+        .zone-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
         
         #error {
             display: none;
@@ -204,14 +292,28 @@
         <button class="tf-btn" data-tf="1d">1D</button>
     </div>
     
+    <div id="signal-badge" class="signal-badge signal-neutral" style="display: none;">
+        NEUTRAL
+    </div>
+    
     <div id="indicators">
         <div class="indicator-row">
-            <span class="indicator-label">RSI:</span>
-            <span class="indicator-value rsi" id="rsi-value">--</span>
+            <span class="indicator-label">
+                <span class="zone-dot" id="rsi-dot" style="background: #777;"></span>
+                RSI(14)
+            </span>
+            <span class="indicator-value" id="rsi-value">--</span>
         </div>
         <div class="indicator-row">
-            <span class="indicator-label">MFI:</span>
-            <span class="indicator-value mfi" id="mfi-value">--</span>
+            <span class="indicator-label">
+                <span class="zone-dot" id="mfi-dot" style="background: #777;"></span>
+                MFI(14)
+            </span>
+            <span class="indicator-value" id="mfi-value">--</span>
+        </div>
+        <div class="indicator-row" style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 6px; margin-top: 6px;">
+            <span class="indicator-label">Signal:</span>
+            <span class="indicator-value" id="signal-text" style="font-size: 13px; color: #aaa;">--</span>
         </div>
     </div>
     
@@ -266,8 +368,22 @@
         let currentTimeframe = initialTimeframe;
         let isChartReady = false;
         
+        // Store latest data for indicator updates
+        let latestData = {
+            rsi: null,
+            mfi: null,
+            signal: null,
+            candles: []
+        };
+        
         // API endpoint (your bot's server)
         const API_BASE = window.location.origin;
+        
+        // Indicator thresholds (Best practice: configurable)
+        const RSI_OVERSOLD = 30;
+        const RSI_OVERBOUGHT = 70;
+        const MFI_OVERSOLD = 20;
+        const MFI_OVERBOUGHT = 80;
         
         // Haptic feedback helper (Best practice from docs)
         function hapticFeedback(type = 'light') {
@@ -401,13 +517,18 @@
             console.log('✅ Chart initialized successfully');
             isChartReady = true;
             
-            // Subscribe to crosshair move (Best practice from docs)
+            // Subscribe to crosshair move for interactive indicators (Best practice from docs)
             chart.subscribeCrosshairMove((param) => {
                 if (param.time) {
                     const data = param.seriesData.get(candlestickSeries);
                     if (data) {
                         // Update price display with crosshair data
                         updatePrice(data.close, data.close - data.open);
+                    }
+                } else {
+                    // Reset to latest when crosshair leaves
+                    if (latestData.rsi !== null) {
+                        updateIndicatorDisplay(latestData.rsi, latestData.mfi);
                     }
                 }
             });
@@ -581,9 +702,15 @@
                 document.getElementById('symbol').textContent = symbol;
                 updatePrice(data.currentPrice, data.priceChange);
                 
-                // Update indicators
-                document.getElementById('rsi-value').textContent = data.rsi.toFixed(2);
-                document.getElementById('mfi-value').textContent = data.mfi.toFixed(2);
+                // Store latest data
+                latestData.rsi = data.rsi;
+                latestData.mfi = data.mfi;
+                
+                // Update indicators with dynamic display
+                updateIndicatorDisplay(data.rsi, data.mfi);
+                
+                // Update signal badge
+                updateSignalBadge(data.rsi, data.mfi);
                 
                 // Update chart with data validation (Best practice from docs)
                 // LightweightCharts REQUIRES sorted data by time (ascending)
@@ -678,6 +805,90 @@
             const priceEl = document.getElementById('price');
             priceEl.textContent = `$${price.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
             priceEl.className = change >= 0 ? 'price-up' : 'price-down';
+        }
+        
+        // Update indicator display with dynamic colors and zones (Best practice)
+        function updateIndicatorDisplay(rsi, mfi) {
+            // RSI
+            const rsiEl = document.getElementById('rsi-value');
+            const rsiDot = document.getElementById('rsi-dot');
+            
+            rsiEl.textContent = rsi.toFixed(2);
+            
+            if (rsi < RSI_OVERSOLD) {
+                rsiEl.className = 'indicator-value rsi-oversold';
+                rsiDot.style.background = '#26A69A';
+            } else if (rsi > RSI_OVERBOUGHT) {
+                rsiEl.className = 'indicator-value rsi-overbought';
+                rsiDot.style.background = '#EF5350';
+            } else {
+                rsiEl.className = 'indicator-value rsi-neutral';
+                rsiDot.style.background = '#2962FF';
+            }
+            
+            // MFI
+            const mfiEl = document.getElementById('mfi-value');
+            const mfiDot = document.getElementById('mfi-dot');
+            
+            mfiEl.textContent = mfi.toFixed(2);
+            
+            if (mfi < MFI_OVERSOLD) {
+                mfiEl.className = 'indicator-value mfi-oversold';
+                mfiDot.style.background = '#26A69A';
+            } else if (mfi > MFI_OVERBOUGHT) {
+                mfiEl.className = 'indicator-value mfi-overbought';
+                mfiDot.style.background = '#EF5350';
+            } else {
+                mfiEl.className = 'indicator-value mfi-neutral';
+                mfiDot.style.background = '#FF6D00';
+            }
+        }
+        
+        // Update signal badge based on RSI/MFI consensus (Best practice)
+        function updateSignalBadge(rsi, mfi) {
+            const signalBadge = document.getElementById('signal-badge');
+            const signalText = document.getElementById('signal-text');
+            
+            // Determine signals
+            let rsiSignal = 0;
+            if (rsi < RSI_OVERSOLD) rsiSignal = 1;  // BUY
+            else if (rsi > RSI_OVERBOUGHT) rsiSignal = -1;  // SELL
+            
+            let mfiSignal = 0;
+            if (mfi < MFI_OVERSOLD) mfiSignal = 1;  // BUY
+            else if (mfi > MFI_OVERBOUGHT) mfiSignal = -1;  // SELL
+            
+            // Consensus (both must agree)
+            let finalSignal = 'NEUTRAL';
+            let signalClass = 'signal-neutral';
+            let arrow = '━';
+            
+            if (rsiSignal === 1 && mfiSignal === 1) {
+                finalSignal = 'BUY';
+                signalClass = 'signal-buy';
+                arrow = '↑';
+            } else if (rsiSignal === -1 && mfiSignal === -1) {
+                finalSignal = 'SELL';
+                signalClass = 'signal-sell';
+                arrow = '↓';
+            }
+            
+            // Update badge
+            signalBadge.className = `signal-badge ${signalClass}`;
+            signalBadge.textContent = `${arrow} ${finalSignal}`;
+            signalBadge.style.display = 'block';
+            
+            // Update signal text in indicators panel
+            signalText.textContent = `${arrow} ${finalSignal}`;
+            signalText.className = `indicator-value ${signalClass.replace('signal-', '')}`;
+            
+            // Store signal
+            latestData.signal = finalSignal;
+            
+            // Haptic feedback on signal change
+            if (finalSignal !== 'NEUTRAL') {
+                hapticFeedback('success');
+            }
         }
         
         function showLoading() {
@@ -888,9 +1099,11 @@
                 // Update price display
                 updatePrice(data.currentPrice, data.priceChange);
                 
-                // Update indicators
-                document.getElementById('rsi-value').textContent = data.rsi.toFixed(2);
-                document.getElementById('mfi-value').textContent = data.mfi.toFixed(2);
+                // Update indicators with dynamic display
+                updateIndicatorDisplay(data.rsi, data.mfi);
+                
+                // Update signal badge
+                updateSignalBadge(data.rsi, data.mfi);
                 
                 console.log('Real-time update completed');
                 
