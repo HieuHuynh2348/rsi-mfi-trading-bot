@@ -663,35 +663,72 @@
                 }
                 
                 try {
-                    // Send command to Telegram bot
-                    // Bot will process and send AI analysis to chat
-                    const command = `/${symbol.toLowerCase()}`;
+                    // Step 1: Create analysis request
+                    const requestResponse = await fetch(`${API_BASE}/api/request-analysis`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            symbol: symbol,
+                            timeframe: currentTimeframe,
+                            user_id: tg.initDataUnsafe?.user?.id
+                        })
+                    });
                     
-                    // Close the webapp and show success message
-                    if (aiLoadingEl) {
-                        aiLoadingEl.innerHTML = `
-                            <div style="text-align: center; color: #26A69A; padding: 24px;">
-                                <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-                                <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px;">Request Sent!</div>
-                                <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
-                                    <strong>Your AI analysis request for ${symbol} has been sent.</strong><br><br>
-                                    The bot will send you the complete Gemini AI analysis in the chat within <strong>10-20 seconds</strong>.<br><br>
-                                    📱 <em>You can close this window and check your Telegram chat for the results.</em>
-                                </div>
-                            </div>
-                        `;
+                    if (!requestResponse.ok) {
+                        throw new Error('Failed to create analysis request');
                     }
                     
-                    // Send the command via Telegram WebApp API
-                    setTimeout(() => {
-                        tg.sendData(command);
-                        tg.close();
-                    }, 2000);
+                    const requestData = await requestResponse.json();
+                    const requestId = requestData.request_id;
                     
-                    // Success haptic
-                    if (tg.HapticFeedback) {
-                        tg.HapticFeedback.notificationOccurred('success');
-                    }
+                    console.log(`📝 Analysis request created: ${requestId}`);
+                    
+                    // Step 2: Poll for results (every 2 seconds, max 30 seconds)
+                    let attempts = 0;
+                    const maxAttempts = 15;
+                    
+                    const pollForResult = async () => {
+                        while (attempts < maxAttempts) {
+                            attempts++;
+                            
+                            // Wait 2 seconds between polls
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            
+                            // Check for result
+                            const resultResponse = await fetch(`${API_BASE}/api/get-result/${requestId}`);
+                            const resultData = await resultResponse.json();
+                            
+                            if (resultData.status === 'completed' && resultData.analysis) {
+                                // Got the result!
+                                if (aiLoadingEl) aiLoadingEl.style.display = 'none';
+                                if (aiContentEl) {
+                                    aiContentEl.innerHTML = formatAIAnalysis(resultData.analysis);
+                                    aiContentEl.style.display = 'block';
+                                }
+                                
+                                // Success haptic
+                                if (tg.HapticFeedback) {
+                                    tg.HapticFeedback.notificationOccurred('success');
+                                }
+                                
+                                return;
+                            }
+                            
+                            // Update loading message
+                            if (aiLoadingEl && attempts % 3 === 0) {
+                                const dots = '.'.repeat((attempts / 3) % 4);
+                                aiLoadingEl.querySelector('div:last-child strong').textContent = 
+                                    `Analyzing${dots} (${attempts * 2}s)`;
+                            }
+                        }
+                        
+                        // Timeout
+                        throw new Error('Analysis timeout - please try again');
+                    };
+                    
+                    await pollForResult();
                     
                 } catch (error) {
                     console.error('AI Analysis error:', error);
