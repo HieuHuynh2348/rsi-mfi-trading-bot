@@ -145,14 +145,26 @@
             position: absolute;
             top: 120px;
             left: 10px;
-            background: rgba(37, 37, 37, 0.95);
+            background: rgba(37, 37, 37, 0.90);
             padding: 10px 14px;
             border-radius: 6px;
             font-size: 13px;
-            z-index: 10;
+            z-index: 1;  /* Lower z-index to not block chart interactions */
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             min-width: 180px;
+            pointer-events: none;  /* Don't block chart touch events */
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Make children interactive */
+        #indicators * {
+            pointer-events: auto;
+        }
+        
+        /* Auto-hide on interaction (TradingView pattern) */
+        body.chart-interacting #indicators {
+            opacity: 0.3;
         }
         
         .indicator-row {
@@ -189,23 +201,23 @@
         .mfi-neutral { color: #FF6D00; }     /* Orange - Neutral */
         .mfi-overbought { color: #EF5350; }  /* Red - Sell zone */
         
-        /* Trend arrows */
+        /* Trend arrows - Reduced animation */
         .trend-arrow {
             font-size: 16px;
             display: inline-block;
-            animation: pulse 1s ease-in-out infinite;
         }
         
         .trend-up { color: #26A69A; }
         .trend-down { color: #EF5350; }
         .trend-neutral { color: #777; opacity: 0.5; }
         
+        /* Optional subtle animation for important signals only */
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+            50% { opacity: 0.85; }
         }
         
-        /* Signal badge */
+        /* Signal badge - Reduced animation */
         .signal-badge {
             position: absolute;
             top: 10px;
@@ -214,10 +226,9 @@
             border-radius: 20px;
             font-weight: bold;
             font-size: 14px;
-            z-index: 10;
+            z-index: 1;
             backdrop-filter: blur(8px);
             border: 2px solid;
-            animation: glow 2s ease-in-out infinite;
         }
         
         .signal-buy {
@@ -238,23 +249,22 @@
             border-color: #777;
         }
         
-        @keyframes glow {
-            0%, 100% { box-shadow: 0 0 10px rgba(255, 255, 255, 0.1); }
-            50% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
-        }
-        
-        /* Zone indicator dots */
+        /* Zone indicator dots - No animation */
         .zone-dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
             display: inline-block;
-            animation: blink 1.5s ease-in-out infinite;
         }
         
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
+        /* Disable animations on low-end devices (TradingView best practice) */
+        @media (prefers-reduced-motion: reduce) {
+            .trend-arrow,
+            .signal-badge,
+            .zone-dot,
+            #indicators {
+                animation: none !important;
+            }
         }
         
         #error {
@@ -379,9 +389,9 @@
         // API endpoint (your bot's server)
         const API_BASE = window.location.origin;
         
-        // Indicator thresholds (Best practice: configurable)
-        const RSI_OVERSOLD = 30;
-        const RSI_OVERBOUGHT = 70;
+        // Indicator thresholds (Matching Pine Script: rsi_lower=20, rsi_upper=80)
+        const RSI_OVERSOLD = 20;
+        const RSI_OVERBOUGHT = 80;
         const MFI_OVERSOLD = 20;
         const MFI_OVERBOUGHT = 80;
         
@@ -1119,16 +1129,30 @@
             console.log('=== Starting data load ===');
             loadChartData(currentTimeframe);
             
-            // Real-time updates every 5 seconds using update() (Best practice)
-            setInterval(() => {
-                updateRealtimeData();
-            }, 5000);
+            // Real-time updates using requestAnimationFrame (Best practice from TradingView)
+            // Update every 15 seconds (optimal balance between freshness and performance)
+            let updateIntervalId = null;
+            let lastUpdateTime = 0;
+            const UPDATE_INTERVAL = 15000; // 15 seconds
             
-            // Full reload every 5 minutes to sync data
-            setInterval(() => {
-                console.log('Full reload to sync data');
-                loadChartData(currentTimeframe);
-            }, 300000);
+            function scheduleUpdate() {
+                const now = Date.now();
+                if (now - lastUpdateTime >= UPDATE_INTERVAL) {
+                    lastUpdateTime = now;
+                    updateRealtimeData();
+                }
+                updateIntervalId = requestAnimationFrame(scheduleUpdate);
+            }
+            
+            // Start update loop
+            scheduleUpdate();
+            
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', () => {
+                if (updateIntervalId) {
+                    cancelAnimationFrame(updateIntervalId);
+                }
+            });
             
             console.log('=== Initialization complete ===');
         } catch (error) {

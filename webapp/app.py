@@ -89,10 +89,10 @@ def get_chart_data():
         if df is None or df.empty:
             return jsonify({'error': 'No data available'}), 404
         
-        # Calculate indicators
+        # Calculate indicators (matching Pine Script: RSI(6), MFI(6))
         hlcc4 = calculate_hlcc4(df)
-        df['rsi'] = calculate_rsi(hlcc4, 14)
-        df['mfi'] = calculate_mfi(df, 14)
+        df['rsi'] = calculate_rsi(hlcc4, 6)
+        df['mfi'] = calculate_mfi(df, 6)
         
         # Get current price and 24h change
         try:

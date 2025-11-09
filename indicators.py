@@ -60,14 +60,15 @@ def calculate_hlcc4(df):
     return (high + low + close + open_price) / 4
 
 
-def calculate_rsi(data, period=14):
+def calculate_rsi(data, period=6):
     """
     Calculate RSI (Relative Strength Index) using HLCO/4
     Matches Pine Script custom RSI calculation
+    Default period: 6 (matching Pine Script rsi_period = 6)
     
     Args:
         data: pandas Series or DataFrame column of price data (HLCO/4)
-        period: RSI period (default 14)
+        period: RSI period (default 6)
     
     Returns:
         pandas Series of RSI values
@@ -109,14 +110,15 @@ def calculate_rsi(data, period=14):
     return rsi
 
 
-def calculate_mfi(df, period=14):
+def calculate_mfi(df, period=6):
     """
     Calculate MFI (Money Flow Index)
     Matches Pine Script MFI calculation
+    Default period: 6 (matching Pine Script mfi_period = 6)
     
     Args:
         df: pandas DataFrame with high, low, close, volume columns
-        period: MFI period (default 14)
+        period: MFI period (default 6)
     
     Returns:
         pandas Series of MFI values
