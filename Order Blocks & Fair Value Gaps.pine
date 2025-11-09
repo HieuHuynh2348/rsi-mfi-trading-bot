@@ -1,0 +1,450 @@
+//@version=6
+indicator('Order Blocks & Fair Value Gaps', 'OB & FVG', overlay = true, max_boxes_count = 500)
+//---------------------------------------------------------------------------------------------------------------------}
+//CONSTANTS & STRINGS & INPUTS
+//---------------------------------------------------------------------------------------------------------------------{
+BULLISH_LEG = 1
+BEARISH_LEG = 0
+
+BULLISH = +1
+BEARISH = -1
+
+GREEN = #089981
+RED = #F23645
+MONO_BULLISH = #b2b5be
+MONO_BEARISH = #5d606b
+
+HISTORICAL = 'Historical'
+PRESENT = 'Present'
+
+COLORED = 'Colored'
+MONOCHROME = 'Monochrome'
+
+ATR = 'Atr'
+RANGE = 'Cumulative Mean Range'
+
+CLOSE = 'Close'
+HIGHLOW = 'High/Low'
+
+SMART_GROUP = 'Smart Money Concepts'
+BLOCKS_GROUP = 'Order Blocks'
+GAPS_GROUP = 'Fair Value Gaps'
+
+modeTooltip = 'Allows to display historical or only the recent ones'
+styleTooltip = 'Indicator color theme'
+showInternalOrderBlocksTooltip = 'Display internal order blocks on the chart\n\nNumber of internal order blocks to display on the chart'
+showSwingOrderBlocksTooltip = 'Display swing order blocks on the chart\n\nNumber of swing order blocks to display on the chart'
+orderBlockFilterTooltip = 'Method used to filter out volatile order blocks \n\nIt is recommended to use the cumulative mean range method when a low amount of data is available'
+orderBlockMitigationTooltip = 'Select what values to use for order block mitigation'
+showFairValueGapsTooltip = 'Display fair values gaps on the chart'
+fairValueGapsThresholdTooltip = 'Filter out non significant fair value gaps'
+fairValueGapsTimeframeTooltip = 'Fair value gaps timeframe'
+fairValueGapsExtendTooltip = 'Determine how many bars to extend the Fair Value Gap boxes on chart'
+
+modeInput = input.string(HISTORICAL, 'Mode', group = SMART_GROUP, tooltip = modeTooltip, options = [HISTORICAL, PRESENT])
+styleInput = input.string(COLORED, 'Style', group = SMART_GROUP, tooltip = styleTooltip, options = [COLORED, MONOCHROME])
+
+swingsLengthInput = input.int(50, 'Swing Length', group = SMART_GROUP, minval = 10)
+
+showInternalOrderBlocksInput = input(true, 'Internal Order Blocks', group = BLOCKS_GROUP, tooltip = showInternalOrderBlocksTooltip, inline = 'iob')
+internalOrderBlocksSizeInput = input.int(5, '', group = BLOCKS_GROUP, minval = 1, maxval = 20, inline = 'iob')
+showSwingOrderBlocksInput = input(false, 'Swing Order Blocks', group = BLOCKS_GROUP, tooltip = showSwingOrderBlocksTooltip, inline = 'ob')
+swingOrderBlocksSizeInput = input.int(5, '', group = BLOCKS_GROUP, minval = 1, maxval = 20, inline = 'ob')
+orderBlockFilterInput = input.string('Atr', 'Order Block Filter', group = BLOCKS_GROUP, tooltip = orderBlockFilterTooltip, options = [ATR, RANGE])
+orderBlockMitigationInput = input.string(HIGHLOW, 'Order Block Mitigation', group = BLOCKS_GROUP, tooltip = orderBlockMitigationTooltip, options = [CLOSE, HIGHLOW])
+internalBullishOrderBlockColor = input.color(color.new(#3179f5, 80), 'Internal Bullish OB', group = BLOCKS_GROUP)
+internalBearishOrderBlockColor = input.color(color.new(#f77c80, 80), 'Internal Bearish OB', group = BLOCKS_GROUP)
+swingBullishOrderBlockColor = input.color(color.new(#1848cc, 80), 'Bullish OB', group = BLOCKS_GROUP)
+swingBearishOrderBlockColor = input.color(color.new(#b22833, 80), 'Bearish OB', group = BLOCKS_GROUP)
+
+showFairValueGapsInput = input(false, 'Fair Value Gaps', group = GAPS_GROUP, tooltip = showFairValueGapsTooltip)
+fairValueGapsThresholdInput = input(true, 'Auto Threshold', group = GAPS_GROUP, tooltip = fairValueGapsThresholdTooltip)
+fairValueGapsTimeframeInput = input.timeframe('', 'Timeframe', group = GAPS_GROUP, tooltip = fairValueGapsTimeframeTooltip)
+fairValueGapsBullColorInput = input.color(color.new(#00ff68, 70), 'Bullish FVG', group = GAPS_GROUP)
+fairValueGapsBearColorInput = input.color(color.new(#ff0008, 70), 'Bearish FVG', group = GAPS_GROUP)
+fairValueGapsExtendInput = input.int(1, 'Extend FVG', group = GAPS_GROUP, tooltip = fairValueGapsExtendTooltip, minval = 0)
+
+//---------------------------------------------------------------------------------------------------------------------}
+//DATA STRUCTURES & VARIABLES
+//---------------------------------------------------------------------------------------------------------------------{
+// @type                            UDT representing alerts as bool fields
+// @field internalBullishOrderBlock internal order block custom alert
+// @field internalBearishOrderBlock internal order block custom alert
+// @field swingBullishOrderBlock    swing order block custom alert
+// @field swingBearishOrderBlock    swing order block custom alert
+// @field bullishFairValueGap       fair value gap custom alert
+// @field bearishFairValueGap       fair value gap custom alert
+type alerts
+	bool internalBullishOrderBlock = false
+	bool internalBearishOrderBlock = false
+	bool swingBullishOrderBlock = false
+	bool swingBearishOrderBlock = false
+	bool bullishFairValueGap = false
+	bool bearishFairValueGap = false
+
+
+
+// @type                            UDT representing Fair Value Gaps
+// @field top                       top price
+// @field bottom                    bottom price
+// @field bias                      bias (BULLISH or BEARISH)
+// @field topBox                    top box
+// @field bottomBox                 bottom box
+type fairValueGap
+	float top
+	float bottom
+	int bias
+	box topBox
+	box bottomBox
+
+// @type                            UDT representing trend bias
+// @field bias                      BULLISH or BEARISH
+type trend
+	int bias
+
+// @type                            UDT representing a pivot point (swing point) 
+// @field currentLevel              current price level
+// @field lastLevel                 last price level
+// @field crossed                   true if price level is crossed
+// @field barTime                   bar time
+// @field barIndex                  bar index    
+type pivot
+	float currentLevel
+	float lastLevel
+	bool crossed
+	int barTime = time
+	int barIndex = bar_index
+
+// @type                            UDT representing an order block
+// @field barHigh                   bar high
+// @field barLow                    bar low
+// @field barTime                   bar time
+// @field bias                      BULLISH or BEARISH
+type orderBlock
+	float barHigh
+	float barLow
+	int barTime
+	int bias
+
+// @variable                        current swing pivot high
+var pivot swingHigh = pivot.new(na, na, false)
+// @variable                        current swing pivot low
+var pivot swingLow = pivot.new(na, na, false)
+// @variable                        current internal pivot high
+var pivot internalHigh = pivot.new(na, na, false)
+// @variable                        current internal pivot low
+var pivot internalLow = pivot.new(na, na, false)
+// @variable                        swing trend bias
+var trend swingTrend = trend.new(0)
+// @variable                        internal trend bias
+var trend internalTrend = trend.new(0)
+// @variable                        storage for fairValueGap UDTs
+var array<fairValueGap> fairValueGaps = array.new<fairValueGap>()
+// @variable                        storage for parsed highs
+var array<float> parsedHighs = array.new<float>()
+// @variable                        storage for parsed lows
+var array<float> parsedLows = array.new<float>()
+// @variable                        storage for raw highs
+var array<float> highs = array.new<float>()
+// @variable                        storage for raw lows
+var array<float> lows = array.new<float>()
+// @variable                        storage for bar time values
+var array<int> times = array.new<int>()
+// @variable                        storage for orderBlock UDTs (swing order blocks)
+var array<orderBlock> swingOrderBlocks = array.new<orderBlock>()
+// @variable                        storage for orderBlock UDTs (internal order blocks)
+var array<orderBlock> internalOrderBlocks = array.new<orderBlock>()
+// @variable                        storage for swing order blocks boxes
+var array<box> swingOrderBlocksBoxes = array.new<box>()
+// @variable                        storage for internal order blocks boxes
+var array<box> internalOrderBlocksBoxes = array.new<box>()
+// @variable                        color for bullish fair value gaps
+var fairValueGapBullishColor = styleInput == MONOCHROME ? color.new(MONO_BULLISH, 70) : fairValueGapsBullColorInput
+// @variable                        color for bearish fair value gaps
+var fairValueGapBearishColor = styleInput == MONOCHROME ? color.new(MONO_BEARISH, 70) : fairValueGapsBearColorInput
+// @variable                        alerts in current bar
+alerts currentAlerts = alerts.new()
+
+// we create the needed boxes for displaying order blocks at the first execution
+if barstate.isfirst
+    if showSwingOrderBlocksInput
+        for index = 1 to swingOrderBlocksSizeInput by 1
+            swingOrderBlocksBoxes.push(box.new(na, na, na, na, xloc = xloc.bar_time, extend = extend.right))
+    if showInternalOrderBlocksInput
+        for index = 1 to internalOrderBlocksSizeInput by 1
+            internalOrderBlocksBoxes.push(box.new(na, na, na, na, xloc = xloc.bar_time, extend = extend.right))
+
+// @variable                        source to use in bearish order blocks mitigation
+bearishOrderBlockMitigationSource = orderBlockMitigationInput == CLOSE ? close : high
+// @variable                        source to use in bullish order blocks mitigation
+bullishOrderBlockMitigationSource = orderBlockMitigationInput == CLOSE ? close : low
+// @variable                        default volatility measure
+atrMeasure = ta.atr(200)
+// @variable                        parsed volatility measure by user settings
+volatilityMeasure = orderBlockFilterInput == ATR ? atrMeasure : ta.cum(ta.tr) / bar_index
+// @variable                        true if current bar is a high volatility bar
+highVolatilityBar = high - low >= 2 * volatilityMeasure
+// @variable                        parsed high
+parsedHigh = highVolatilityBar ? low : high
+// @variable                        parsed low
+parsedLow = highVolatilityBar ? high : low
+
+// we store current values into the arrays at each bar
+parsedHighs.push(parsedHigh)
+parsedLows.push(parsedLow)
+highs.push(high)
+lows.push(low)
+times.push(time)
+
+//---------------------------------------------------------------------------------------------------------------------}
+//USER-DEFINED FUNCTIONS
+//---------------------------------------------------------------------------------------------------------------------{
+// @function            Get the value of the current leg, it can be 0 (bearish) or 1 (bullish)
+// @returns             int
+leg(int size) =>
+    var leg = 0
+    newLegHigh = high[size] > ta.highest(size)
+    newLegLow = low[size] < ta.lowest(size)
+
+    if newLegHigh
+        leg := BEARISH_LEG
+        leg
+    else if newLegLow
+        leg := BULLISH_LEG
+        leg
+    leg
+
+// @function            Identify whether the current value is the start of a new leg (swing)
+// @param leg           (int) Current leg value
+// @returns             bool
+startOfNewLeg(int leg) =>
+    ta.change(leg) != 0
+
+// @function            Identify whether the current level is the start of a new bearish leg (swing)
+// @param leg           (int) Current leg value
+// @returns             bool
+startOfBearishLeg(int leg) =>
+    ta.change(leg) == -1
+
+// @function            Identify whether the current level is the start of a new bullish leg (swing)
+// @param leg           (int) Current leg value
+// @returns             bool
+startOfBullishLeg(int leg) =>
+    ta.change(leg) == +1
+
+
+
+// @function            store current structure for pivot detection
+// @param size          (int) structure size
+// @param internal      (bool) true for getting internal structures
+// @returns             void
+getCurrentStructure(int size, bool internal = false) =>
+    currentLeg = leg(size)
+    newPivot = startOfNewLeg(currentLeg)
+    pivotLow = startOfBullishLeg(currentLeg)
+    pivotHigh = startOfBearishLeg(currentLeg)
+
+    if newPivot
+        if pivotLow
+            pivot p_ivot = internal ? internalLow : swingLow
+
+            p_ivot.lastLevel := p_ivot.currentLevel
+            p_ivot.currentLevel := low[size]
+            p_ivot.crossed := false
+            p_ivot.barTime := time[size]
+            p_ivot.barIndex := bar_index[size]
+            p_ivot.barIndex
+        else
+            pivot p_ivot = internal ? internalHigh : swingHigh
+
+            p_ivot.lastLevel := p_ivot.currentLevel
+            p_ivot.currentLevel := high[size]
+            p_ivot.crossed := false
+            p_ivot.barTime := time[size]
+            p_ivot.barIndex := bar_index[size]
+            p_ivot.barIndex
+
+
+
+// @function            delete order blocks
+// @param internal      true for internal order blocks
+// @returns             orderBlock ID
+deleteOrderBlocks(bool internal = false) =>
+    array<orderBlock> orderBlocks = internal ? internalOrderBlocks : swingOrderBlocks
+
+    for [index, eachOrderBlock] in orderBlocks
+        bool crossedOderBlock = false
+
+        if bearishOrderBlockMitigationSource > eachOrderBlock.barHigh and eachOrderBlock.bias == BEARISH
+            crossedOderBlock := true
+            if internal
+                currentAlerts.internalBearishOrderBlock := true
+                currentAlerts.internalBearishOrderBlock
+            else
+                currentAlerts.swingBearishOrderBlock := true
+                currentAlerts.swingBearishOrderBlock
+        else if bullishOrderBlockMitigationSource < eachOrderBlock.barLow and eachOrderBlock.bias == BULLISH
+            crossedOderBlock := true
+            if internal
+                currentAlerts.internalBullishOrderBlock := true
+                currentAlerts.internalBullishOrderBlock
+            else
+                currentAlerts.swingBullishOrderBlock := true
+                currentAlerts.swingBullishOrderBlock
+        if crossedOderBlock
+            orderBlocks.remove(index)
+
+// @function            fetch and store order blocks
+// @param p_ivot        base pivot point
+// @param internal      true for internal order blocks
+// @param bias          BULLISH or BEARISH
+// @returns             void
+storeOrdeBlock(pivot p_ivot, bool internal = false, int bias) =>
+    if not internal and showSwingOrderBlocksInput or internal and showInternalOrderBlocksInput
+
+        array<float> a_rray = na
+        int parsedIndex = na
+
+        if bias == BEARISH
+            a_rray := parsedHighs.slice(p_ivot.barIndex, bar_index)
+            parsedIndex := p_ivot.barIndex + a_rray.indexof(a_rray.max())
+            parsedIndex
+        else
+            a_rray := parsedLows.slice(p_ivot.barIndex, bar_index)
+            parsedIndex := p_ivot.barIndex + a_rray.indexof(a_rray.min())
+            parsedIndex
+
+        orderBlock o_rderBlock = orderBlock.new(parsedHighs.get(parsedIndex), parsedLows.get(parsedIndex), times.get(parsedIndex), bias)
+        array<orderBlock> orderBlocks = internal ? internalOrderBlocks : swingOrderBlocks
+
+        if orderBlocks.size() >= 100
+            orderBlocks.pop()
+        orderBlocks.unshift(o_rderBlock)
+
+// @function            draw order blocks as boxes
+// @param internal      true for internal order blocks
+// @returns             void
+drawOrderBlocks(bool internal = false) =>
+    array<orderBlock> orderBlocks = internal ? internalOrderBlocks : swingOrderBlocks
+    orderBlocksSize = orderBlocks.size()
+
+    if orderBlocksSize > 0
+        maxOrderBlocks = internal ? internalOrderBlocksSizeInput : swingOrderBlocksSizeInput
+        array<orderBlock> parsedOrdeBlocks = orderBlocks.slice(0, math.min(maxOrderBlocks, orderBlocksSize))
+        array<box> b_oxes = internal ? internalOrderBlocksBoxes : swingOrderBlocksBoxes
+
+        for [index, eachOrderBlock] in parsedOrdeBlocks
+            orderBlockColor = styleInput == MONOCHROME ? eachOrderBlock.bias == BEARISH ? color.new(MONO_BEARISH, 80) : color.new(MONO_BULLISH, 80) : internal ? eachOrderBlock.bias == BEARISH ? internalBearishOrderBlockColor : internalBullishOrderBlockColor : eachOrderBlock.bias == BEARISH ? swingBearishOrderBlockColor : swingBullishOrderBlockColor
+
+            box b_ox = b_oxes.get(index)
+            b_ox.set_top_left_point(chart.point.new(eachOrderBlock.barTime, na, eachOrderBlock.barHigh))
+            b_ox.set_bottom_right_point(chart.point.new(last_bar_time, na, eachOrderBlock.barLow))
+            b_ox.set_border_color(internal ? na : orderBlockColor)
+            b_ox.set_bgcolor(orderBlockColor)
+
+// @function            detect structure breaks and store order blocks
+// @param internal      true for internal structures or order blocks
+// @returns             void
+displayStructure(bool internal = false) =>
+    pivot p_ivot = internal ? internalHigh : swingHigh
+    trend t_rend = internal ? internalTrend : swingTrend
+
+    if ta.crossover(close, p_ivot.currentLevel) and not p_ivot.crossed
+        p_ivot.crossed := true
+        t_rend.bias := BULLISH
+
+        if internal and showInternalOrderBlocksInput or not internal and showSwingOrderBlocksInput
+            storeOrdeBlock(p_ivot, internal, BULLISH)
+
+    p_ivot := internal ? internalLow : swingLow
+
+    if ta.crossunder(close, p_ivot.currentLevel) and not p_ivot.crossed
+        p_ivot.crossed := true
+        t_rend.bias := BEARISH
+
+        if internal and showInternalOrderBlocksInput or not internal and showSwingOrderBlocksInput
+            storeOrdeBlock(p_ivot, internal, BEARISH)
+
+// @function            draw one fair value gap box (each fair value gap has two boxes)
+// @param leftTime      left time coordinate
+// @param rightTime     right time coordinate
+// @param topPrice      top price level
+// @param bottomPrice   bottom price level
+// @param boxColor      box color
+// @returns             box ID
+fairValueGapBox(leftTime, rightTime, topPrice, bottomPrice, boxColor) =>
+    box.new(chart.point.new(leftTime, na, topPrice), chart.point.new(rightTime + fairValueGapsExtendInput * (time - time[1]), na, bottomPrice), xloc = xloc.bar_time, border_color = boxColor, bgcolor = boxColor)
+
+// @function            delete fair value gaps
+// @returns             fairValueGap ID
+deleteFairValueGaps() =>
+    for [index, eachFairValueGap] in fairValueGaps
+        if low < eachFairValueGap.bottom and eachFairValueGap.bias == BULLISH or high > eachFairValueGap.top and eachFairValueGap.bias == BEARISH
+            eachFairValueGap.topBox.delete()
+            eachFairValueGap.bottomBox.delete()
+            fairValueGaps.remove(index)
+
+// @function            draw fair value gaps
+// @returns             fairValueGap ID
+drawFairValueGaps() =>
+    [lastClose, lastOpen, lastTime, currentHigh, currentLow, currentTime, last2High, last2Low] = request.security(syminfo.tickerid, fairValueGapsTimeframeInput, [close[1], open[1], time[1], high[0], low[0], time[0], high[2], low[2]], lookahead = barmerge.lookahead_on)
+
+    barDeltaPercent = (lastClose - lastOpen) / (lastOpen * 100)
+    newTimeframe = timeframe.change(fairValueGapsTimeframeInput)
+    threshold = fairValueGapsThresholdInput ? ta.cum(math.abs(newTimeframe ? barDeltaPercent : 0)) / bar_index * 2 : 0
+
+    bullishFairValueGap = currentLow > last2High and lastClose > last2High and barDeltaPercent > threshold and newTimeframe
+    bearishFairValueGap = currentHigh < last2Low and lastClose < last2Low and -barDeltaPercent > threshold and newTimeframe
+
+    if bullishFairValueGap
+        currentAlerts.bullishFairValueGap := true
+        fairValueGaps.unshift(fairValueGap.new(currentLow, last2High, BULLISH, fairValueGapBox(lastTime, currentTime, currentLow, math.avg(currentLow, last2High), fairValueGapBullishColor), fairValueGapBox(lastTime, currentTime, math.avg(currentLow, last2High), last2High, fairValueGapBullishColor)))
+    if bearishFairValueGap
+        currentAlerts.bearishFairValueGap := true
+        fairValueGaps.unshift(fairValueGap.new(currentHigh, last2Low, BEARISH, fairValueGapBox(lastTime, currentTime, currentHigh, math.avg(currentHigh, last2Low), fairValueGapBearishColor), fairValueGapBox(lastTime, currentTime, math.avg(currentHigh, last2Low), last2Low, fairValueGapBearishColor)))
+
+
+
+//---------------------------------------------------------------------------------------------------------------------}
+//MUTABLE VARIABLES & EXECUTION
+//---------------------------------------------------------------------------------------------------------------------{
+if showFairValueGapsInput
+    deleteFairValueGaps()
+
+getCurrentStructure(swingsLengthInput, false)
+getCurrentStructure(5, true)
+
+if showInternalOrderBlocksInput
+    displayStructure(true)
+
+if showSwingOrderBlocksInput
+    displayStructure()
+
+if showInternalOrderBlocksInput
+    deleteOrderBlocks(true)
+
+if showSwingOrderBlocksInput
+    deleteOrderBlocks()
+
+if showFairValueGapsInput
+    drawFairValueGaps()
+
+if barstate.islastconfirmedhistory or barstate.islast
+    if showInternalOrderBlocksInput
+        drawOrderBlocks(true)
+
+    if showSwingOrderBlocksInput
+        drawOrderBlocks()
+
+//---------------------------------------------------------------------------------------------------------------------}
+//ALERTS
+//---------------------------------------------------------------------------------------------------------------------{
+alertcondition(currentAlerts.internalBullishOrderBlock, 'Bullish Internal OB Breakout', 'Price broke bullish internal OB')
+alertcondition(currentAlerts.internalBearishOrderBlock, 'Bearish Internal OB Breakout', 'Price broke bearish internal OB')
+alertcondition(currentAlerts.swingBullishOrderBlock, 'Bullish Swing OB Breakout', 'Price broke bullish swing OB')
+alertcondition(currentAlerts.swingBearishOrderBlock, 'Bearish Swing OB Breakout', 'Price broke bearish swing OB')
+
+alertcondition(currentAlerts.bullishFairValueGap, 'Bullish FVG', 'Bullish FVG formed')
+alertcondition(currentAlerts.bearishFairValueGap, 'Bearish FVG', 'Bearish FVG formed')
+
+//---------------------------------------------------------------------------------------------------------------------}
