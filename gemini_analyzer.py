@@ -308,6 +308,172 @@ class GeminiAnalyzer:
             logger.error(f"Error in historical comparison: {e}")
             return {}
     
+    def _format_institutional_indicators_json(self, data: Dict, market: Dict) -> Dict:
+        """
+        Format institutional indicators into structured JSON for AI analysis
+        
+        Args:
+            data: Collected analysis data
+            market: Market data with current price
+            
+        Returns:
+            Structured dict with all institutional indicators
+        """
+        try:
+            result = {
+                'volume_profile': {},
+                'fair_value_gaps': {},
+                'order_blocks': {},
+                'support_resistance': {},
+                'smart_money_concepts': {}
+            }
+            
+            current_price = market['price']
+            
+            # Volume Profile
+            if data.get('volume_profile'):
+                vp_1d = data['volume_profile'].get('1d')
+                vp_4h = data['volume_profile'].get('4h')
+                
+                if vp_1d:
+                    position_1d = self.volume_profile.get_current_position_in_profile(current_price, vp_1d)
+                    result['volume_profile']['1d'] = {
+                        'poc': vp_1d['poc']['price'],
+                        'vah': vp_1d['vah'],
+                        'val': vp_1d['val'],
+                        'current_position': position_1d.get('position'),
+                        'zone': position_1d.get('zone'),
+                        'bias': position_1d.get('bias'),
+                        'distance_to_poc_percent': position_1d.get('distance_to_poc_percent', 0),
+                        'distance_to_vah_percent': position_1d.get('distance_to_vah_percent', 0),
+                        'distance_to_val_percent': position_1d.get('distance_to_val_percent', 0),
+                        'value_area_width_percent': vp_1d['value_area']['width_percentage']
+                    }
+                
+                if vp_4h:
+                    position_4h = self.volume_profile.get_current_position_in_profile(current_price, vp_4h)
+                    result['volume_profile']['4h'] = {
+                        'poc': vp_4h['poc']['price'],
+                        'vah': vp_4h['vah'],
+                        'val': vp_4h['val'],
+                        'current_position': position_4h.get('position'),
+                        'distance_to_poc_percent': position_4h.get('distance_to_poc_percent', 0)
+                    }
+            
+            # Fair Value Gaps
+            if data.get('fair_value_gaps'):
+                for tf in ['1d', '4h', '1h']:
+                    fvg_data = data['fair_value_gaps'].get(tf)
+                    if fvg_data:
+                        stats = fvg_data['statistics']
+                        nearest = fvg_data.get('nearest_gaps', {})
+                        
+                        result['fair_value_gaps'][tf] = {
+                            'unfilled_bullish_gaps': stats['unfilled_bullish_gaps'],
+                            'unfilled_bearish_gaps': stats['unfilled_bearish_gaps'],
+                            'fill_rate_bullish_percent': stats['fill_rate_bullish_percent'],
+                            'fill_rate_bearish_percent': stats['fill_rate_bearish_percent'],
+                            'nearest_bullish_fvg': {
+                                'top': nearest.get('bullish', {}).get('top'),
+                                'bottom': nearest.get('bullish', {}).get('bottom'),
+                                'size_percent': nearest.get('bullish', {}).get('size_percentage'),
+                                'distance_to_bottom_percent': nearest.get('bullish', {}).get('distance_to_bottom_percent')
+                            } if nearest.get('bullish') else None,
+                            'nearest_bearish_fvg': {
+                                'top': nearest.get('bearish', {}).get('top'),
+                                'bottom': nearest.get('bearish', {}).get('bottom'),
+                                'size_percent': nearest.get('bearish', {}).get('size_percentage'),
+                                'distance_to_top_percent': nearest.get('bearish', {}).get('distance_to_top_percent')
+                            } if nearest.get('bearish') else None
+                        }
+            
+            # Order Blocks
+            if data.get('order_blocks'):
+                for tf in ['1d', '4h']:
+                    ob_data = data['order_blocks'].get(tf)
+                    if ob_data:
+                        stats = ob_data['statistics']
+                        nearest = ob_data.get('nearest_blocks', {})
+                        
+                        result['order_blocks'][tf] = {
+                            'active_swing_obs': stats['active_swing_obs'],
+                            'active_internal_obs': stats['active_internal_obs'],
+                            'mitigation_rate_swing_percent': stats['mitigation_rate_swing_percent'],
+                            'mitigation_rate_internal_percent': stats['mitigation_rate_internal_percent'],
+                            'nearest_swing_ob': {
+                                'bias': nearest.get('swing', {}).get('bias'),
+                                'top': nearest.get('swing', {}).get('top'),
+                                'bottom': nearest.get('swing', {}).get('bottom'),
+                                'distance_to_bottom_percent': nearest.get('swing', {}).get('distance_to_bottom_percent'),
+                                'distance_to_top_percent': nearest.get('swing', {}).get('distance_to_top_percent')
+                            } if nearest.get('swing') else None,
+                            'nearest_internal_ob': {
+                                'bias': nearest.get('internal', {}).get('bias'),
+                                'top': nearest.get('internal', {}).get('top'),
+                                'bottom': nearest.get('internal', {}).get('bottom')
+                            } if nearest.get('internal') else None
+                        }
+            
+            # Support/Resistance
+            if data.get('support_resistance'):
+                for tf in ['1d', '4h']:
+                    sr_data = data['support_resistance'].get(tf)
+                    if sr_data:
+                        stats = sr_data['statistics']
+                        nearest = sr_data.get('nearest_zones', {})
+                        
+                        result['support_resistance'][tf] = {
+                            'active_support_zones': stats['active_support_zones'],
+                            'active_resistance_zones': stats['active_resistance_zones'],
+                            'break_rate_support_percent': stats['break_rate_support_percent'],
+                            'break_rate_resistance_percent': stats['break_rate_resistance_percent'],
+                            'nearest_support': {
+                                'price': nearest.get('support', {}).get('price'),
+                                'volume_ratio': nearest.get('support', {}).get('volume_ratio'),
+                                'delta_volume': nearest.get('support', {}).get('delta_volume'),
+                                'distance_percent': nearest.get('support', {}).get('distance_percent')
+                            } if nearest.get('support') else None,
+                            'nearest_resistance': {
+                                'price': nearest.get('resistance', {}).get('price'),
+                                'volume_ratio': nearest.get('resistance', {}).get('volume_ratio'),
+                                'delta_volume': nearest.get('resistance', {}).get('delta_volume'),
+                                'distance_percent': nearest.get('resistance', {}).get('distance_percent')
+                            } if nearest.get('resistance') else None
+                        }
+            
+            # Smart Money Concepts
+            if data.get('smart_money_concepts'):
+                for tf in ['1d', '4h']:
+                    smc_data = data['smart_money_concepts'].get(tf)
+                    if smc_data:
+                        swing_structure = smc_data['swing_structure']
+                        internal_structure = smc_data['internal_structure']
+                        stats = smc_data['statistics']
+                        bias_info = self.smc_analyzer.get_trading_bias(smc_data)
+                        
+                        result['smart_money_concepts'][tf] = {
+                            'swing_trend': swing_structure['trend'],
+                            'internal_trend': internal_structure['trend'],
+                            'structure_bias': smc_data['structure_bias'],
+                            'recent_bullish_bos': stats['recent_bullish_bos'],
+                            'recent_bearish_bos': stats['recent_bearish_bos'],
+                            'recent_bullish_choch': stats['recent_bullish_choch'],
+                            'recent_bearish_choch': stats['recent_bearish_choch'],
+                            'eqh_count': stats['eqh_count'],
+                            'eql_count': stats['eql_count'],
+                            'trading_bias': bias_info['bias'],
+                            'bias_confidence': bias_info['confidence'],
+                            'bias_reason': bias_info['reason'],
+                            'last_swing_high': swing_structure.get('last_swing_high'),
+                            'last_swing_low': swing_structure.get('last_swing_low')
+                        }
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error formatting institutional indicators JSON: {e}")
+            return {}
+    
     def _build_prompt(self, data: Dict, trading_style: str = 'swing') -> str:
         """
         Build Gemini prompt from collected data
@@ -394,151 +560,8 @@ H4 Previous Candle Analysis:
   Volume: {candle['volume']:,.0f}
 """
         
-        # Format institutional indicators
-        
-        # Volume Profile
-        vp_text = "Volume Profile data unavailable"
-        if data.get('volume_profile'):
-            vp_4h = data['volume_profile'].get('4h')
-            vp_1d = data['volume_profile'].get('1d')
-            
-            vp_text = "Volume Profile:\n"
-            if vp_1d:
-                poc = vp_1d['poc']['price']
-                vah = vp_1d['vah']
-                val = vp_1d['val']
-                position_1d = self.volume_profile.get_current_position_in_profile(market['price'], vp_1d)
-                
-                vp_text += f"""  1D Timeframe:
-    POC (Point of Control): ${poc:,.4f}
-    VAH (Value Area High): ${vah:,.4f}
-    VAL (Value Area Low): ${val:,.4f}
-    Current Position: {position_1d.get('position', 'UNKNOWN')} - {position_1d.get('zone', '')}
-    Distance to POC: {position_1d.get('distance_to_poc_percent', 0):+.2f}%
-    Bias: {position_1d.get('bias', 'N/A')}
-"""
-            if vp_4h:
-                poc = vp_4h['poc']['price']
-                vah = vp_4h['vah']
-                val = vp_4h['val']
-                position_4h = self.volume_profile.get_current_position_in_profile(market['price'], vp_4h)
-                
-                vp_text += f"""  4H Timeframe:
-    POC: ${poc:,.4f} | VAH: ${vah:,.4f} | VAL: ${val:,.4f}
-    Position: {position_4h.get('position', 'UNKNOWN')} ({position_4h.get('distance_to_poc_percent', 0):+.2f}% from POC)
-"""
-        
-        # Fair Value Gaps
-        fvg_text = "Fair Value Gaps data unavailable"
-        if data.get('fair_value_gaps'):
-            fvg_1d = data['fair_value_gaps'].get('1d')
-            fvg_4h = data['fair_value_gaps'].get('4h')
-            
-            fvg_text = "Fair Value Gaps (Imbalance Zones):\n"
-            if fvg_1d and fvg_1d.get('nearest_gaps'):
-                nearest_bull = fvg_1d['nearest_gaps'].get('bullish')
-                nearest_bear = fvg_1d['nearest_gaps'].get('bearish')
-                stats = fvg_1d['statistics']
-                
-                fvg_text += f"""  1D Timeframe:
-    Unfilled Bullish FVGs: {stats['unfilled_bullish_gaps']} (Fill rate: {stats['fill_rate_bullish_percent']:.0f}%)
-    Unfilled Bearish FVGs: {stats['unfilled_bearish_gaps']} (Fill rate: {stats['fill_rate_bearish_percent']:.0f}%)
-"""
-                if nearest_bull:
-                    fvg_text += f"    Nearest Bullish FVG: ${nearest_bull['bottom']:,.4f} - ${nearest_bull['top']:,.4f} ({nearest_bull['size_percentage']:.2f}% gap)\n"
-                if nearest_bear:
-                    fvg_text += f"    Nearest Bearish FVG: ${nearest_bear['bottom']:,.4f} - ${nearest_bear['top']:,.4f} ({nearest_bear['size_percentage']:.2f}% gap)\n"
-            
-            if fvg_4h and fvg_4h.get('statistics'):
-                stats = fvg_4h['statistics']
-                fvg_text += f"""  4H Timeframe:
-    Unfilled Bullish: {stats['unfilled_bullish_gaps']} | Bearish: {stats['unfilled_bearish_gaps']}
-"""
-        
-        # Order Blocks
-        ob_text = "Order Blocks data unavailable"
-        if data.get('order_blocks'):
-            ob_1d = data['order_blocks'].get('1d')
-            ob_4h = data['order_blocks'].get('4h')
-            
-            ob_text = "Order Blocks (Institutional Footprints):\n"
-            if ob_1d and ob_1d.get('nearest_blocks'):
-                nearest_swing = ob_1d['nearest_blocks'].get('swing')
-                nearest_internal = ob_1d['nearest_blocks'].get('internal')
-                stats = ob_1d['statistics']
-                
-                ob_text += f"""  1D Timeframe:
-    Active Swing OBs: {stats['active_swing_obs']} | Internal OBs: {stats['active_internal_obs']}
-    Mitigation Rate: Swing {stats['mitigation_rate_swing_percent']:.0f}% | Internal {stats['mitigation_rate_internal_percent']:.0f}%
-"""
-                if nearest_swing:
-                    ob_text += f"    Nearest Swing OB ({nearest_swing['bias']}): ${nearest_swing['bottom']:,.4f} - ${nearest_swing['top']:,.4f}\n"
-                if nearest_internal:
-                    ob_text += f"    Nearest Internal OB ({nearest_internal['bias']}): ${nearest_internal['bottom']:,.4f} - ${nearest_internal['top']:,.4f}\n"
-            
-            if ob_4h and ob_4h.get('statistics'):
-                stats = ob_4h['statistics']
-                ob_text += f"""  4H Timeframe:
-    Active: Swing {stats['active_swing_obs']} | Internal {stats['active_internal_obs']}
-"""
-        
-        # Support/Resistance
-        sr_text = "Support/Resistance zones unavailable"
-        if data.get('support_resistance'):
-            sr_1d = data['support_resistance'].get('1d')
-            sr_4h = data['support_resistance'].get('4h')
-            
-            sr_text = "Support/Resistance Zones (High Volume):\n"
-            if sr_1d and sr_1d.get('nearest_zones'):
-                nearest_support = sr_1d['nearest_zones'].get('support')
-                nearest_resistance = sr_1d['nearest_zones'].get('resistance')
-                stats = sr_1d['statistics']
-                
-                sr_text += f"""  1D Timeframe:
-    Active Support Zones: {stats['active_support_zones']} | Resistance Zones: {stats['active_resistance_zones']}
-    Break Rate: Support {stats['break_rate_support_percent']:.0f}% | Resistance {stats['break_rate_resistance_percent']:.0f}%
-"""
-                if nearest_support:
-                    sr_text += f"    Nearest Support: ${nearest_support['price']:,.4f} (Volume: {nearest_support['volume_ratio']:.1f}x avg)\n"
-                if nearest_resistance:
-                    sr_text += f"    Nearest Resistance: ${nearest_resistance['price']:,.4f} (Volume: {nearest_resistance['volume_ratio']:.1f}x avg)\n"
-            
-            if sr_4h and sr_4h.get('statistics'):
-                stats = sr_4h['statistics']
-                sr_text += f"""  4H Timeframe:
-    Active: Support {stats['active_support_zones']} | Resistance {stats['active_resistance_zones']}
-"""
-        
-        # Smart Money Concepts
-        smc_text = "Smart Money Concepts data unavailable"
-        if data.get('smart_money_concepts'):
-            smc_1d = data['smart_money_concepts'].get('1d')
-            smc_4h = data['smart_money_concepts'].get('4h')
-            
-            smc_text = "Smart Money Concepts (Market Structure):\n"
-            if smc_1d:
-                swing_trend = smc_1d['swing_structure']['trend'] or 'NEUTRAL'
-                structure_bias = smc_1d['structure_bias']
-                stats = smc_1d['statistics']
-                
-                bias_info = self.smc_analyzer.get_trading_bias(smc_1d)
-                
-                smc_text += f"""  1D Timeframe:
-    Swing Trend: {swing_trend} | Structure Bias: {structure_bias}
-    BOS (Break of Structure): Bullish {stats['recent_bullish_bos']} | Bearish {stats['recent_bearish_bos']}
-    CHoCH (Change of Character): Bullish {stats['recent_bullish_choch']} | Bearish {stats['recent_bearish_choch']}
-    EQH/EQL: {stats['eqh_count']} Equal Highs | {stats['eql_count']} Equal Lows
-    Trading Bias: {bias_info['bias']} (Confidence: {bias_info['confidence']}%)
-    Reason: {bias_info['reason']}
-"""
-            
-            if smc_4h:
-                swing_trend = smc_4h['swing_structure']['trend'] or 'NEUTRAL'
-                structure_bias = smc_4h['structure_bias']
-                
-                smc_text += f"""  4H Timeframe:
-    Trend: {swing_trend} | Bias: {structure_bias}
-"""
+        # Format institutional indicators as JSON
+        institutional_json = self._format_institutional_indicators_json(data, market)
         
         # Build full prompt
         prompt = f"""You are an expert cryptocurrency trading analyst with 10+ years of experience in technical analysis and market psychology.
@@ -568,17 +591,21 @@ Stochastic + RSI Analysis:
 {pump_text}
 
 ═══════════════════════════════════════════
-🏛️ INSTITUTIONAL INDICATORS
+🏛️ INSTITUTIONAL INDICATORS (JSON STRUCTURED)
 ═══════════════════════════════════════════
-{vp_text}
 
-{fvg_text}
+CRITICAL: Analyze this institutional data systematically. This represents smart money footprints.
 
-{ob_text}
+```json
+{json.dumps(institutional_json, indent=2, default=str)}
+```
 
-{sr_text}
-
-{smc_text}
+KEY INTERPRETATIONS:
+- volume_profile: POC=highest volume price, VAH/VAL=value area boundaries, position=current price location
+- fair_value_gaps: Unfilled gaps act as magnets (price tends to fill them), high fill_rate=reliable zones
+- order_blocks: Institutional accumulation/distribution zones, ACTIVE blocks=strong S/R
+- support_resistance: High volume_ratio (>2x)=very strong zones, delta_volume=buy/sell pressure
+- smart_money_concepts: BOS=continuation, CHoCH=reversal, EQH/EQL=accumulation zones
 
 ═══════════════════════════════════════════
 💧 VOLUME ANALYSIS
@@ -638,28 +665,72 @@ IMPORTANT GUIDELINES:
    - Bullish candles with small upper wicks = continuation potential
    - Bearish candles with long lower wicks = support testing
    - Compare body size to average - larger bodies = stronger momentum
-4. **Institutional Indicators (CRITICAL - Weight 40%):**
-   - **Volume Profile**: Current price position relative to POC/VAH/VAL
-     * PREMIUM (above VAH): Expect rejection or strong continuation
-     * DISCOUNT (below VAL): Expect bounce or deeper correction
-     * AT_POC: High reaction zone, strong S/R level
-     * VALUE_AREA: Balanced, watch for breakout
-   - **Fair Value Gaps (FVG)**: Imbalance zones where price moved too fast
-     * Bullish FVG below price = support magnet (price tends to fill gaps)
-     * Bearish FVG above price = resistance magnet
-     * High fill rate (>70%) = reliable zones
-   - **Order Blocks (OB)**: Institutional accumulation/distribution zones
-     * Swing OBs = major institutional levels (higher timeframe)
-     * Internal OBs = minor levels (lower timeframe)
-     * Active (non-mitigated) OBs act as strong support/resistance
-   - **Support/Resistance**: High volume zones with delta volume
-     * Volume ratio >2x = very strong zone
-     * Broken + retested zones = reliable entry points
-   - **Smart Money Concepts (SMC)**: Market structure analysis
-     * BOS (Break of Structure) = trend continuation signal
-     * CHoCH (Change of Character) = potential reversal signal
-     * EQH/EQL = accumulation zones, expect breakout
-     * Aligned trends (swing + internal) = high confidence
+4. **Institutional Indicators (CRITICAL - Weight 40% - JSON FORMAT ABOVE):**
+   
+   **READ THE JSON DATA CAREFULLY - Each field has specific meaning:**
+   
+   - **Volume Profile (volume_profile):**
+     * poc = Point of Control (highest volume price level)
+     * vah = Value Area High (top of 68% volume range)
+     * val = Value Area Low (bottom of 68% volume range)
+     * current_position values:
+       - "PREMIUM" (above VAH): Price is expensive, expect rejection or strong continuation
+       - "DISCOUNT" (below VAL): Price is cheap, expect bounce or deeper correction
+       - "AT_POC": At highest volume level, strong S/R, expect high volatility
+       - "VALUE_AREA": Inside fair value zone, balanced price, watch for breakout
+     * distance_to_poc_percent: Negative=below POC, Positive=above POC
+     * bias: Expected price direction based on position
+   
+   - **Fair Value Gaps (fair_value_gaps):**
+     * Gaps are imbalance zones where price moved too fast (no trading occurred)
+     * unfilled_bullish_gaps: Gaps below price = support magnets (price tends to fill them)
+     * unfilled_bearish_gaps: Gaps above price = resistance magnets
+     * fill_rate_percent: >70% = highly reliable zones that price will revisit
+     * nearest_bullish_fvg: If exists, strong support zone below current price
+     * nearest_bearish_fvg: If exists, strong resistance zone above current price
+     * distance_percent: Negative=below price, Positive=above price
+   
+   - **Order Blocks (order_blocks):**
+     * OBs = Last opposite candle before structure break (institutional footprints)
+     * active_swing_obs: Major institutional levels (50-period structure)
+     * active_internal_obs: Minor levels (5-period structure)
+     * mitigation_rate_percent: How often OBs get broken (lower=stronger zones)
+     * nearest_swing_ob.bias: "BULLISH"=support, "BEARISH"=resistance
+     * If bias=BULLISH and price near bottom: Strong support entry zone
+     * If bias=BEARISH and price near top: Strong resistance exit zone
+   
+   - **Support/Resistance (support_resistance):**
+     * High volume zones at pivot points (smart money accumulation)
+     * volume_ratio: >2x = very strong zone, >3x = extremely strong
+     * delta_volume: Positive=buying pressure, Negative=selling pressure
+     * nearest_support: If price approaching, watch for bounce
+     * nearest_resistance: If price approaching, watch for rejection
+     * distance_percent: How far from current price
+   
+   - **Smart Money Concepts (smart_money_concepts):**
+     * swing_trend: "BULLISH" or "BEARISH" or "NEUTRAL" (main trend)
+     * internal_trend: Short-term trend (can diverge from swing)
+     * structure_bias: Alignment between swing and internal
+       - "BULLISH_ALIGNED" or "BEARISH_ALIGNED" = Strong trend (high confidence)
+       - Mixed trends = Divergence (caution, possible reversal)
+     * BOS (Break of Structure): Trend continuation signals
+       - recent_bullish_bos > recent_bearish_bos = Strong uptrend
+       - recent_bearish_bos > recent_bullish_bos = Strong downtrend
+     * CHoCH (Change of Character): Trend reversal signals
+       - recent_bullish_choch: Potential bottom/reversal up
+       - recent_bearish_choch: Potential top/reversal down
+     * eqh_count, eql_count: Multiple touches at same level = accumulation zones
+     * trading_bias: AI-calculated bias with confidence level
+     * bias_reason: Why this bias was determined
+   
+   **INTEGRATION RULES:**
+   - If Volume Profile shows DISCOUNT + Bullish FVG nearby + Bullish OB active + SMC shows bullish CHoCH → STRONG BUY
+   - If Volume Profile shows PREMIUM + Bearish FVG nearby + Bearish OB active + SMC shows bearish CHoCH → STRONG SELL
+   - If current_price near POC + multiple active OBs → Expect high volatility breakout
+   - If price in VALUE_AREA but no clear FVGs/OBs → NEUTRAL/WAIT
+   - Weight SMC trading_bias heavily (it's pre-calculated with confluence)
+   - High volume_ratio S/R zones (>2x) are NON-NEGOTIABLE levels
+   
 5. Weight high-confidence pump signals (>=80%) heavily but note dump risk
 6. Be specific with entry/exit points based on current price and institutional zones
 7. Identify conflicting signals between different timeframes and indicator types explicitly
