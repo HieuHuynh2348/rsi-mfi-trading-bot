@@ -1,6 +1,6 @@
 """
 Gemini AI Trading Analyzer
-Integrates Google Gemini 2.5 Pro for comprehensive trading analysis
+Integrates Google Gemini 2.0 Flash Experimental for comprehensive trading analysis
 
 Author: AI Assistant
 Date: November 9, 2025
