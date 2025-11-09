@@ -318,10 +318,11 @@ class TelegramCommandHandler:
                     logger.info(f"✅ User {user_id} usage: {self.user_usage[user_id]['count']}/{self.daily_limit}, Remaining: {remaining}")
                 
                 # Check if we should send tracking notification (rate limiting)
+                # Only track private chat users (not group users)
                 current_time = time.time()
                 should_notify = False
                 
-                if user_id:
+                if user_id and chat_type == 'private':  # Only track private chat users
                     if user_id not in self.tracked_users:
                         # New user - always notify
                         should_notify = True
