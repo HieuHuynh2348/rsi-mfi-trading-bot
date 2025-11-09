@@ -46,8 +46,8 @@ def validate_dataframe(df):
 
 def calculate_hlcc4(df):
     """
-    Calculate HLCC/4 price
-    (High + Low + Close + Close) / 4
+    Calculate HLCO/4 price (also known as typical price variant)
+    (High + Low + Close + Open) / 4
     
     Ensures numeric data types before calculation
     """
@@ -55,17 +55,18 @@ def calculate_hlcc4(df):
     high = pd.to_numeric(df['high'], errors='coerce')
     low = pd.to_numeric(df['low'], errors='coerce')
     close = pd.to_numeric(df['close'], errors='coerce')
+    open_price = pd.to_numeric(df['open'], errors='coerce')
     
-    return (high + low + close + close) / 4
+    return (high + low + close + open_price) / 4
 
 
 def calculate_rsi(data, period=14):
     """
-    Calculate RSI (Relative Strength Index) using HLCC/4
+    Calculate RSI (Relative Strength Index) using HLCO/4
     Matches Pine Script custom RSI calculation
     
     Args:
-        data: pandas Series or DataFrame column of price data (HLCC/4)
+        data: pandas Series or DataFrame column of price data (HLCO/4)
         period: RSI period (default 14)
     
     Returns:
@@ -196,7 +197,7 @@ def analyze_symbol(df, rsi_period, mfi_period, rsi_lower, rsi_upper, mfi_lower, 
         if df is None or len(df) < max(rsi_period, mfi_period) + 1:
             return None
         
-        # Calculate HLCC/4
+        # Calculate HLCO/4
         hlcc4 = calculate_hlcc4(df)
         
         # Ensure hlcc4 is a valid Series
