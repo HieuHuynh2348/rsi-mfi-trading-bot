@@ -13,6 +13,7 @@ import os
 import base64
 from datetime import datetime
 from vietnamese_messages import *
+import config
 
 logger = logging.getLogger(__name__)
 
@@ -680,7 +681,7 @@ class TelegramBot:
             logger.error(f"Error sending photo: {e}")
             return False
     
-    def send_signal_alert(self, symbol, timeframe_data, consensus, consensus_strength, price=None, market_data=None, volume_data=None, stoch_rsi_data=None):
+    def send_signal_alert(self, symbol, timeframe_data, consensus, consensus_strength, price=None, market_data=None, volume_data=None, stoch_rsi_data=None, chat_id=None):
         """
         Send a formatted signal alert with detailed information in Vietnamese
         
@@ -693,16 +694,27 @@ class TelegramBot:
             market_data: Dictionary with 24h data (high, low, change, volume)
             volume_data: Dictionary with volume analysis (current, last, avg, ratios)
             stoch_rsi_data: Dictionary with Stoch+RSI analysis (optional)
+            chat_id: Chat ID to send to (if None, uses default)
         """
         try:
             # Use Vietnamese message generator
             message = get_signal_alert(symbol, timeframe_data, consensus, consensus_strength, price, market_data, volume_data, stoch_rsi_data)
             
-            # Add AI Analysis and Chart buttons
-            keyboard = self.create_symbol_analysis_keyboard(symbol)
+            # Determine chat type
+            target_chat_id = chat_id if chat_id else self.chat_id
+            
+            # Check if it's the group chat
+            is_group = str(target_chat_id) == str(config.GROUP_CHAT_ID) if hasattr(config, 'GROUP_CHAT_ID') else False
+            
+            # Add buttons only for private chat
+            keyboard = None
+            if not is_group:
+                keyboard = self.create_symbol_analysis_keyboard(symbol)
+            else:
+                logger.info(f"📢 Sending to group {target_chat_id} - Skipping Live Chart button")
             
             logger.info(f"✅ Đang gửi cảnh báo tín hiệu cho {symbol}")
-            result = self.send_message(message, reply_markup=keyboard)
+            result = self.send_message(message, reply_markup=keyboard, chat_id=target_chat_id)
             
             if result:
                 logger.info(f"✅ Đã gửi cảnh báo tín hiệu cho {symbol}")

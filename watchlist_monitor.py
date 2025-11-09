@@ -218,6 +218,9 @@ class WatchlistMonitor:
                         except Exception:
                             pass
 
+                    # Get target chat_id (use GROUP_CHAT_ID if available)
+                    target_chat_id = getattr(self.command_handler._config, 'GROUP_CHAT_ID', None)
+                    
                     self.command_handler.bot.send_signal_alert(
                         result['symbol'],
                         result['timeframe_data'],
@@ -226,11 +229,12 @@ class WatchlistMonitor:
                         formatted_price,
                         md,
                         result.get('volume_data'),
-                        result.get('stoch_rsi_data')
+                        result.get('stoch_rsi_data'),
+                        chat_id=target_chat_id
                     )
                     logger.info(f"✅ Successfully sent alert for {result['symbol']}")
                     
-                    # Send chart if enabled
+                    # Send chart if enabled (also use target_chat_id)
                     if self.command_handler._config.SEND_CHARTS:
                         chart_buf = self.command_handler.chart_gen.create_multi_timeframe_chart(
                             result['symbol'],
@@ -241,7 +245,8 @@ class WatchlistMonitor:
                         
                         if chart_buf:
                             self.command_handler.bot.send_photo(
-                                chart_buf,
+                                chat_id=target_chat_id,
+                                photo_bytes=chart_buf,
                                 caption=f"🎯 SIGNAL - {result['symbol']} ({i}/{len(signals)})"
                             )
                     
@@ -379,6 +384,9 @@ class WatchlistMonitor:
                         except Exception:
                             pass
 
+                    # Get target chat_id (use GROUP_CHAT_ID if available)
+                    target_chat_id = getattr(self.command_handler._config, 'GROUP_CHAT_ID', None)
+                    
                     self.command_handler.bot.send_signal_alert(
                         result['symbol'],
                         result['timeframe_data'],
@@ -387,10 +395,11 @@ class WatchlistMonitor:
                         formatted_price,
                         md,
                         result.get('volume_data'),
-                        result.get('stoch_rsi_data')
+                        result.get('stoch_rsi_data'),
+                        chat_id=target_chat_id
                     )
                     
-                    # Send chart if enabled
+                    # Send chart if enabled (also use target_chat_id)
                     if self.command_handler._config.SEND_CHARTS:
                         chart_buf = self.command_handler.chart_gen.create_multi_timeframe_chart(
                             result['symbol'],
@@ -401,7 +410,8 @@ class WatchlistMonitor:
                         
                         if chart_buf:
                             self.command_handler.bot.send_photo(
-                                chart_buf,
+                                chat_id=target_chat_id,
+                                photo_bytes=chart_buf,
                                 caption=f"📊 {result['symbol']} - Volume Spike Analysis ({i}/{len(spike_alerts)})"
                             )
                     

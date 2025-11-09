@@ -60,6 +60,9 @@ MIN_VOLUME_USDT = 0  # Analyze all coins regardless of volume
 OWNER_USER_ID = 6228875204  # @Hieuhuynh234
 OWNER_USERNAME = "Hieuhuynh234"
 
+# Group chat ID (no Live Chart button, only indicators)
+GROUP_CHAT_ID = -1002395637657  # Group chat - indicators only, no buttons
+
 # How often to scan (in seconds)
 SCAN_INTERVAL = 300  # 5 minutes
 
