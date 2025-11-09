@@ -14,6 +14,7 @@ import numpy as np
 import io
 import logging
 from datetime import datetime
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -818,4 +819,62 @@ class ChartGenerator:
             
         except Exception as e:
             logger.error(f"Error creating {indicator_name} overview chart: {e}", exc_info=True)
+            return None
+    
+    def generate_chart_with_indicators(self, symbol: str, df: pd.DataFrame, 
+                                      rsi_period: int = 14, mfi_period: int = 14,
+                                      timeframe: str = '1h') -> Optional[str]:
+        """
+        Generate chart with RSI and MFI indicators and save to file
+        
+        Args:
+            symbol: Trading symbol
+            df: DataFrame with OHLCV data
+            rsi_period: RSI calculation period
+            mfi_period: MFI calculation period
+            timeframe: Timeframe string
+            
+        Returns:
+            Path to saved chart file or None on error
+        """
+        try:
+            from indicators import calculate_rsi, calculate_mfi
+            import tempfile
+            import os
+            
+            logger.info(f"Generating chart with indicators for {symbol}")
+            
+            # Calculate indicators
+            rsi_series = calculate_rsi(df['close'], period=rsi_period)
+            mfi_series = calculate_mfi(df['high'], df['low'], df['close'], 
+                                      df['volume'], period=mfi_period)
+            
+            # Create chart
+            chart_buffer = self.create_rsi_mfi_chart(
+                symbol=symbol,
+                df=df,
+                rsi_series=rsi_series,
+                mfi_series=mfi_series,
+                rsi_lower=20,
+                rsi_upper=80,
+                mfi_lower=20,
+                mfi_upper=80,
+                timeframe=timeframe
+            )
+            
+            if chart_buffer is None:
+                logger.error("Failed to create chart buffer")
+                return None
+            
+            # Save to temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+            temp_path = temp_file.name
+            temp_file.write(chart_buffer.getvalue())
+            temp_file.close()
+            
+            logger.info(f"Chart saved to {temp_path}")
+            return temp_path
+            
+        except Exception as e:
+            logger.error(f"Error generating chart with indicators: {e}", exc_info=True)
             return None

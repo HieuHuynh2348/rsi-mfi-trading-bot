@@ -29,20 +29,18 @@ class FairValueGapDetector:
     often returning to fill the gap later.
     """
     
-    def __init__(self, binance_client, auto_threshold: bool = False, threshold_multiplier: float = 1.0):
+    def __init__(self, binance_client, threshold_multiplier: float = 1.0):
         """
         Initialize Fair Value Gap detector
         
         Args:
             binance_client: BinanceClient instance
-            auto_threshold: Use automatic gap size filtering based on ATR
             threshold_multiplier: Multiplier for ATR-based threshold (default: 1.0)
         """
         self.binance = binance_client
-        self.auto_threshold = auto_threshold
         self.threshold_multiplier = threshold_multiplier
         
-        logger.info(f"FVG detector initialized (auto_threshold={auto_threshold}, multiplier={threshold_multiplier})")
+        logger.info(f"FVG detector initialized (multiplier={threshold_multiplier})")
     
     def _calculate_atr(self, df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate Average True Range"""
@@ -63,13 +61,13 @@ class FairValueGapDetector:
             logger.error(f"Error calculating ATR: {e}")
             return pd.Series(dtype=float)
     
-    def detect_fvgs(self, df: pd.DataFrame, max_gaps: int = 10) -> Optional[Dict]:
+    def detect_fvgs(self, df: pd.DataFrame, max_gaps: int = 500) -> Optional[Dict]:
         """
         Detect Fair Value Gaps in given OHLCV dataframe
         
         Args:
-            df: DataFrame with OHLCV data
-            max_gaps: Maximum number of unfilled gaps to track per direction
+            df: DataFrame with OHLC data
+            max_gaps: Maximum number of unfilled gaps to track per direction (default: 500)
             
         Returns:
             Dict with bullish and bearish FVGs
@@ -84,11 +82,6 @@ class FairValueGapDetector:
             df['high'] = pd.to_numeric(df['high'], errors='coerce')
             df['low'] = pd.to_numeric(df['low'], errors='coerce')
             df['close'] = pd.to_numeric(df['close'], errors='coerce')
-            
-            # Calculate ATR for threshold filtering
-            atr = None
-            if self.auto_threshold:
-                atr = self._calculate_atr(df)
             
             bullish_fvgs = []
             bearish_fvgs = []
@@ -113,12 +106,6 @@ class FairValueGapDetector:
                 if high_2 < low_0:
                     gap_size = low_0 - high_2
                     gap_midpoint = (low_0 + high_2) / 2.0
-                    
-                    # Apply ATR threshold if enabled
-                    if self.auto_threshold and atr is not None:
-                        threshold = float(atr.iloc[i]) * self.threshold_multiplier
-                        if gap_size < threshold:
-                            continue  # Skip small gaps
                     
                     # Check if gap has been filled
                     filled = False
@@ -157,12 +144,6 @@ class FairValueGapDetector:
                 if low_2 > high_0:
                     gap_size = low_2 - high_0
                     gap_midpoint = (low_2 + high_0) / 2.0
-                    
-                    # Apply ATR threshold if enabled
-                    if self.auto_threshold and atr is not None:
-                        threshold = float(atr.iloc[i]) * self.threshold_multiplier
-                        if gap_size < threshold:
-                            continue  # Skip small gaps
                     
                     # Check if gap has been filled
                     filled = False
