@@ -185,25 +185,25 @@ class GeminiAnalyzer:
             
             # INSTITUTIONAL INDICATORS
             
-            # Volume Profile (4h, 1d)
+            # Volume Profile (1h, 4h, 1d)
             logger.info(f"Analyzing Volume Profile for {symbol}...")
-            vp_result = self.volume_profile.analyze_multi_timeframe(symbol, ['4h', '1d'])
+            vp_result = self.volume_profile.analyze_multi_timeframe(symbol, ['1h', '4h', '1d'])
             
             # Fair Value Gaps (1h, 4h, 1d)
             logger.info(f"Detecting Fair Value Gaps for {symbol}...")
             fvg_result = self.fvg_detector.analyze_multi_timeframe(symbol, ['1h', '4h', '1d'])
             
-            # Order Blocks (4h, 1d)
+            # Order Blocks (1h, 4h, 1d)
             logger.info(f"Detecting Order Blocks for {symbol}...")
-            ob_result = self.ob_detector.analyze_multi_timeframe(symbol, ['4h', '1d'])
+            ob_result = self.ob_detector.analyze_multi_timeframe(symbol, ['1h', '4h', '1d'])
             
-            # Support/Resistance zones (4h, 1d)
+            # Support/Resistance zones (1h, 4h, 1d)
             logger.info(f"Analyzing Support/Resistance for {symbol}...")
-            sr_result = self.sr_detector.analyze_multi_timeframe(symbol, ['4h', '1d'])
+            sr_result = self.sr_detector.analyze_multi_timeframe(symbol, ['1h', '4h', '1d'])
             
-            # Smart Money Concepts (4h, 1d)
+            # Smart Money Concepts (1h, 4h, 1d)
             logger.info(f"Analyzing Smart Money Concepts for {symbol}...")
-            smc_result = self.smc_analyzer.analyze_multi_timeframe(symbol, ['4h', '1d'])
+            smc_result = self.smc_analyzer.analyze_multi_timeframe(symbol, ['1h', '4h', '1d'])
             
             # Historical comparison (week-over-week)
             logger.info(f"Calculating historical comparison for {symbol}...")
@@ -362,6 +362,7 @@ class GeminiAnalyzer:
             if data.get('volume_profile'):
                 vp_1d = data['volume_profile'].get('1d')
                 vp_4h = data['volume_profile'].get('4h')
+                vp_1h = data['volume_profile'].get('1h')
                 
                 if vp_1d:
                     position_1d = self.volume_profile.get_current_position_in_profile(current_price, vp_1d)
@@ -386,6 +387,16 @@ class GeminiAnalyzer:
                         'val': vp_4h['val'],
                         'current_position': position_4h.get('position'),
                         'distance_to_poc_percent': position_4h.get('distance_to_poc_percent', 0)
+                    }
+                
+                if vp_1h:
+                    position_1h = self.volume_profile.get_current_position_in_profile(current_price, vp_1h)
+                    result['volume_profile']['1h'] = {
+                        'poc': vp_1h['poc']['price'],
+                        'vah': vp_1h['vah'],
+                        'val': vp_1h['val'],
+                        'current_position': position_1h.get('position'),
+                        'distance_to_poc_percent': position_1h.get('distance_to_poc_percent', 0)
                     }
             
             # Fair Value Gaps
@@ -417,7 +428,7 @@ class GeminiAnalyzer:
             
             # Order Blocks
             if data.get('order_blocks'):
-                for tf in ['1d', '4h']:
+                for tf in ['1d', '4h', '1h']:
                     ob_data = data['order_blocks'].get(tf)
                     if ob_data:
                         stats = ob_data['statistics']
@@ -444,7 +455,7 @@ class GeminiAnalyzer:
             
             # Support/Resistance
             if data.get('support_resistance'):
-                for tf in ['1d', '4h']:
+                for tf in ['1d', '4h', '1h']:
                     sr_data = data['support_resistance'].get(tf)
                     if sr_data:
                         stats = sr_data['statistics']
@@ -471,7 +482,7 @@ class GeminiAnalyzer:
             
             # Smart Money Concepts
             if data.get('smart_money_concepts'):
-                for tf in ['1d', '4h']:
+                for tf in ['1d', '4h', '1h']:
                     smc_data = data['smart_money_concepts'].get(tf)
                     if smc_data:
                         swing_structure = smc_data['swing_structure']
