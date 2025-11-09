@@ -68,6 +68,11 @@ class TelegramCommandHandler:
         from stoch_rsi_analyzer import StochRSIAnalyzer
         self.stoch_rsi_analyzer = StochRSIAnalyzer(binance_client)
         
+        # Initialize Gemini AI Analyzer
+        from gemini_analyzer import GeminiAnalyzer
+        gemini_api_key = "AIzaSyAjyq7CwNWJfK-JaRoXSTXVmKt2t_C0fd0"
+        self.gemini_analyzer = GeminiAnalyzer(gemini_api_key, binance_client, self.stoch_rsi_analyzer)
+        
         # Setup command handlers
         self.setup_handlers()
         logger.info("Telegram command handler initialized")
@@ -698,6 +703,86 @@ class TelegramCommandHandler:
                         parse_mode='HTML',
                         reply_markup=keyboard
                     )
+                
+                # AI Analysis callbacks
+                elif data.startswith("ai_analyze_"):
+                    symbol = data.replace("ai_analyze_", "")
+                    
+                    # Send processing message
+                    self.telegram_bot.send_message(
+                        chat_id=call.message.chat.id,
+                        text=f"🤖 <b>GEMINI AI ANALYSIS</b>\n\n"
+                             f"💎 Đang phân tích {symbol}...\n"
+                             f"📊 Thu thập dữ liệu từ tất cả indicators\n"
+                             f"🧠 Gọi Gemini 2.5 Pro API\n\n"
+                             f"⏳ Vui lòng chờ 10-20 giây...",
+                        parse_mode='HTML'
+                    )
+                    
+                    # Check if we have pump data for this symbol
+                    pump_data = None
+                    if symbol in self.pump_detector.detected_pumps:
+                        pump_data = self.pump_detector.detected_pumps[symbol]
+                    
+                    # Perform AI analysis
+                    try:
+                        result = self.gemini_analyzer.analyze(
+                            symbol, 
+                            pump_data=pump_data, 
+                            trading_style='swing',
+                            use_cache=True
+                        )
+                        
+                        if not result:
+                            self.telegram_bot.send_message(
+                                chat_id=call.message.chat.id,
+                                text=f"❌ <b>Không thể phân tích {symbol}</b>\n\n"
+                                     "Có thể do:\n"
+                                     "• Lỗi Gemini API\n"
+                                     "• Thiếu dữ liệu market\n"
+                                     "• Rate limit\n\n"
+                                     "💡 Vui lòng thử lại sau vài phút.",
+                                parse_mode='HTML'
+                            )
+                            return
+                        
+                        # Format into 3 messages
+                        msg1, msg2, msg3 = self.gemini_analyzer.format_response(result)
+                        
+                        # Send 3 messages sequentially
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=msg1,
+                            parse_mode='HTML'
+                        )
+                        
+                        time.sleep(1)  # Small delay between messages
+                        
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=msg2,
+                            parse_mode='HTML'
+                        )
+                        
+                        time.sleep(1)
+                        
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=msg3,
+                            parse_mode='HTML'
+                        )
+                        
+                        logger.info(f"✅ Sent AI analysis for {symbol} to user")
+                        
+                    except Exception as e:
+                        logger.error(f"Error in AI analysis for {symbol}: {e}", exc_info=True)
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"❌ <b>Lỗi trong quá trình phân tích AI</b>\n\n"
+                                 f"Error: {str(e)}\n\n"
+                                 f"💡 Vui lòng báo admin hoặc thử lại sau.",
+                            parse_mode='HTML'
+                        )
                 
             except Exception as e:
                 logger.error(f"Error handling callback: {e}")

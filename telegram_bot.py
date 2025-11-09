@@ -226,6 +226,16 @@ class TelegramBot:
         
         return keyboard
     
+    def create_ai_analysis_keyboard(self, symbol):
+        """Create AI analysis button for a coin"""
+        keyboard = types.InlineKeyboardMarkup(row_width=1)
+        
+        keyboard.row(
+            types.InlineKeyboardButton(f"🤖 Phân Tích AI - {symbol}", callback_data=f"ai_analyze_{symbol}")
+        )
+        
+        return keyboard
+    
     def create_monitor_keyboard(self):
         """Create monitor control keyboard"""
         keyboard = types.InlineKeyboardMarkup(row_width=2)

@@ -717,8 +717,13 @@ class RealtimePumpDetector:
                 except Exception as e:
                     logger.error(f"Error auto-saving {symbol} to watchlist: {e}")
             
+            # Create AI analysis button for high-confidence signals
+            ai_keyboard = None
+            if score >= 80:
+                ai_keyboard = self.bot.create_ai_analysis_keyboard(symbol)
+            
             # Send to Telegram
-            self.bot.send_message(msg)
+            self.bot.send_message(msg, reply_markup=ai_keyboard)
             logger.info(f"✅ Sent high-confidence pump alert for {symbol} (score: {score:.0f}%)")
             
         except Exception as e:
