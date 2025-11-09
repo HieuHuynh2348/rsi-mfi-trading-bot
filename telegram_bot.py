@@ -288,7 +288,12 @@ class TelegramBot:
             logger.info(f"✅ Using manual WEBAPP_URL: {webapp_url}")
             return webapp_url
         
+        # For testing/development - you can uncomment and set your Railway URL here
+        # Example: return "https://your-app-name.up.railway.app"
+        
         logger.warning("⚠️ No WEBAPP_URL or RAILWAY_PUBLIC_DOMAIN found - Live Chart button disabled")
+        logger.warning("⚠️ Please set RAILWAY_PUBLIC_DOMAIN or WEBAPP_URL environment variable")
+        logger.warning("⚠️ Example: WEBAPP_URL=https://your-app-name.up.railway.app")
         return None
     
     def create_chart_keyboard(self, symbol, webapp_url=None):

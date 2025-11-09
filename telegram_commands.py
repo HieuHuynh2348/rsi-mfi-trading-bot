@@ -2743,7 +2743,7 @@ class TelegramCommandHandler:
                     from smart_money_concepts import SmartMoneyAnalyzer
                     
                     vp_analyzer = VolumeProfileAnalyzer(self.binance)
-                    fvg_detector = FairValueGapDetector(self.binance, auto_threshold=True)
+                    fvg_detector = FairValueGapDetector(self.binance, threshold_multiplier=1.0)
                     ob_detector = OrderBlockDetector(self.binance)
                     sr_detector = SupportResistanceDetector(self.binance)
                     smc_analyzer = SmartMoneyAnalyzer(self.binance)
