@@ -272,7 +272,7 @@ gemini_api_key = "AIzaSyAjyq7CwNWJfK-JaRoXSTXVmKt2t_C0fd0"
 
 ### Gemini Model
 ```python
-model = genai.GenerativeModel('gemini-2.0-flash-exp')
+model = genai.GenerativeModel('gemini-2.5-flash')
 ```
 
 ### Cache Settings

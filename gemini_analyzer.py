@@ -56,7 +56,7 @@ class GeminiAnalyzer:
         
         # Configure Gemini
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Cache system (15 minutes)
         self.cache = {}  # {symbol: {'data': result, 'timestamp': time.time()}}
