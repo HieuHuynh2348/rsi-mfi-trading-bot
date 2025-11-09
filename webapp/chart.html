@@ -8,8 +8,8 @@
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Lightweight Charts Library -->
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Lightweight Charts Library v5.0 -->
+    <script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
     
     <style>
         * {
@@ -32,6 +32,12 @@
             transform: translate(-50%, -50%);
             text-align: center;
             z-index: 1000;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        #loading.hidden {
+            opacity: 0;
+            visibility: hidden;
         }
         
         .spinner {
@@ -79,6 +85,21 @@
             gap: 8px;
             border-bottom: 1px solid #333;
             overflow-x: auto;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        #timeframes::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        #timeframes::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        #timeframes::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 2px;
         }
         
         .tf-btn {
@@ -91,16 +112,33 @@
             font-size: 14px;
             white-space: nowrap;
             transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        .tf-btn:active {
+            transform: scale(0.95);
         }
         
         .tf-btn.active {
             background: #2196F3;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(33, 150, 243, 0.4);
+        }
+        
+        .tf-btn:hover:not(.active) {
+            background: #404040;
             color: #fff;
         }
         
         #chartContainer {
             width: 100%;
             height: calc(100vh - 110px);
+            position: relative;
+            touch-action: pan-x pan-y;
+            -webkit-user-select: none;
+            user-select: none;
         }
         
         #indicators {
@@ -250,42 +288,49 @@
                 
                 console.log('Creating chart...');
                 chart = LightweightCharts.createChart(container, {
-                width: container.clientWidth,
-                height: container.clientHeight,
-                layout: {
-                    background: { color: colors.background },
-                    textColor: colors.textColor,
-                },
-                grid: {
-                    vertLines: { color: colors.gridColor },
-                    horzLines: { color: colors.gridColor },
-                },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Normal,
-                },
-                rightPriceScale: {
-                    borderColor: colors.gridColor,
-                },
-                timeScale: {
-                    borderColor: colors.gridColor,
-                    timeVisible: true,
-                    secondsVisible: false,
-                },
-                handleScroll: {
-                    mouseWheel: true,
-                    pressedMouseMove: true,
-                    horzTouchDrag: true,
-                    vertTouchDrag: true,
-                },
-                handleScale: {
-                    axisPressedMouseMove: true,
-                    mouseWheel: true,
-                    pinch: true,  // Enable pinch zoom for mobile
-                },
-            });
+                    width: container.clientWidth,
+                    height: container.clientHeight,
+                    layout: {
+                        background: { 
+                            type: 'solid',
+                            color: colors.background 
+                        },
+                        textColor: colors.textColor,
+                    },
+                    grid: {
+                        vertLines: { color: colors.gridColor },
+                        horzLines: { color: colors.gridColor },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: colors.gridColor,
+                    },
+                    timeScale: {
+                        borderColor: colors.gridColor,
+                        timeVisible: true,
+                        secondsVisible: false,
+                        rightOffset: 5,
+                        barSpacing: 10,
+                        fixLeftEdge: false,
+                        fixRightEdge: false,
+                    },
+                    handleScroll: {
+                        mouseWheel: true,
+                        pressedMouseMove: true,
+                        horzTouchDrag: true,
+                        vertTouchDrag: true,
+                    },
+                    handleScale: {
+                        axisPressedMouseMove: true,
+                        mouseWheel: true,
+                        pinch: true,  // Enable pinch zoom for mobile
+                    },
+                });
             
             console.log('Adding candlestick series...');
-            candlestickSeries = chart.addCandlestickSeries({
+            candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
                 upColor: colors.upColor,
                 downColor: colors.downColor,
                 borderVisible: false,
@@ -295,7 +340,7 @@
             console.log('Candlestick series added');
             
             console.log('Adding volume series...');
-            volumeSeries = chart.addHistogramSeries({
+            volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
                 color: '#26a69a',
                 priceFormat: {
                     type: 'volume',
@@ -313,13 +358,41 @@
             
             console.log('✅ Chart initialized successfully');
             
-            // Handle resize
-            window.addEventListener('resize', () => {
-                chart.applyOptions({
-                    width: container.clientWidth,
-                    height: container.clientHeight,
-                });
+            // Subscribe to visible range changes (for zoom/pan feedback)
+            chart.timeScale().subscribeVisibleTimeRangeChange(() => {
+                // Subtle haptic feedback on zoom/pan (very light)
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
             });
+            
+            // Handle resize with debounce
+            let resizeTimeout;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    if (chart && container) {
+                        chart.applyOptions({
+                            width: container.clientWidth,
+                            height: container.clientHeight,
+                        });
+                        chart.timeScale().fitContent();
+                    }
+                }, 100);
+            });
+            
+            // Prevent default touch behaviors on chart container
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 1) {
+                    // Multi-touch (pinch zoom) - prevent default
+                    e.preventDefault();
+                }
+            }, { passive: false });
+            
+            container.addEventListener('touchmove', (e) => {
+                // Allow chart to handle all touch moves
+                e.stopPropagation();
+            }, { passive: true });
             
             } catch (error) {
                 console.error('❌ Error initializing chart:', error);
@@ -419,11 +492,18 @@
                 console.log('Volume data set successfully');
                 
                 console.log('Fitting content...');
-                chart.timeScale().fitContent();
-                console.log('Fit content completed');
+                // Use smooth animation for fit
+                requestAnimationFrame(() => {
+                    chart.timeScale().fitContent();
+                    console.log('Fit content completed');
+                });
                 
                 console.log('✅ Chart updated successfully');
-                hideLoading();
+                
+                // Smooth fade out loading
+                setTimeout(() => {
+                    hideLoading();
+                }, 100);
                 
             } catch (error) {
                 hideLoading();
@@ -449,11 +529,17 @@
         }
         
         function showLoading() {
-            document.getElementById('loading').style.display = 'block';
+            const loadingEl = document.getElementById('loading');
+            loadingEl.classList.remove('hidden');
+            loadingEl.style.display = 'block';
         }
         
         function hideLoading() {
-            document.getElementById('loading').style.display = 'none';
+            const loadingEl = document.getElementById('loading');
+            loadingEl.classList.add('hidden');
+            setTimeout(() => {
+                loadingEl.style.display = 'none';
+            }, 300);
         }
         
         function showError(message) {
@@ -486,6 +572,24 @@
             });
         });
         
+        // Double-tap to reset zoom
+        let lastTapTime = 0;
+        document.getElementById('chartContainer').addEventListener('touchend', (e) => {
+            const currentTime = new Date().getTime();
+            const tapGap = currentTime - lastTapTime;
+            
+            if (tapGap < 300 && tapGap > 0) {
+                // Double tap detected
+                console.log('Double tap - resetting zoom');
+                if (chart) {
+                    chart.timeScale().fitContent();
+                    hapticFeedback('medium');
+                }
+            }
+            
+            lastTapTime = currentTime;
+        });
+        
         // Theme change listener
         if (tg.onEvent) {
             tg.onEvent('themeChanged', () => {
@@ -493,7 +597,10 @@
                     const colors = getThemeColors();
                     chart.applyOptions({
                         layout: {
-                            background: { color: colors.background },
+                            background: { 
+                                type: 'solid',
+                                color: colors.background 
+                            },
                             textColor: colors.textColor,
                         },
                         grid: {
@@ -514,6 +621,7 @@
                         width: container.clientWidth,
                         height: container.clientHeight,
                     });
+                    chart.timeScale().fitContent();
                 }
             });
         }
