@@ -501,11 +501,11 @@ Return ONLY valid JSON, no markdown formatting.
             summary += f"<b>⚠️ Risk Level: {risk}</b>\n\n"
             
             summary += f"<b>💰 TRADING PLAN:</b>\n"
-            summary += f"   • Entry: ${entry:,.2f}\n"
-            summary += f"   • Stop Loss: ${stop:,.2f}\n"
+            summary += f"   • Entry: ${self.binance.format_price(symbol, entry)}\n"
+            summary += f"   • Stop Loss: ${self.binance.format_price(symbol, stop)}\n"
             summary += f"   • Take Profit:\n"
             for i, target in enumerate(targets, 1):
-                summary += f"     TP{i}: ${target:,.2f}\n"
+                summary += f"     TP{i}: ${self.binance.format_price(symbol, target)}\n"
             summary += f"   • Holding: {period}\n"
             
             # Message 2: Technical Details
@@ -524,7 +524,7 @@ Return ONLY valid JSON, no markdown formatting.
             elif pump_score > 0:
                 tech += f"   • Pump Signal: {pump_score:.0f}%\n"
             
-            tech += f"   • Current Price: ${data_used.get('current_price', 0):,.2f}\n\n"
+            tech += f"   • Current Price: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
             
             # Scores
             tech_score = analysis.get('technical_score', 0)
