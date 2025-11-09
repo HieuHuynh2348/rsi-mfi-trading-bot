@@ -725,11 +725,15 @@ class TelegramCommandHandler:
                     # Send processing message
                     self.telegram_bot.send_message(
                         chat_id=call.message.chat.id,
-                        text=f"🤖 <b>GEMINI AI ANALYSIS</b>\n\n"
-                             f"💎 Đang phân tích {symbol}...\n"
-                             f"📊 Thu thập dữ liệu từ tất cả indicators\n"
-                             f"🧠 Gọi Gemini 2.5 Pro API\n\n"
-                             f"⏳ Vui lòng chờ 10-20 giây...",
+                        text=f"═══════════════════════════════════\n"
+                             f"🤖 <b>GEMINI AI ĐANG PHÂN TÍCH</b>\n"
+                             f"═══════════════════════════════════\n\n"
+                             f"💎 <b>Symbol:</b> {symbol}\n"
+                             f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
+                             f"🧠 Đang gọi Gemini 2.0 Flash API...\n"
+                             f"🔮 Đang phân tích và dự đoán...\n\n"
+                             f"⏳ <b>Vui lòng chờ 10-20 giây...</b>\n"
+                             f"═══════════════════════════════════",
                         parse_mode='HTML'
                     )
                     
@@ -750,12 +754,20 @@ class TelegramCommandHandler:
                         if not result:
                             self.telegram_bot.send_message(
                                 chat_id=call.message.chat.id,
-                                text=f"❌ <b>Không thể phân tích {symbol}</b>\n\n"
-                                     "Có thể do:\n"
-                                     "• Lỗi Gemini API\n"
-                                     "• Thiếu dữ liệu market\n"
-                                     "• Rate limit\n\n"
-                                     "💡 Vui lòng thử lại sau vài phút.",
+                                text=f"═══════════════════════════════════\n"
+                                     f"❌ <b>LỖI PHÂN TÍCH</b>\n"
+                                     f"═══════════════════════════════════\n\n"
+                                     f"💎 <b>Symbol:</b> {symbol}\n\n"
+                                     f"<b>Nguyên nhân có thể:</b>\n"
+                                     f"   • Lỗi kết nối Gemini API\n"
+                                     f"   • Thiếu dữ liệu từ thị trường\n"
+                                     f"   • Vượt quá giới hạn API (Rate limit)\n"
+                                     f"   • Symbol không hợp lệ\n\n"
+                                     f"💡 <b>Giải pháp:</b>\n"
+                                     f"   • Chờ 2-3 phút và thử lại\n"
+                                     f"   • Kiểm tra symbol có đúng không\n"
+                                     f"   • Liên hệ admin nếu lỗi tiếp diễn\n\n"
+                                     f"═══════════════════════════════════",
                                 parse_mode='HTML'
                             )
                             return
@@ -792,9 +804,17 @@ class TelegramCommandHandler:
                         logger.error(f"Error in AI analysis for {symbol}: {e}", exc_info=True)
                         self.telegram_bot.send_message(
                             chat_id=call.message.chat.id,
-                            text=f"❌ <b>Lỗi trong quá trình phân tích AI</b>\n\n"
-                                 f"Error: {str(e)}\n\n"
-                                 f"💡 Vui lòng báo admin hoặc thử lại sau.",
+                            text=f"═══════════════════════════════════\n"
+                                 f"❌ <b>LỖI HỆ THỐNG</b>\n"
+                                 f"═══════════════════════════════════\n\n"
+                                 f"💎 <b>Symbol:</b> {symbol}\n\n"
+                                 f"<b>Chi tiết lỗi:</b>\n"
+                                 f"<code>{str(e)[:200]}</code>\n\n"
+                                 f"💡 <b>Vui lòng:</b>\n"
+                                 f"   • Báo lỗi cho admin\n"
+                                 f"   • Thử lại sau vài phút\n"
+                                 f"   • Kiểm tra log hệ thống\n\n"
+                                 f"═══════════════════════════════════",
                             parse_mode='HTML'
                         )
                 

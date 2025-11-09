@@ -919,79 +919,95 @@ Return ONLY valid JSON, no markdown formatting.
             # Message 1: Summary
             rec_emoji = "🟢" if rec == "BUY" else "🔴" if rec == "SELL" else "🟡" if rec == "HOLD" else "⚪"
             
-            summary = f"<b>🤖 GEMINI AI ANALYSIS</b>\n\n"
-            summary += f"<b>💎 {symbol}</b>\n"
-            summary += f"<b>📊 Trading Style: {style.upper()}</b>\n\n"
-            summary += f"{rec_emoji} <b>RECOMMENDATION: {rec}</b>\n"
-            summary += f"<b>🎯 Confidence: {conf}%</b>\n"
-            summary += f"<b>⚠️ Risk Level: {risk}</b>\n\n"
+            summary = "═══════════════════════════════════\n"
+            summary += "🤖 <b>GEMINI AI ANALYSIS</b>\n"
+            summary += "═══════════════════════════════════\n\n"
+            summary += f"💎 <b>{symbol}</b>\n"
+            summary += f"📊 <b>Trading Style:</b> {style.upper()}\n\n"
+            summary += "───────────────────────────────────\n"
+            summary += f"{rec_emoji} <b>KHUYẾN NGHỊ:</b> {rec}\n"
+            summary += f"🎯 <b>Độ Tin Cậy:</b> {conf}%\n"
+            summary += f"⚠️ <b>Mức Rủi Ro:</b> {risk}\n"
+            summary += "───────────────────────────────────\n\n"
             
-            summary += f"<b>💰 TRADING PLAN:</b>\n"
-            summary += f"   • Entry: ${self.binance.format_price(symbol, entry)}\n"
-            summary += f"   • Stop Loss: ${self.binance.format_price(symbol, stop)}\n"
-            summary += f"   • Take Profit:\n"
+            summary += "💰 <b>KẾ HOẠCH GIAO DỊCH:</b>\n\n"
+            summary += f"   📍 <b>Điểm Vào:</b> ${self.binance.format_price(symbol, entry)}\n"
+            summary += f"   🛑 <b>Cắt Lỗ:</b> ${self.binance.format_price(symbol, stop)}\n"
+            summary += f"   🎯 <b>Chốt Lời:</b>\n"
             for i, target in enumerate(targets, 1):
-                summary += f"     TP{i}: ${self.binance.format_price(symbol, target)}\n"
-            summary += f"   • Holding: {period}\n"
+                summary += f"      • TP{i}: ${self.binance.format_price(symbol, target)}\n"
+            summary += f"   ⏱ <b>Thời Gian Nắm Giữ:</b> {period}\n\n"
+            summary += "═══════════════════════════════════"
             
             # Message 2: Technical Details
-            tech = f"<b>📊 TECHNICAL ANALYSIS DETAILS</b>\n\n"
-            tech += f"<b>💎 {symbol}</b>\n\n"
+            tech = "═══════════════════════════════════\n"
+            tech += "📊 <b>PHÂN TÍCH KỸ THUẬT CHI TIẾT</b>\n"
+            tech += "═══════════════════════════════════\n\n"
+            tech += f"💎 <b>{symbol}</b>\n\n"
             
             # Data used
             data_used = analysis.get('data_used', {})
-            tech += f"<b>🔍 Indicators Used:</b>\n"
+            tech += "<b>🔍 Các Chỉ Báo Được Sử Dụng:</b>\n"
             tech += f"   • RSI+MFI: {data_used.get('rsi_mfi_consensus', 'N/A')}\n"
             tech += f"   • Stoch+RSI: {data_used.get('stoch_rsi_consensus', 'N/A')}\n"
             
             pump_score = data_used.get('pump_score', 0)
             if pump_score >= 80:
-                tech += f"   • 🚀 Pump Signal: {pump_score:.0f}% (High Confidence)\n"
+                tech += f"   • 🚀 Tín Hiệu Pump: {pump_score:.0f}% (Độ Tin Cậy Cao)\n"
             elif pump_score > 0:
-                tech += f"   • Pump Signal: {pump_score:.0f}%\n"
+                tech += f"   • Tín Hiệu Pump: {pump_score:.0f}%\n"
             
-            tech += f"   • Current Price: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
+            tech += f"   • Giá Hiện Tại: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
             
             # Scores
             tech_score = analysis.get('technical_score', 0)
             fund_score = analysis.get('fundamental_score', 0)
             
-            tech += f"<b>📈 Scores:</b>\n"
-            tech += f"   • Technical: {tech_score}/100\n"
-            tech += f"   • Fundamental: {fund_score}/100\n"
-            tech += f"   • Overall: {(tech_score + fund_score)/2:.0f}/100\n\n"
+            tech += "<b>📈 Điểm Đánh Giá:</b>\n"
+            tech += f"   • Kỹ Thuật: {tech_score}/100\n"
+            tech += f"   • Cơ Bản: {fund_score}/100\n"
+            tech += f"   • Tổng Hợp: {(tech_score + fund_score)/2:.0f}/100\n\n"
             
             # Market sentiment
             sentiment = analysis.get('market_sentiment', 'NEUTRAL')
             sentiment_emoji = "🟢" if sentiment == "BULLISH" else "🔴" if sentiment == "BEARISH" else "🟡"
-            tech += f"<b>💭 Market Sentiment:</b> {sentiment_emoji} {sentiment}\n\n"
+            sentiment_vn = "TĂNG GIÁ" if sentiment == "BULLISH" else "GIẢM GIÁ" if sentiment == "BEARISH" else "TRUNG LẬP"
+            tech += f"<b>💭 Tâm Lý Thị Trường:</b> {sentiment_emoji} {sentiment_vn}\n\n"
             
             # Key points
-            tech += f"<b>🎯 Key Points:</b>\n"
+            tech += "<b>🎯 Điểm Chính:</b>\n"
             for point in analysis.get('key_points', []):
                 tech += f"   ✓ {point}\n"
             
             # Conflicting signals
             conflicts = analysis.get('conflicting_signals', [])
             if conflicts:
-                tech += f"\n<b>⚠️ Conflicting Signals:</b>\n"
+                tech += "\n<b>⚠️ Tín Hiệu Mâu Thuẫn:</b>\n"
                 for conflict in conflicts:
                     tech += f"   • {conflict}\n"
             
             # Warnings
             warnings = analysis.get('warnings', [])
             if warnings:
-                tech += f"\n<b>🚨 Warnings:</b>\n"
+                tech += "\n<b>🚨 Cảnh Báo:</b>\n"
                 for warning in warnings:
                     tech += f"   ⚠️ {warning}\n"
             
+            tech += "\n═══════════════════════════════════"
+            
             # Message 3: AI Reasoning
-            reasoning = f"<b>🧠 AI DETAILED REASONING</b>\n\n"
-            reasoning += f"<b>💎 {symbol}</b>\n\n"
+            reasoning = "═══════════════════════════════════\n"
+            reasoning += "🧠 <b>PHÂN TÍCH CHI TIẾT TỪ AI</b>\n"
+            reasoning += "═══════════════════════════════════\n\n"
+            reasoning += f"💎 <b>{symbol}</b>\n\n"
             reasoning += analysis.get('reasoning_vietnamese', 'Không có phân tích chi tiết.')
-            reasoning += f"\n\n<b>⏰ Analyzed at:</b> {analysis.get('analyzed_at', 'N/A')}"
-            reasoning += f"\n<b>🤖 Model:</b> Gemini 2.5 Pro"
-            reasoning += f"\n\n<i>⚠️ Đây là phân tích AI, không phải tư vấn tài chính. Luôn DYOR (Do Your Own Research).</i>"
+            reasoning += f"\n\n───────────────────────────────────\n"
+            reasoning += f"⏰ <b>Thời Gian Phân Tích:</b> {analysis.get('analyzed_at', 'N/A')}\n"
+            reasoning += f"🤖 <b>Mô Hình AI:</b> Gemini 2.0 Flash\n"
+            reasoning += "───────────────────────────────────\n\n"
+            reasoning += "<i>⚠️ Đây là phân tích AI, không phải tư vấn tài chính.\n"
+            reasoning += "Luôn DYOR (Do Your Own Research) trước khi đầu tư.</i>\n"
+            reasoning += "═══════════════════════════════════"
             
             return summary, tech, reasoning
             
