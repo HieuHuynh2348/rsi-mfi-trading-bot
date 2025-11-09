@@ -49,14 +49,14 @@ class GeminiAnalyzer:
         from smart_money_concepts import SmartMoneyAnalyzer
         
         self.volume_profile = VolumeProfileAnalyzer(binance_client)
-        self.fvg_detector = FairValueGapDetector(binance_client, auto_threshold=True)
+        self.fvg_detector = FairValueGapDetector(binance_client)
         self.ob_detector = OrderBlockDetector(binance_client)
         self.sr_detector = SupportResistanceDetector(binance_client)
         self.smc_analyzer = SmartMoneyAnalyzer(binance_client)
         
         # Configure Gemini
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-pro')
+        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         
         # Cache system (15 minutes)
         self.cache = {}  # {symbol: {'data': result, 'timestamp': time.time()}}
@@ -129,17 +129,30 @@ class GeminiAnalyzer:
             Dict with all indicator data
         """
         try:
+            logger.info(f"Collecting data for {symbol}...")
+            
             # Get current price and 24h data
             ticker_24h = self.binance.get_24h_data(symbol)
-            current_price = ticker_24h['last_price'] if ticker_24h else 0
+            if not ticker_24h:
+                logger.error(f"Failed to get 24h data for {symbol}")
+                return None
+            
+            current_price = ticker_24h['last_price']
+            logger.info(f"Current price for {symbol}: ${current_price:,.2f}")
             
             # Get multi-timeframe klines
             timeframes = ['5m', '1h', '4h', '1d']
             klines_dict = self.binance.get_multi_timeframe_data(symbol, timeframes, limit=200)
+            if not klines_dict or not any(klines_dict.values()):
+                logger.error(f"Failed to get klines data for {symbol}")
+                return None
+            
+            logger.info(f"Got klines for {symbol}: {list(klines_dict.keys())}")
             
             # RSI+MFI analysis
             from indicators import analyze_multi_timeframe
             import config
+            logger.info(f"Calculating RSI+MFI for {symbol}...")
             rsi_mfi_result = analyze_multi_timeframe(
                 klines_dict,
                 config.RSI_PERIOD,
@@ -151,6 +164,7 @@ class GeminiAnalyzer:
             )
             
             # Stoch+RSI analysis
+            logger.info(f"Calculating Stoch+RSI for {symbol}...")
             stoch_rsi_result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
                 symbol,
                 timeframes=['1m', '5m', '4h', '1d']
@@ -166,31 +180,39 @@ class GeminiAnalyzer:
             # INSTITUTIONAL INDICATORS
             
             # Volume Profile (4h, 1d)
+            logger.info(f"Analyzing Volume Profile for {symbol}...")
             vp_result = self.volume_profile.analyze_multi_timeframe(symbol, ['4h', '1d'])
             
             # Fair Value Gaps (1h, 4h, 1d)
+            logger.info(f"Detecting Fair Value Gaps for {symbol}...")
             fvg_result = self.fvg_detector.analyze_multi_timeframe(symbol, ['1h', '4h', '1d'])
             
             # Order Blocks (4h, 1d)
+            logger.info(f"Detecting Order Blocks for {symbol}...")
             ob_result = self.ob_detector.analyze_multi_timeframe(symbol, ['4h', '1d'])
             
             # Support/Resistance zones (4h, 1d)
+            logger.info(f"Analyzing Support/Resistance for {symbol}...")
             sr_result = self.sr_detector.analyze_multi_timeframe(symbol, ['4h', '1d'])
             
             # Smart Money Concepts (4h, 1d)
+            logger.info(f"Analyzing Smart Money Concepts for {symbol}...")
             smc_result = self.smc_analyzer.analyze_multi_timeframe(symbol, ['4h', '1d'])
             
             # Historical comparison (week-over-week)
+            logger.info(f"Calculating historical comparison for {symbol}...")
             historical = self._get_historical_comparison(symbol, klines_dict)
             
             # Market data
             market_data = {
                 'price': current_price,
-                'price_change_24h': ticker_24h['price_change_percent'] if ticker_24h else 0,
-                'high_24h': ticker_24h['high'] if ticker_24h else 0,
-                'low_24h': ticker_24h['low'] if ticker_24h else 0,
-                'volume_24h': ticker_24h['volume'] if ticker_24h else 0
+                'price_change_24h': ticker_24h['price_change_percent'],
+                'high_24h': ticker_24h['high'],
+                'low_24h': ticker_24h['low'],
+                'volume_24h': ticker_24h['volume']
             }
+            
+            logger.info(f"✅ Data collection complete for {symbol}")
             
             return {
                 'symbol': symbol,
@@ -210,7 +232,7 @@ class GeminiAnalyzer:
             }
             
         except Exception as e:
-            logger.error(f"Error collecting data for {symbol}: {e}")
+            logger.error(f"❌ Error collecting data for {symbol}: {e}", exc_info=True)
             return None
     
     def _get_historical_comparison(self, symbol: str, klines_dict: Dict) -> Dict:
@@ -789,11 +811,25 @@ Return ONLY valid JSON, no markdown formatting.
             
             # Call Gemini API
             logger.info(f"Calling Gemini API for {symbol}...")
-            response = self.model.generate_content(prompt)
+            try:
+                response = self.model.generate_content(prompt)
+            except Exception as api_error:
+                logger.error(f"Gemini API call failed for {symbol}: {api_error}")
+                # Check for specific errors
+                error_msg = str(api_error).lower()
+                if 'quota' in error_msg or 'rate' in error_msg:
+                    logger.error("⚠️ Rate limit exceeded or quota exhausted")
+                elif 'key' in error_msg or 'auth' in error_msg:
+                    logger.error("⚠️ API key authentication failed")
+                elif 'timeout' in error_msg:
+                    logger.error("⚠️ API request timeout")
+                return None
             
             if not response or not response.text:
                 logger.error(f"Empty response from Gemini for {symbol}")
                 return None
+            
+            logger.info(f"Got response from Gemini for {symbol} (length: {len(response.text)} chars)")
             
             # Parse JSON response
             response_text = response.text.strip()
@@ -808,8 +844,18 @@ Return ONLY valid JSON, no markdown formatting.
             
             response_text = response_text.strip()
             
+            # Validate JSON before parsing
+            if not response_text:
+                logger.error(f"Empty response text after cleaning for {symbol}")
+                return None
+            
             # Parse JSON
-            analysis = json.loads(response_text)
+            try:
+                analysis = json.loads(response_text)
+            except json.JSONDecodeError as json_err:
+                logger.error(f"JSON parsing failed for {symbol}: {json_err}")
+                logger.error(f"Response preview: {response_text[:500]}...")
+                return None
             
             # Add metadata
             analysis['symbol'] = symbol
@@ -824,16 +870,12 @@ Return ONLY valid JSON, no markdown formatting.
             # Cache result
             self._update_cache(symbol, analysis)
             
-            logger.info(f"Gemini analysis complete for {symbol}: {analysis['recommendation']} (confidence: {analysis['confidence']}%)")
+            logger.info(f"✅ Gemini analysis complete for {symbol}: {analysis['recommendation']} (confidence: {analysis['confidence']}%)")
             
             return analysis
             
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse Gemini response for {symbol}: {e}")
-            logger.error(f"Response text: {response_text[:500]}...")
-            return None
         except Exception as e:
-            logger.error(f"Error in Gemini analysis for {symbol}: {e}")
+            logger.error(f"❌ Error in Gemini analysis for {symbol}: {e}", exc_info=True)
             return None
     
     def format_response(self, analysis: Dict) -> Tuple[str, str, str]:
