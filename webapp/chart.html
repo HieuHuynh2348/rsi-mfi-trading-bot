@@ -81,6 +81,39 @@
         .price-up { color: #26A69A; }  /* TradingView green */
         .price-down { color: #EF5350; }  /* TradingView red */
         
+        /* Tab system for chart/indicators */
+        #tabs {
+            background: #252525;
+            display: flex;
+            border-bottom: 1px solid #333;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+        }
+        
+        .tab-btn.active {
+            color: #2962FF;
+            border-bottom-color: #2962FF;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
         #timeframes {
             background: #252525;
             padding: 8px;
@@ -137,7 +170,7 @@
         
         #chartContainer {
             width: 100%;
-            height: calc(100vh - 110px);
+            height: calc(100vh - 155px);  /* header 48px + tabs 45px + timeframes 50px + borders */
             position: relative;
             touch-action: pan-x pan-y;
             -webkit-user-select: none;
@@ -146,18 +179,19 @@
         
         #indicators {
             position: absolute;
-            top: 110px;  /* Below OHLCV legend (10px + ~90px height) */
+            top: 10px;  /* Top of chart container */
             left: 10px;
             background: rgba(37, 37, 37, 0.90);
             padding: 10px 14px;
             border-radius: 6px;
             font-size: 13px;
-            z-index: 10;  /* Higher z-index to be visible */
+            z-index: 10;
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             min-width: 180px;
-            pointer-events: none;  /* Don't block chart touch events */
+            pointer-events: none;
             transition: opacity 0.3s ease;
+            display: none;  /* Hidden by default, shown in indicators tab */
         }
         
         /* Make children interactive */
@@ -257,17 +291,13 @@
            ============================================================ */
         #ohlcv-legend {
             position: absolute;
-            right: 12px;  /* Move to right side to avoid blocking indicators */
-            top: 10px;  /* Inside chart container, not in header area */
-            z-index: 10;  /* Higher z-index to be visible */
+            left: 10px;  /* Left side below timeframes */
+            top: 10px;  /* Inside chart container */
+            z-index: 5;  /* Lower z-index, no background needed */
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
             pointer-events: none;
             transition: opacity 0.2s ease;
-            background: rgba(30, 34, 45, 0.85);  /* TradingView panel with transparency */
-            border-radius: 6px;
-            padding: 8px 12px;
-            border: 1px solid rgba(42, 46, 57, 0.5);
-            backdrop-filter: blur(8px);
+            /* Remove background for cleaner look */
         }
         
         #ohlcv-legend.hidden {
@@ -276,9 +306,9 @@
         }
         
         .legend-symbol {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             letter-spacing: -0.02em;
             color: #D1D4DC;
         }
@@ -288,8 +318,8 @@
             font-variant-numeric: tabular-nums;
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
-            line-height: 16px;
+            gap: 8px;
+            line-height: 14px;
         }
         
         .legend-item {
@@ -324,20 +354,19 @@
         /* Mobile compact legend */
         @media (max-width: 567px) {
             #ohlcv-legend {
-                right: 8px;  /* Keep on right side on mobile */
+                left: 8px;  /* Keep on left side on mobile */
                 top: 10px;  /* Inside chart container on mobile */
                 font-size: 10px;
-                padding: 6px 10px;
             }
             
             .legend-symbol {
-                font-size: 12px;
-                margin-bottom: 4px;
+                font-size: 11px;
+                margin-bottom: 3px;
             }
             
             .legend-ohlcv {
                 font-size: 10px;
-                gap: 8px;
+                gap: 6px;
             }
             
             /* Move signal badge higher on mobile to avoid blocking chart */
@@ -393,6 +422,11 @@
     <div id="header">
         <div id="symbol">Loading...</div>
         <div id="price">--</div>
+    </div>
+    
+    <div id="tabs">
+        <button class="tab-btn active" data-tab="chart">Chart</button>
+        <button class="tab-btn" data-tab="indicators">Indicators</button>
     </div>
     
     <div id="timeframes">
@@ -491,6 +525,32 @@
         if (tg.colorScheme === 'dark') {
             document.body.style.background = '#1a1a1a';
         }
+        
+        // Tab switching
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const indicatorsPanel = document.getElementById('indicators');
+        
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tab = btn.dataset.tab;
+                
+                // Update active tab button
+                tabBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Show/hide indicators based on tab
+                if (tab === 'indicators') {
+                    indicatorsPanel.style.display = 'block';
+                } else {
+                    indicatorsPanel.style.display = 'none';
+                }
+                
+                // Haptic feedback
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('light');
+                }
+            });
+        });
         
         // Get parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
