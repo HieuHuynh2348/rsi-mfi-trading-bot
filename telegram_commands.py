@@ -71,7 +71,12 @@ class TelegramCommandHandler:
         
         # Initialize Gemini AI Analyzer
         from gemini_analyzer import GeminiAnalyzer
-        gemini_api_key = "AIzaSyAjyq7CwNWJfK-JaRoXSTXVmKt2t_C0fd0"
+        from dotenv import load_dotenv
+        load_dotenv()  # Load .env file
+        gemini_api_key = os.getenv('GEMINI_API_KEY')
+        if not gemini_api_key:
+            logger.warning("GEMINI_API_KEY not found in .env, using default")
+            gemini_api_key = "AIzaSyAjyq7CwNWJfK-JaRoXSTXVmKt2t_C0fd0"
         self.gemini_analyzer = GeminiAnalyzer(gemini_api_key, binance_client, self.stoch_rsi_analyzer)
         
         # Setup command handlers
