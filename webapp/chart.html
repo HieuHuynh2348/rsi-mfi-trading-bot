@@ -314,6 +314,21 @@
                     throw new Error('No candle data received');
                 }
                 
+                // Check timestamp format
+                const firstTime = data.candles[0].time;
+                console.log('First timestamp:', firstTime, typeof firstTime);
+                
+                // Validate timestamp is in seconds (not milliseconds)
+                // Unix timestamp in seconds should be around 1.7 billion (year 2024)
+                // Unix timestamp in milliseconds would be 1700+ billion
+                if (firstTime > 10000000000) {
+                    console.warn('Timestamp appears to be in milliseconds, converting to seconds');
+                    // Convert all timestamps to seconds
+                    data.candles.forEach(c => {
+                        c.time = Math.floor(c.time / 1000);
+                    });
+                }
+                
                 // Haptic feedback on success
                 hapticFeedback('success');
                 
@@ -326,29 +341,40 @@
                 document.getElementById('mfi-value').textContent = data.mfi.toFixed(2);
                 
                 // Update chart
-                const candleData = data.candles.map(c => ({
-                    time: c.time,
-                    open: c.open,
-                    high: c.high,
-                    low: c.low,
-                    close: c.close,
+                // LightweightCharts REQUIRES sorted data by time (ascending)
+                const sortedCandles = data.candles.sort((a, b) => a.time - b.time);
+                
+                const candleData = sortedCandles.map(c => ({
+                    time: c.time,  // Unix timestamp in seconds
+                    open: parseFloat(c.open),
+                    high: parseFloat(c.high),
+                    low: parseFloat(c.low),
+                    close: parseFloat(c.close),
                 }));
                 
                 console.log('First candle:', candleData[0]);
                 console.log('Last candle:', candleData[candleData.length - 1]);
+                console.log('Data sorted and formatted');
                 
-                const volumeData = data.candles.map(c => ({
+                const volumeData = sortedCandles.map(c => ({
                     time: c.time,
-                    value: c.volume,
+                    value: parseFloat(c.volume),
                     color: c.close >= c.open ? '#26a69a80' : '#ef535080',
                 }));
                 
+                console.log('Setting candlestick data...');
                 candlestickSeries.setData(candleData);
+                console.log('Candlestick data set successfully');
+                
+                console.log('Setting volume data...');
                 volumeSeries.setData(volumeData);
+                console.log('Volume data set successfully');
                 
+                console.log('Fitting content...');
                 chart.timeScale().fitContent();
+                console.log('Fit content completed');
                 
-                console.log('Chart updated successfully');
+                console.log('✅ Chart updated successfully');
                 hideLoading();
                 
             } catch (error) {

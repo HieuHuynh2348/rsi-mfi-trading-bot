@@ -120,10 +120,16 @@ def get_chart_data():
                     time = int(row.get('close_time', 0) / 1000)
                 except:
                     # Last resort - use current index position
-                    time = int(datetime.now().timestamp()) - (len(df) - candles.__len__()) * 3600
+                    time = int(datetime.now().timestamp()) - (len(df) - len(candles)) * 3600
+            
+            # Ensure timestamp is valid (not in future, not too old)
+            current_time = int(datetime.now().timestamp())
+            if time > current_time + 86400:  # Not more than 1 day in future
+                logger.warning(f"⚠️ Future timestamp detected: {time}, adjusting")
+                time = current_time
             
             candles.append({
-                'time': time,
+                'time': time,  # MUST be Unix seconds (not milliseconds)
                 'open': float(row['open']),
                 'high': float(row['high']),
                 'low': float(row['low']),
@@ -131,9 +137,14 @@ def get_chart_data():
                 'volume': float(row['volume'])
             })
         
+        # Sort candles by time (LightweightCharts requires sorted data)
+        candles.sort(key=lambda x: x['time'])
+        
         # Log first and last candle times for debugging
         if candles:
-            logger.info(f"📅 First candle time: {candles[0]['time']}, Last candle time: {candles[-1]['time']}")
+            logger.info(f"📅 Candles count: {len(candles)}")
+            logger.info(f"📅 First: {candles[0]['time']} ({datetime.fromtimestamp(candles[0]['time'])})")
+            logger.info(f"📅 Last: {candles[-1]['time']} ({datetime.fromtimestamp(candles[-1]['time'])})")
         
         # Get latest indicator values
         latest_rsi = float(df['rsi'].iloc[-1])
