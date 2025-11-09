@@ -248,19 +248,29 @@ class TelegramBot:
         
         return keyboard
     
-    def create_chart_keyboard(self, symbol):
-        """Create keyboard with Live Chart and timeframe options"""
+    def create_chart_keyboard(self, symbol, webapp_url=None):
+        """Create keyboard with Live Chart (WebApp) and timeframe options"""
         from chart_generator import get_tradingview_chart_url
         
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
-        # Live Chart buttons - multiple timeframes
+        # WebApp Live Chart button (opens in Telegram)
+        if webapp_url:
+            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+            keyboard.row(
+                types.InlineKeyboardButton(
+                    "📊 Live Chart (in Telegram)", 
+                    web_app=types.WebAppInfo(url=chart_webapp_url)
+                )
+            )
+        
+        # TradingView buttons (opens in browser) - as fallback
         keyboard.row(
-            types.InlineKeyboardButton("📈 Live 1H", url=get_tradingview_chart_url(symbol, '60')),
-            types.InlineKeyboardButton("📈 Live 4H", url=get_tradingview_chart_url(symbol, '240'))
+            types.InlineKeyboardButton("📈 TradingView 1H", url=get_tradingview_chart_url(symbol, '60')),
+            types.InlineKeyboardButton("📈 TradingView 4H", url=get_tradingview_chart_url(symbol, '240'))
         )
         keyboard.row(
-            types.InlineKeyboardButton("📈 Live 1D", url=get_tradingview_chart_url(symbol, 'D')),
+            types.InlineKeyboardButton("📈 TradingView 1D", url=get_tradingview_chart_url(symbol, 'D')),
             types.InlineKeyboardButton("🔄 Refresh", callback_data=f"refresh_chart_{symbol}")
         )
         

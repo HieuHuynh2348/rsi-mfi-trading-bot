@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Live Chart</title>
+    
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Lightweight Charts Library -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 1000;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #2196F3;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #header {
+            background: #252525;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        
+        #symbol {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        #price {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .price-up { color: #26A69A; }
+        .price-down { color: #EF5350; }
+        
+        #timeframes {
+            background: #252525;
+            padding: 8px;
+            display: flex;
+            gap: 8px;
+            border-bottom: 1px solid #333;
+            overflow-x: auto;
+        }
+        
+        .tf-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background: #333;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        
+        .tf-btn.active {
+            background: #2196F3;
+            color: #fff;
+        }
+        
+        #chartContainer {
+            width: 100%;
+            height: calc(100vh - 110px);
+        }
+        
+        #indicators {
+            position: absolute;
+            top: 120px;
+            left: 10px;
+            background: rgba(37, 37, 37, 0.9);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .indicator-row {
+            display: flex;
+            gap: 15px;
+            margin: 4px 0;
+        }
+        
+        .indicator-label {
+            color: #aaa;
+        }
+        
+        .indicator-value {
+            font-weight: 600;
+        }
+        
+        .rsi { color: #2962FF; }
+        .mfi { color: #FF6D00; }
+        
+        #error {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #EF5350;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 80%;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading chart...</div>
+    </div>
+    
+    <div id="error"></div>
+    
+    <div id="header">
+        <div id="symbol">Loading...</div>
+        <div id="price">--</div>
+    </div>
+    
+    <div id="timeframes">
+        <button class="tf-btn" data-tf="5m">5M</button>
+        <button class="tf-btn active" data-tf="1h">1H</button>
+        <button class="tf-btn" data-tf="4h">4H</button>
+        <button class="tf-btn" data-tf="1d">1D</button>
+    </div>
+    
+    <div id="indicators">
+        <div class="indicator-row">
+            <span class="indicator-label">RSI:</span>
+            <span class="indicator-value rsi" id="rsi-value">--</span>
+        </div>
+        <div class="indicator-row">
+            <span class="indicator-label">MFI:</span>
+            <span class="indicator-value mfi" id="mfi-value">--</span>
+        </div>
+    </div>
+    
+    <div id="chartContainer"></div>
+    
+    <script>
+        // Initialize Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        
+        // Apply Telegram theme
+        if (tg.colorScheme === 'dark') {
+            document.body.style.background = '#1a1a1a';
+        }
+        
+        // Get parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const symbol = urlParams.get('symbol') || 'BTCUSDT';
+        const initialTimeframe = urlParams.get('timeframe') || '1h';
+        
+        // Chart instance
+        let chart = null;
+        let candlestickSeries = null;
+        let volumeSeries = null;
+        let currentTimeframe = initialTimeframe;
+        
+        // API endpoint (your bot's server)
+        const API_BASE = window.location.origin;
+        
+        // Initialize chart
+        function initChart() {
+            const container = document.getElementById('chartContainer');
+            
+            chart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { color: '#1a1a1a' },
+                    textColor: '#d1d4dc',
+                },
+                grid: {
+                    vertLines: { color: '#2a2a2a' },
+                    horzLines: { color: '#2a2a2a' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#2a2a2a',
+                },
+                timeScale: {
+                    borderColor: '#2a2a2a',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+            
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#26a69a',
+                downColor: '#ef5350',
+                borderVisible: false,
+                wickUpColor: '#26a69a',
+                wickDownColor: '#ef5350',
+            });
+            
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '',
+            });
+            
+            volumeSeries.priceScale().applyOptions({
+                scaleMargins: {
+                    top: 0.8,
+                    bottom: 0,
+                },
+            });
+            
+            // Handle resize
+            window.addEventListener('resize', () => {
+                chart.applyOptions({
+                    width: container.clientWidth,
+                    height: container.clientHeight,
+                });
+            });
+        }
+        
+        // Load chart data
+        async function loadChartData(tf) {
+            try {
+                showLoading();
+                
+                // Fetch data from your backend
+                const response = await fetch(`${API_BASE}/api/chart?symbol=${symbol}&timeframe=${tf}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch chart data');
+                }
+                
+                const data = await response.json();
+                
+                // Update header
+                document.getElementById('symbol').textContent = symbol;
+                updatePrice(data.currentPrice, data.priceChange);
+                
+                // Update indicators
+                document.getElementById('rsi-value').textContent = data.rsi.toFixed(2);
+                document.getElementById('mfi-value').textContent = data.mfi.toFixed(2);
+                
+                // Update chart
+                const candleData = data.candles.map(c => ({
+                    time: c.time,
+                    open: c.open,
+                    high: c.high,
+                    low: c.low,
+                    close: c.close,
+                }));
+                
+                const volumeData = data.candles.map(c => ({
+                    time: c.time,
+                    value: c.volume,
+                    color: c.close >= c.open ? '#26a69a80' : '#ef535080',
+                }));
+                
+                candlestickSeries.setData(candleData);
+                volumeSeries.setData(volumeData);
+                
+                chart.timeScale().fitContent();
+                
+                hideLoading();
+                
+            } catch (error) {
+                console.error('Error loading chart:', error);
+                showError('Không thể tải dữ liệu chart. Vui lòng thử lại.');
+                hideLoading();
+            }
+        }
+        
+        function updatePrice(price, change) {
+            const priceEl = document.getElementById('price');
+            priceEl.textContent = `$${price.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            priceEl.className = change >= 0 ? 'price-up' : 'price-down';
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => {
+                errorEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Timeframe buttons
+        document.querySelectorAll('.tf-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                currentTimeframe = btn.dataset.tf;
+                loadChartData(currentTimeframe);
+            });
+        });
+        
+        // Initialize
+        initChart();
+        loadChartData(currentTimeframe);
+        
+        // Auto refresh every 30 seconds
+        setInterval(() => {
+            loadChartData(currentTimeframe);
+        }, 30000);
+        
+        // Notify Telegram that page is loaded
+        tg.ready();
+    </script>
+</body>
+</html>

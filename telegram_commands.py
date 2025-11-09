@@ -885,8 +885,9 @@ class TelegramCommandHandler:
                             from chart_generator import format_chart_caption
                             caption = format_chart_caption(symbol, current_price, price_change)
                             
-                            # Create keyboard with Live Chart buttons
-                            keyboard = self.bot.create_chart_keyboard(symbol)
+                            # Create keyboard with Live Chart buttons (WebApp + TradingView)
+                            import config
+                            keyboard = self.bot.create_chart_keyboard(symbol, webapp_url=config.WEBAPP_URL)
                             
                             # Send chart photo with buttons
                             logger.info(f"Sending chart photo for {symbol}...")
