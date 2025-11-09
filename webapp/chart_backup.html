@@ -41,8 +41,8 @@
         }
         
         .spinner {
-            border: 4px solid rgba(54, 60, 78, 0.3);  /* TradingView grid color */
-            border-top: 4px solid #2962FF;  /* TradingView blue */
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #2196F3;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -56,30 +56,27 @@
         }
         
         #header {
-            background: #1E222D;  /* TradingView panel BG */
+            background: #252525;
             padding: 12px 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #2A2E39;  /* TradingView border */
-            height: 48px;
+            border-bottom: 1px solid #333;
         }
         
         #symbol {
-            font-size: 14px;
-            font-weight: 600;
-            color: #D1D4DC;  /* TradingView text */
-            letter-spacing: -0.02em;
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
         }
         
         #price {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 600;
-            font-variant-numeric: tabular-nums;  /* Monospace numbers */
         }
         
-        .price-up { color: #26A69A; }  /* TradingView green */
-        .price-down { color: #EF5350; }  /* TradingView red */
+        .price-up { color: #26A69A; }
+        .price-down { color: #EF5350; }
         
         #timeframes {
             background: #252525;
@@ -458,46 +455,22 @@
                     layout: {
                         background: { 
                             type: 'solid',
-                            color: '#131722'  // TradingView professional BG
+                            color: colors.background 
                         },
-                        textColor: '#D1D4DC',  // TradingView text
-                        fontSize: 12,
-                        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Trebuchet MS", Roboto, Ubuntu, sans-serif',
+                        textColor: colors.textColor,
                     },
                     grid: {
-                        vertLines: { 
-                            color: '#363C4E',  // TradingView grid
-                            style: 0,  // Solid
-                            visible: true,
-                        },
-                        horzLines: { 
-                            color: '#363C4E',
-                            style: 0,
-                            visible: true,
-                        },
+                        vertLines: { color: colors.gridColor },
+                        horzLines: { color: colors.gridColor },
                     },
                     crosshair: {
                         mode: LightweightCharts.CrosshairMode.Normal,
-                        vertLine: {
-                            color: '#758696',  // TradingView crosshair
-                            width: 1,
-                            style: 3,  // Dotted
-                            labelBackgroundColor: '#2962FF',
-                        },
-                        horzLine: {
-                            color: '#758696',
-                            width: 1,
-                            style: 3,
-                            labelBackgroundColor: '#2962FF',
-                        },
                     },
                     rightPriceScale: {
-                        borderColor: '#2A2E39',  // TradingView border
-                        textColor: '#D1D4DC',
+                        borderColor: colors.gridColor,
                     },
                     timeScale: {
-                        borderColor: '#2A2E39',
-                        textColor: '#D1D4DC',
+                        borderColor: colors.gridColor,
                         timeVisible: true,
                         secondsVisible: false,
                         rightOffset: 5,
@@ -519,15 +492,13 @@
                 });
             
             console.log('Adding candlestick series...');
-            // TradingView professional candlestick colors
+            // Best practice: Use optimal bar spacing for mobile (from docs)
             candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
-                upColor: '#26A69A',  // TradingView green (teal)
-                downColor: '#EF5350',  // TradingView red
-                borderUpColor: '#26A69A',
-                borderDownColor: '#EF5350',
-                wickUpColor: '#26A69A',
-                wickDownColor: '#EF5350',
+                upColor: colors.upColor,
+                downColor: colors.downColor,
                 borderVisible: false,
+                wickUpColor: colors.upColor,
+                wickDownColor: colors.downColor,
                 priceFormat: {
                     type: 'price',
                     precision: 2,
@@ -538,7 +509,7 @@
             
             console.log('Adding volume series...');
             volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
-                color: '#26A69A',  // Match up candle color
+                color: '#26a69a',
                 priceFormat: {
                     type: 'volume',
                 },
