@@ -398,6 +398,112 @@
         const MFI_OVERSOLD = 20;
         const MFI_OVERBOUGHT = 80;
         
+        // ============================================================
+        // PRICE FORMATTING HELPERS (Phase 1: Professional Formatting)
+        // ============================================================
+        
+        /**
+         * Detect optimal precision based on price value
+         * BTC $43,250 → 2 decimals
+         * ETH $3,526 → 3 decimals
+         * Small coins $0.00012 → 8 decimals
+         */
+        function detectPrecision(price) {
+            if (!price || price === 0) return 2;
+            
+            const absPrice = Math.abs(price);
+            if (absPrice >= 1000) return 2;      // BTC: $43,250.50
+            if (absPrice >= 10) return 3;        // ETH: $3,526.440
+            if (absPrice >= 1) return 4;         // BNB: $654.3210
+            if (absPrice >= 0.01) return 6;      // DOGE: $0.123456
+            return 8;                             // SHIB: $0.00001234
+        }
+        
+        /**
+         * Get user's locale (defaults to en-US)
+         */
+        function getUserLocale() {
+            return window.navigator.languages?.[0] || 'en-US';
+        }
+        
+        /**
+         * Create price formatter with auto-precision
+         */
+        function createPriceFormatter(price) {
+            const precision = detectPrecision(price);
+            return new Intl.NumberFormat(getUserLocale(), {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: precision,
+                maximumFractionDigits: precision
+            });
+        }
+        
+        /**
+         * Format price with proper precision
+         * @param {number} price - Price value
+         * @returns {string} Formatted price like "$43,250.50"
+         */
+        function formatPrice(price) {
+            if (!price || isNaN(price)) return '$0.00';
+            
+            try {
+                const formatter = createPriceFormatter(price);
+                return formatter.format(price);
+            } catch (error) {
+                console.error('Error formatting price:', error);
+                return `$${price.toFixed(2)}`;
+            }
+        }
+        
+        /**
+         * Format percentage with sign
+         * @param {number} value - Percentage value (e.g., 0.0234 for 2.34%)
+         * @returns {string} Formatted like "+2.34%" or "-1.56%"
+         */
+        function formatPercentage(value) {
+            if (value === 0 || isNaN(value)) return '0.00%';
+            
+            try {
+                const percentFormatter = new Intl.NumberFormat(getUserLocale(), {
+                    style: 'percent',
+                    signDisplay: 'always',  // Always show +/-
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                return percentFormatter.format(value);
+            } catch (error) {
+                console.error('Error formatting percentage:', error);
+                const sign = value >= 0 ? '+' : '';
+                return `${sign}${(value * 100).toFixed(2)}%`;
+            }
+        }
+        
+        /**
+         * Format volume with compact notation (K/M/B)
+         * @param {number} volume - Volume value
+         * @returns {string} Formatted like "1.23K" or "45.68M"
+         */
+        function formatVolume(volume) {
+            if (!volume || volume === 0) return '0';
+            
+            try {
+                const volumeFormatter = new Intl.NumberFormat(getUserLocale(), {
+                    notation: 'compact',
+                    compactDisplay: 'short',
+                    maximumFractionDigits: 2
+                });
+                return volumeFormatter.format(volume);
+            } catch (error) {
+                console.error('Error formatting volume:', error);
+                // Fallback to manual K/M/B
+                if (volume >= 1e9) return (volume / 1e9).toFixed(2) + 'B';
+                if (volume >= 1e6) return (volume / 1e6).toFixed(2) + 'M';
+                if (volume >= 1e3) return (volume / 1e3).toFixed(2) + 'K';
+                return volume.toFixed(0);
+            }
+        }
+        
         // Haptic feedback helper (Best practice from docs)
         function hapticFeedback(type = 'light') {
             if (tg.HapticFeedback) {
@@ -504,6 +610,10 @@
                         barSpacing: 10,
                         fixLeftEdge: false,
                         fixRightEdge: false,
+                    },
+                    localization: {
+                        // Apply professional price formatter
+                        priceFormatter: (price) => formatPrice(price),
                     },
                     handleScroll: {
                         mouseWheel: true,
@@ -842,7 +952,8 @@
         
         function updatePrice(price, change) {
             const priceEl = document.getElementById('price');
-            priceEl.textContent = `$${price.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            // Use new formatPrice function with auto-precision
+            priceEl.textContent = formatPrice(price);
             priceEl.className = change >= 0 ? 'price-up' : 'price-down';
         }
         
