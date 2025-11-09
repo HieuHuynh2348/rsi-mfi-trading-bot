@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Help and Info Messages
 HELP_MESSAGE = """
-<b>🤖 BOT GIAO DỊCH RSI+MFI</b>
+<b>🤖 BOT GIAO DỊCH CRYPTO - PHIÊN BẢN 3.0</b>
 
 <b>🎛️ MENU TƯƠNG TÁC:</b>
 /menu - Mở menu nút bấm (khuyên dùng!)
@@ -16,12 +16,17 @@ HELP_MESSAGE = """
 /<b>SYMBOL</b> - Phân tích TẤT CẢ indicators
 Ví dụ: /BTC /ETH /LINK
 
-<b>Bao gồm:</b>
+<b>🏛️ Bao gồm 10+ Indicators:</b>
    ✅ PUMP/DUMP Detection (3 layers)
-   ✅ RSI/MFI Multi-timeframe
-   ✅ Stoch+RSI Multi-timeframe
+   ✅ RSI/MFI Multi-timeframe (4 TF)
+   ✅ Stoch+RSI Multi-timeframe (4 TF)
+   ✅ Volume Profile (POC/VAH/VAL)
+   ✅ Fair Value Gaps (FVG)
+   ✅ Order Blocks (OB)
+   ✅ Support/Resistance Zones
+   ✅ Smart Money Concepts (BOS/CHoCH)
    ✅ Trading Recommendation
-   🤖 AI Analysis Button
+   🤖 AI Analysis với Gemini 2.0
 
 <b>🚀 PUMP & DUMP:</b>
 /pumpscan <b>SYMBOL</b> - Quét pump 3 layers
@@ -68,43 +73,66 @@ Ví dụ: /BTC /ETH /LINK
 /help - Hiện tin nhắn này
 /about - Về bot
 
-<i>💡 Mẹo: Dùng /BTC để có phân tích toàn diện + AI! 🎯</i>
+<i>💡 Mẹo: Dùng /BTC để xem 10+ indicators + AI analysis!</i>
+<i>🏛️ Institutional indicators giúp phát hiện smart money</i>
 """
 
 ABOUT_MESSAGE = """
-<b>🚀 BOT GIAO DỊCH RSI+MFI</b>
+<b>🚀 BOT GIAO DỊCH CRYPTO - PHIÊN BẢN 3.0</b>
 
-<b>📌 Phiên bản:</b> 2.0 SIÊU NHANH
+<b>📌 Phiên bản:</b> 3.0 INSTITUTIONAL
 <b>☁️ Nền tảng:</b> Railway.app
 <b>🏦 Sàn:</b> Binance
+<b>🤖 AI Engine:</b> Google Gemini 2.0 Flash Exp
 
-<b>✨ TÍNH NĂNG:</b>
-✅ Phân tích đa khung thời gian
-✅ Chỉ báo RSI + MFI
-✅ Giám sát thời gian thực
-✅ Tự động phát hiện tín hiệu
-✅ Lệnh tương tác
-✅ Danh sách theo dõi tùy chỉnh
-✅ ⚡ Xử lý song song
-✅ Hoạt động 24/7 trên cloud
-✅ 🤖 Phát hiện bot trading
-✅ 🚀 Phát hiện pump & dump
+<b>✨ TÍNH NĂNG CHÍNH:</b>
+✅ Phân tích đa khung thời gian (1m-1d)
+✅ 10+ Indicators tích hợp
+✅ Institutional indicators (Smart Money)
+✅ AI Analysis với Gemini 2.0
+✅ Pump/Dump Detection (3 layers)
+✅ Bot Activity Monitor
+✅ Giám sát thời gian thực 24/7
+✅ Xử lý song song (5-20 workers)
+✅ Watchlist tự động theo dõi
+✅ Lệnh tương tác với inline keyboards
 
-<b>📊 CHỈ BÁO:</b>
-• RSI (Chỉ số sức mạnh tương đối)
-• MFI (Chỉ số dòng tiền)
-• Đồng thuận đa khung thời gian
+<b>📊 CHỈ BÁO KỸ THUẬT:</b>
+• RSI + MFI (Retail indicators)
+• Stochastic + RSI (Momentum)
+• Volume Analysis (24h data)
+
+<b>🏛️ CHỈ BÁO INSTITUTIONAL:</b>
+• Volume Profile (POC/VAH/VAL)
+• Fair Value Gaps (Imbalance zones)
+• Order Blocks (Institutional footprints)
+• Support/Resistance (Delta volume)
+• Smart Money Concepts (BOS/CHoCH/EQH/EQL)
 
 <b>⏱️ KHUNG THỜI GIAN:</b>
-• 5m, 1h, 4h, 1d
+• Scalping: 1m, 5m, 15m
+• Intraday: 1h, 4h
+• Swing: 1d
+• Multi-TF consensus: 4 timeframes
+
+<b>🤖 AI ANALYSIS:</b>
+• Gemini 2.0 Flash Exp model
+• JSON structured data input
+• 60% weight on institutional indicators
+• Confluence analysis across all indicators
+• Vietnamese language output
+• Entry/Exit points với risk management
 
 <b>⚡ HIỆU SUẤT:</b>
-• Tự động mở rộng: 5-20 workers
-• Nhanh hơn 3-5 lần
-• Phân tích song song
+• Auto-scaling: 5-20 workers động
+• Fast scan mode
+• Parallel processing
+• 15-min cache system
+• Rate limiting protection
 
 <i>⚠️ Lưu ý: Không phải lời khuyên tài chính!</i>
 <i>📚 Luôn tự nghiên cứu (DYOR)</i>
+<i>🏛️ Institutional indicators = Smart Money footprints</i>
 """
 
 # Error Messages
@@ -123,56 +151,80 @@ WATCHLIST_COUNT = "📊 Tổng số đang theo dõi: {count} symbols"
 # Status Messages
 def get_status_message(config):
     return f"""
-<b>🤖 Trạng Thái Bot</b>
+<b>🤖 Trạng Thái Bot - Phiên bản 3.0</b>
 
 <b>⚡ Hệ thống:</b> ✅ Trực tuyến
 <b>🔗 Binance:</b> ✅ Đã kết nối
 <b>💬 Telegram:</b> ✅ Đã kết nối
+<b>🤖 AI Engine:</b> ✅ Gemini 2.0 Flash Exp
 
-<b>⚙️ Cài đặt:</b>
+<b>⚙️ Cài đặt Technical:</b>
 • Khoảng quét: {config.SCAN_INTERVAL}s
 • Đồng thuận tối thiểu: {config.MIN_CONSENSUS_STRENGTH}/4
-• Chu kỳ RSI: {config.RSI_PERIOD}
-• Chu kỳ MFI: {config.MFI_PERIOD}
-• Khung thời gian: {', '.join(config.TIMEFRAMES)}
+• RSI Period: {config.RSI_PERIOD} | MFI Period: {config.MFI_PERIOD}
+• Timeframes: {', '.join(config.TIMEFRAMES)}
+
+<b>🏛️ Institutional Indicators:</b>
+✅ Volume Profile (POC/VAH/VAL)
+✅ Fair Value Gaps (Imbalance detection)
+✅ Order Blocks (Smart money zones)
+✅ Support/Resistance (Delta volume)
+✅ Smart Money Concepts (BOS/CHoCH)
 
 <b>📊 Cặp Giao Dịch:</b>
 • Quote: {config.QUOTE_ASSET}
-• Khối lượng tối thiểu: ${config.MIN_VOLUME_USDT:,.0f}
+• Volume tối thiểu: ${config.MIN_VOLUME_USDT:,.0f}
 
-<b>🕐 Thời gian hiện tại:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+<b>🕐 Thời gian:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 """
 
 def get_settings_message(config):
     return f"""
-<b>⚙️ Cài Đặt Bot</b>
+<b>⚙️ Cài Đặt Bot - Phiên bản 3.0</b>
 
-<b>📊 Chỉ báo:</b>
-• Chu kỳ RSI: {config.RSI_PERIOD}
-• Ngưỡng RSI: {config.RSI_LOWER} / {config.RSI_UPPER}
-• Chu kỳ MFI: {config.MFI_PERIOD}
-• Ngưỡng MFI: {config.MFI_LOWER} / {config.MFI_UPPER}
+<b>📊 Technical Indicators:</b>
+• RSI Period: {config.RSI_PERIOD} | Threshold: {config.RSI_LOWER}-{config.RSI_UPPER}
+• MFI Period: {config.MFI_PERIOD} | Threshold: {config.MFI_LOWER}-{config.MFI_UPPER}
+• Stochastic+RSI: HLCC/4 smoothing
+• Volume Analysis: 24h tracking
+
+<b>🏛️ Institutional Indicators:</b>
+• Volume Profile: 25 price levels
+• Fair Value Gaps: ATR filtering
+• Order Blocks: Swing (50) + Internal (5)
+• S/R Zones: Delta volume analysis
+• SMC: BOS/CHoCH/EQH/EQL detection
 
 <b>⏱️ Khung thời gian:</b>
-• {', '.join(config.TIMEFRAMES)}
+• Technical: {', '.join(config.TIMEFRAMES)}
+• Institutional: 1h, 4h, 1d
+• AI Analysis: Multi-TF consensus
 
 <b>🎯 Tiêu chí tín hiệu:</b>
-• Đồng thuận tối thiểu: {config.MIN_CONSENSUS_STRENGTH}/4
-• Khoảng quét: {config.SCAN_INTERVAL}s
+• Consensus tối thiểu: {config.MIN_CONSENSUS_STRENGTH}/4
+• Scan interval: {config.SCAN_INTERVAL}s
+• Cache duration: 15 phút
 
 <b>💹 Bộ lọc thị trường:</b>
-• Tài sản Quote: {config.QUOTE_ASSET}
-• Khối lượng tối thiểu: ${config.MIN_VOLUME_USDT:,.0f}
-• Loại trừ: {', '.join(config.EXCLUDED_KEYWORDS) if config.EXCLUDED_KEYWORDS else 'Không'}
+• Quote asset: {config.QUOTE_ASSET}
+• Min volume: ${config.MIN_VOLUME_USDT:,.0f}
+• Excluded: {', '.join(config.EXCLUDED_KEYWORDS) if config.EXCLUDED_KEYWORDS else 'None'}
 
-<b>📈 Hiển thị:</b>
-• Gửi biểu đồ: {'✅ Có' if config.SEND_CHARTS else '❌ Không'}
-• Chỉ tóm tắt: {'✅ Có' if config.SEND_SUMMARY_ONLY else '❌ Không'}
-• Tối đa Coin/Tin nhắn: {config.MAX_COINS_PER_MESSAGE}
+<b>📈 Display settings:</b>
+• Charts: {'✅ Enabled' if config.SEND_CHARTS else '❌ Disabled'}
+• Summary only: {'✅ Yes' if config.SEND_SUMMARY_ONLY else '❌ No'}
+• Max coins/message: {config.MAX_COINS_PER_MESSAGE}
 
-<b>⚡ Hiệu suất:</b>
-• Quét nhanh: {'✅ Bật' if config.USE_FAST_SCAN else '❌ Tắt'}
-• Workers: {'Tự động' if config.MAX_SCAN_WORKERS == 0 else config.MAX_SCAN_WORKERS}
+<b>⚡ Performance:</b>
+• Fast scan: {'✅ Enabled' if config.USE_FAST_SCAN else '❌ Disabled'}
+• Workers: {'Auto-scaling (5-20)' if config.MAX_SCAN_WORKERS == 0 else config.MAX_SCAN_WORKERS}
+• Parallel processing: ✅ Active
+
+<b>🤖 AI Configuration:</b>
+• Model: Gemini 2.0 Flash Exp
+• Input format: JSON structured
+• Weight: 60% institutional + 40% technical
+• Output: Vietnamese + Entry/Exit points
 
 💡 Dùng /performance để xem chi tiết quét
 """
