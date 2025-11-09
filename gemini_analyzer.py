@@ -140,20 +140,36 @@ class GeminiAnalyzer:
             current_price = ticker_24h['last_price']
             logger.info(f"Current price for {symbol}: ${current_price:,.2f}")
             
-            # Get multi-timeframe klines
-            timeframes = ['5m', '1h', '4h', '1d']
-            klines_dict = self.binance.get_multi_timeframe_data(symbol, timeframes, limit=200)
+            # Get multi-timeframe klines with historical depth
+            # Use different limits per timeframe for optimal historical context
+            logger.info(f"Fetching historical klines for {symbol}...")
+            klines_dict = {}
+            
+            # 5m: 100 candles (8.3 hours) - for short-term patterns
+            df_5m = self.binance.get_klines(symbol, '5m', limit=100)
+            if df_5m is not None and not df_5m.empty:
+                klines_dict['5m'] = df_5m
+            
+            # 1h: 168 candles (7 days) - for intraday analysis
+            df_1h = self.binance.get_klines(symbol, '1h', limit=168)
+            if df_1h is not None and not df_1h.empty:
+                klines_dict['1h'] = df_1h
+            
+            # 4h: 180 candles (30 days) - for swing trading
+            df_4h = self.binance.get_klines(symbol, '4h', limit=180)
+            if df_4h is not None and not df_4h.empty:
+                klines_dict['4h'] = df_4h
+            
+            # 1d: 90 candles (3 months) - for trend analysis
+            df_1d = self.binance.get_klines(symbol, '1d', limit=90)
+            if df_1d is not None and not df_1d.empty:
+                klines_dict['1d'] = df_1d
+            
             if not klines_dict or len(klines_dict) == 0:
                 logger.error(f"Failed to get klines data for {symbol}")
                 return None
             
-            # Check if we have valid DataFrames
-            valid_dfs = [tf for tf, df in klines_dict.items() if df is not None and not df.empty]
-            if not valid_dfs:
-                logger.error(f"No valid klines data for {symbol}")
-                return None
-            
-            logger.info(f"Got klines for {symbol}: {valid_dfs}")
+            logger.info(f"Got klines for {symbol}: {list(klines_dict.keys())}")
             
             # RSI+MFI analysis
             from indicators import analyze_multi_timeframe
@@ -209,9 +225,17 @@ class GeminiAnalyzer:
             logger.info(f"Calculating historical comparison for {symbol}...")
             historical = self._get_historical_comparison(symbol, klines_dict)
             
-            # Extended historical klines context
-            logger.info(f"Getting extended historical context for {symbol}...")
-            historical_klines = self._get_historical_klines_context(symbol)
+            # Extended historical klines context (reuse klines_dict data)
+            logger.info(f"Analyzing extended historical context for {symbol}...")
+            historical_klines = {}
+            if '1h' in klines_dict and klines_dict['1h'] is not None:
+                historical_klines['1h'] = self._analyze_historical_period(klines_dict['1h'], '1H (7 ngày)')
+            if '4h' in klines_dict and klines_dict['4h'] is not None:
+                historical_klines['4h'] = self._analyze_historical_period(klines_dict['4h'], '4H (30 ngày)')
+            if '1d' in klines_dict and klines_dict['1d'] is not None:
+                historical_klines['1d'] = self._analyze_historical_period(klines_dict['1d'], '1D (90 ngày)')
+            
+            logger.info(f"✅ Analyzed historical context for {len(historical_klines)} timeframes")
             
             # Market data
             market_data = {
