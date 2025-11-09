@@ -252,6 +252,95 @@
             border-color: #777;
         }
         
+        /* ============================================================
+           OHLCV LEGEND (Phase 2: TradingView-style legend)
+           ============================================================ */
+        #ohlcv-legend {
+            position: absolute;
+            left: 12px;
+            top: 60px;  /* Below header */
+            z-index: 2;
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            background: rgba(30, 34, 45, 0.85);  /* TradingView panel with transparency */
+            border-radius: 6px;
+            padding: 8px 12px;
+            border: 1px solid rgba(42, 46, 57, 0.5);
+            backdrop-filter: blur(8px);
+        }
+        
+        #ohlcv-legend.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .legend-symbol {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: -0.02em;
+            color: #D1D4DC;
+        }
+        
+        .legend-ohlcv {
+            font-size: 11px;
+            font-variant-numeric: tabular-nums;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            line-height: 16px;
+        }
+        
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .legend-label {
+            color: #787B86;  /* TradingView secondary text */
+            font-weight: 500;
+        }
+        
+        .legend-value {
+            color: #D1D4DC;  /* TradingView primary text */
+            font-weight: 400;
+        }
+        
+        .legend-change {
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        
+        .legend-change.positive {
+            color: #26A69A;  /* TradingView green */
+        }
+        
+        .legend-change.negative {
+            color: #EF5350;  /* TradingView red */
+        }
+        
+        /* Mobile compact legend */
+        @media (max-width: 567px) {
+            #ohlcv-legend {
+                left: 8px;
+                top: 52px;
+                font-size: 10px;
+                padding: 6px 10px;
+            }
+            
+            .legend-symbol {
+                font-size: 12px;
+                margin-bottom: 4px;
+            }
+            
+            .legend-ohlcv {
+                font-size: 10px;
+                gap: 8px;
+            }
+        }
+        
         /* Zone indicator dots - No animation */
         .zone-dot {
             width: 8px;
@@ -307,6 +396,32 @@
     
     <div id="signal-badge" class="signal-badge signal-neutral" style="display: none;">
         NEUTRAL
+    </div>
+    
+    <!-- OHLCV Legend (Phase 2) -->
+    <div id="ohlcv-legend">
+        <div class="legend-symbol" id="legend-symbol">BTCUSDT</div>
+        <div class="legend-ohlcv">
+            <div class="legend-item">
+                <span class="legend-label">O</span>
+                <span class="legend-value" id="legend-open">--</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-label">H</span>
+                <span class="legend-value" id="legend-high">--</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-label">L</span>
+                <span class="legend-value" id="legend-low">--</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-label">C</span>
+                <span class="legend-value" id="legend-close">--</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-change" id="legend-change">--</span>
+            </div>
+        </div>
     </div>
     
     <div id="indicators">
@@ -504,6 +619,69 @@
             }
         }
         
+        // ============================================================
+        // OHLCV LEGEND HELPERS (Phase 2: OHLCV Display)
+        // ============================================================
+        
+        /**
+         * Update OHLCV legend with bar data
+         * @param {object} bar - Bar data {open, high, low, close}
+         */
+        function updateOHLCVLegend(bar) {
+            if (!bar) return;
+            
+            const legend = document.getElementById('ohlcv-legend');
+            const symbolEl = document.getElementById('legend-symbol');
+            const openEl = document.getElementById('legend-open');
+            const highEl = document.getElementById('legend-high');
+            const lowEl = document.getElementById('legend-low');
+            const closeEl = document.getElementById('legend-close');
+            const changeEl = document.getElementById('legend-change');
+            
+            if (!legend || !symbolEl || !openEl || !highEl || !lowEl || !closeEl || !changeEl) {
+                console.error('OHLCV legend elements not found');
+                return;
+            }
+            
+            // Show legend
+            legend.style.display = 'block';
+            
+            // Update symbol
+            symbolEl.textContent = symbol;
+            
+            // Update OHLCV values with auto-precision
+            openEl.textContent = formatPrice(bar.open);
+            highEl.textContent = formatPrice(bar.high);
+            lowEl.textContent = formatPrice(bar.low);
+            closeEl.textContent = formatPrice(bar.close);
+            
+            // Calculate and display change
+            const change = bar.close - bar.open;
+            const changePercent = (change / bar.open) * 100;
+            const changeText = `${change >= 0 ? '+' : ''}${formatPrice(Math.abs(change))} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+            
+            changeEl.textContent = changeText;
+            changeEl.className = change >= 0 ? 'legend-change positive' : 'legend-change negative';
+            
+            // Color-code close value
+            closeEl.className = change >= 0 ? 'legend-value positive' : 'legend-value negative';
+        }
+        
+        /**
+         * Hide OHLCV legend when crosshair leaves
+         */
+        function hideOHLCVLegend() {
+            const legend = document.getElementById('ohlcv-legend');
+            if (legend) {
+                // Keep legend visible with latest data instead of hiding completely
+                // legend.style.display = 'none';
+            }
+        }
+        
+        // ============================================================
+        // HAPTIC FEEDBACK
+        // ============================================================
+        
         // Haptic feedback helper (Best practice from docs)
         function hapticFeedback(type = 'light') {
             if (tg.HapticFeedback) {
@@ -673,12 +851,18 @@
                     if (data) {
                         // Update price display with crosshair data
                         updatePrice(data.close, data.close - data.open);
+                        
+                        // Update OHLCV legend (Phase 2)
+                        updateOHLCVLegend(data);
                     }
                 } else {
                     // Reset to latest when crosshair leaves
                     if (latestData.rsi !== null) {
                         updateIndicatorDisplay(latestData.rsi, latestData.mfi);
                     }
+                    
+                    // Hide OHLCV legend (Phase 2)
+                    hideOHLCVLegend();
                 }
             });
             
@@ -1248,6 +1432,9 @@
                 
                 // Update price display
                 updatePrice(data.currentPrice, data.priceChange);
+                
+                // Update OHLCV legend with latest data (Phase 2)
+                updateOHLCVLegend(newData);
                 
                 // Update indicators with dynamic display
                 updateIndicatorDisplay(data.rsi, data.mfi);
