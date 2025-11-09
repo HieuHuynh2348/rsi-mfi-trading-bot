@@ -1263,6 +1263,22 @@ Return ONLY valid JSON, no markdown formatting.
         Returns:
             Tuple of (summary_msg, technical_msg, reasoning_msg)
         """
+        def truncate_message(msg: str, max_length: int = 4000) -> str:
+            """Truncate message if too long, keeping formatting intact"""
+            if len(msg) <= max_length:
+                return msg
+            
+            # Find last complete line before max_length
+            truncated = msg[:max_length]
+            last_newline = truncated.rfind('\n')
+            if last_newline > 0:
+                truncated = truncated[:last_newline]
+            
+            # Add truncation notice
+            truncated += "\n\n⚠️ <i>(Nội dung đã được rút gọn do quá dài)</i>\n"
+            truncated += "═══════════════════════════════════"
+            return truncated
+        
         try:
             symbol = analysis['symbol']
             rec = analysis['recommendation']
@@ -1406,6 +1422,11 @@ Return ONLY valid JSON, no markdown formatting.
             reasoning += "<i>⚠️ Đây là phân tích AI, không phải tư vấn tài chính.\n"
             reasoning += "Luôn DYOR (Do Your Own Research) trước khi đầu tư.</i>\n"
             reasoning += "═══════════════════════════════════"
+            
+            # Truncate messages if they exceed Telegram limit (4096 chars)
+            summary = truncate_message(summary, 4000)
+            tech = truncate_message(tech, 4000)
+            reasoning = truncate_message(reasoning, 4000)
             
             return summary, tech, reasoning
             
