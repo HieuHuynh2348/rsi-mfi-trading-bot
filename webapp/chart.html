@@ -204,40 +204,65 @@
         // API endpoint (your bot's server)
         const API_BASE = window.location.origin;
         
+        // Get theme colors from Telegram
+        function getThemeColors() {
+            const theme = tg.themeParams;
+            return {
+                background: theme.bg_color || '#1a1a1a',
+                textColor: theme.text_color || '#d1d4dc',
+                gridColor: theme.hint_color || '#2a2a2a',
+                upColor: '#26a69a',
+                downColor: '#ef5350',
+            };
+        }
+        
         // Initialize chart
         function initChart() {
             const container = document.getElementById('chartContainer');
+            const colors = getThemeColors();
             
             chart = LightweightCharts.createChart(container, {
                 width: container.clientWidth,
                 height: container.clientHeight,
                 layout: {
-                    background: { color: '#1a1a1a' },
-                    textColor: '#d1d4dc',
+                    background: { color: colors.background },
+                    textColor: colors.textColor,
                 },
                 grid: {
-                    vertLines: { color: '#2a2a2a' },
-                    horzLines: { color: '#2a2a2a' },
+                    vertLines: { color: colors.gridColor },
+                    horzLines: { color: colors.gridColor },
                 },
                 crosshair: {
                     mode: LightweightCharts.CrosshairMode.Normal,
                 },
                 rightPriceScale: {
-                    borderColor: '#2a2a2a',
+                    borderColor: colors.gridColor,
                 },
                 timeScale: {
-                    borderColor: '#2a2a2a',
+                    borderColor: colors.gridColor,
                     timeVisible: true,
                     secondsVisible: false,
                 },
+                handleScroll: {
+                    mouseWheel: true,
+                    pressedMouseMove: true,
+                    horzTouchDrag: true,
+                    vertTouchDrag: true,
+                },
+                handleScale: {
+                    axisPressedMouseMove: true,
+                    mouseWheel: true,
+                    pinch: true,  // Enable pinch zoom for mobile
+                },
             });
             
+            const colors = getThemeColors();
             candlestickSeries = chart.addCandlestickSeries({
-                upColor: '#26a69a',
-                downColor: '#ef5350',
+                upColor: colors.upColor,
+                downColor: colors.downColor,
                 borderVisible: false,
-                wickUpColor: '#26a69a',
-                wickDownColor: '#ef5350',
+                wickUpColor: colors.upColor,
+                wickDownColor: colors.downColor,
             });
             
             volumeSeries = chart.addHistogramSeries({
@@ -273,10 +298,14 @@
                 const response = await fetch(`${API_BASE}/api/chart?symbol=${symbol}&timeframe=${tf}`);
                 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch chart data');
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch: ${errorText}`);
                 }
                 
                 const data = await response.json();
+                
+                // Haptic feedback on success
+                hapticFeedback('success');
                 
                 // Update header
                 document.getElementById('symbol').textContent = symbol;
@@ -309,9 +338,18 @@
                 hideLoading();
                 
             } catch (error) {
-                console.error('Error loading chart:', error);
-                showError('Không thể tải dữ liệu chart. Vui lòng thử lại.');
                 hideLoading();
+                console.error('Error loading chart data:', error);
+                
+                // Haptic feedback on error
+                hapticFeedback('error');
+                
+                // Show error to user
+                if (tg.showAlert) {
+                    tg.showAlert(`Error: ${error.message}`);
+                } else {
+                    showError(`Không thể tải dữ liệu: ${error.message}`);
+                }
             }
         }
         
@@ -341,6 +379,9 @@
         // Timeframe buttons
         document.querySelectorAll('.tf-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Haptic feedback
+                hapticFeedback('light');
+                
                 document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 
@@ -348,6 +389,45 @@
                 loadChartData(currentTimeframe);
             });
         });
+        
+        // Theme change listener
+        if (tg.onEvent) {
+            tg.onEvent('themeChanged', () => {
+                if (chart) {
+                    const colors = getThemeColors();
+                    chart.applyOptions({
+                        layout: {
+                            background: { color: colors.background },
+                            textColor: colors.textColor,
+                        },
+                        grid: {
+                            vertLines: { color: colors.gridColor },
+                            horzLines: { color: colors.gridColor },
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Viewport change listener
+        if (tg.onEvent) {
+            tg.onEvent('viewportChanged', () => {
+                if (chart) {
+                    const container = document.getElementById('chartContainer');
+                    chart.applyOptions({
+                        width: container.clientWidth,
+                        height: container.clientHeight,
+                    });
+                }
+            });
+        }
+        
+        // Apply safe area insets if available
+        if (tg.safeAreaInset) {
+            const { top, bottom } = tg.safeAreaInset;
+            document.body.style.paddingTop = `${top}px`;
+            document.body.style.paddingBottom = `${bottom}px`;
+        }
         
         // Initialize
         initChart();
@@ -357,9 +437,6 @@
         setInterval(() => {
             loadChartData(currentTimeframe);
         }, 30000);
-        
-        // Notify Telegram that page is loaded
-        tg.ready();
     </script>
 </body>
 </html>
