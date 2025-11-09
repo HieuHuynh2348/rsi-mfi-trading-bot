@@ -10,6 +10,7 @@ import re
 import io
 import time
 import os
+import base64
 from datetime import datetime
 from vietnamese_messages import *
 
@@ -262,13 +263,18 @@ class TelegramBot:
                 # This will start bot in PM with user, then open WebApp
                 bot_username = self._get_bot_username()
                 if bot_username:
-                    # Format: https://t.me/botname?start=chart_SYMBOL_USERID_CHATID
-                    start_param = f"chart_{symbol}_{user_id}_{chat_id}" if user_id and chat_id else f"chart_{symbol}"
-                    bot_link = f"https://t.me/{bot_username}?start={start_param}"
+                    # Format: chart:SYMBOL:USERID:CHATID (use : instead of _ to avoid parsing issues)
+                    # Then base64 encode to make it URL-safe and shorter
+                    data_string = f"chart:{symbol}:{user_id}:{chat_id}" if user_id and chat_id else f"chart:{symbol}"
+                    
+                    # Base64 encode (URL-safe)
+                    encoded = base64.urlsafe_b64encode(data_string.encode()).decode().rstrip('=')
+                    bot_link = f"https://t.me/{bot_username}?start={encoded}"
                     
                     # Debug log
                     logger.info(f"🔗 Creating group link - Symbol: {symbol}, User: {user_id}, Chat: {chat_id}")
-                    logger.info(f"🔗 Start param: {start_param}")
+                    logger.info(f"🔗 Data string: {data_string}")
+                    logger.info(f"🔗 Encoded: {encoded}")
                     logger.info(f"🔗 Full link: {bot_link}")
                     
                     keyboard.row(
@@ -317,12 +323,18 @@ class TelegramBot:
                 # In groups: Use t.me link to open private chat with bot
                 bot_username = self._get_bot_username()
                 if bot_username:
-                    start_param = f"chart_{symbol}_{user_id}_{chat_id}" if user_id and chat_id else f"chart_{symbol}"
-                    bot_link = f"https://t.me/{bot_username}?start={start_param}"
+                    # Format: chart:SYMBOL:USERID:CHATID (use : instead of _ to avoid parsing issues)
+                    # Then base64 encode to make it URL-safe and shorter
+                    data_string = f"chart:{symbol}:{user_id}:{chat_id}" if user_id and chat_id else f"chart:{symbol}"
+                    
+                    # Base64 encode (URL-safe)
+                    encoded = base64.urlsafe_b64encode(data_string.encode()).decode().rstrip('=')
+                    bot_link = f"https://t.me/{bot_username}?start={encoded}"
                     
                     # Debug log
                     logger.info(f"🔗 Creating group link (symbol_analysis) - Symbol: {symbol}, User: {user_id}, Chat: {chat_id}")
-                    logger.info(f"🔗 Start param: {start_param}")
+                    logger.info(f"🔗 Data string: {data_string}")
+                    logger.info(f"🔗 Encoded: {encoded}")
                     
                     keyboard.row(
                         types.InlineKeyboardButton(

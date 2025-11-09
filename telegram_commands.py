@@ -7,6 +7,7 @@ import logging
 import os
 from datetime import datetime
 import time
+import base64
 from telebot import types
 from watchlist import WatchlistManager
 from watchlist_monitor import WatchlistMonitor
@@ -1035,27 +1036,36 @@ class TelegramCommandHandler:
                 return
             
             # Check if this is a deep link for chart access from group
-            if message.text and message.text.startswith('/start chart_'):
+            if message.text and message.text.startswith('/start '):
+                start_param = message.text[7:].strip()  # Skip "/start "
+                logger.info(f"🔍 Start parameter received: {start_param}")
+                
+                # Try to decode as base64
                 try:
-                    # Parse parameters: /start chart_SYMBOL_USERID_CHATID
-                    raw_params = message.text[14:]  # Skip "/start chart_"
-                    logger.info(f"🔍 Raw params: {raw_params}")
+                    # Add padding back if needed
+                    padding = 4 - (len(start_param) % 4)
+                    if padding != 4:
+                        start_param += '=' * padding
                     
-                    # Split with maxsplit=2 to handle negative chat IDs correctly
-                    # Example: "ETHUSDT_1087968824_-1002395637657" -> ["ETHUSDT", "1087968824", "-1002395637657"]
-                    params = raw_params.split('_', 2)  
-                    logger.info(f"🔍 Parsed params: {params}")
+                    decoded = base64.urlsafe_b64decode(start_param.encode()).decode()
+                    logger.info(f"🔍 Decoded parameter: {decoded}")
                     
-                    if len(params) >= 1:
-                        symbol = params[0]
-                        source_user_id = params[1] if len(params) >= 2 else None
-                        source_chat_id = params[2] if len(params) >= 3 else None
+                    # Check if it's a chart request
+                    if decoded.startswith('chart:'):
+                        # Parse: chart:SYMBOL:USERID:CHATID
+                        parts = decoded.split(':', 3)
+                        logger.info(f"🔍 Parsed parts: {parts}")
                         
-                        # Log the access request
-                        logger.info(f"📊 Chart access request: Symbol={symbol}, From User={source_user_id}, From Chat={source_chat_id}")
-                        
-                        # Send notification to admin with user/group IDs (to admin chat)
-                        admin_message = f"""
+                        if len(parts) >= 2:
+                            symbol = parts[1]
+                            source_user_id = parts[2] if len(parts) >= 3 else None
+                            source_chat_id = parts[3] if len(parts) >= 4 else None
+                            
+                            # Log the access request
+                            logger.info(f"📊 Chart access request: Symbol={symbol}, From User={source_user_id}, From Chat={source_chat_id}")
+                            
+                            # Send notification to admin with user/group IDs (to admin chat)
+                            admin_message = f"""
 🔔 <b>Live Chart Access Request</b>
 
 👤 <b>User ID:</b> <code>{source_user_id}</code>
@@ -1065,88 +1075,88 @@ class TelegramCommandHandler:
 
 <i>User clicked chart button in group and opened bot in private chat.</i>
 """
-                        # Send to admin (default chat_id)
-                        self.bot.send_message(admin_message, parse_mode='HTML')
-                        
-                        # Perform full analysis for the symbol
-                        logger.info(f"🔍 Performing full analysis for {symbol}...")
-                        self.telegram_bot.send_message(
-                            chat_id=message.chat.id,
-                            text=f"🔍 <b>Đang phân tích {symbol}...</b>\n⏳ Vui lòng chờ...",
-                            parse_mode='HTML'
-                        )
-                        
-                        # Get full analysis
-                        result = self._analyze_symbol_full(symbol)
-                        
-                        if result:
-                            # Format and send comprehensive analysis to USER in private chat
-                            from vietnamese_messages import get_signal_alert
+                            # Send to admin (default chat_id)
+                            self.bot.send_message(admin_message, parse_mode='HTML')
                             
-                            formatted_price = self.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
-                            md = result.get('market_data')
-                            if md:
-                                md = md.copy()
-                                md['high'] = self.binance.format_price(result['symbol'], md.get('high'))
-                                md['low'] = self.binance.format_price(result['symbol'], md.get('low'))
-                            
-                            # Build analysis message
-                            analysis_msg = get_signal_alert(
-                                result['symbol'],
-                                result['timeframe_data'],
-                                result['consensus'],
-                                result['consensus_strength'],
-                                formatted_price,
-                                md,
-                                result.get('volume_data')
-                            )
-                            
-                            # Send analysis to USER
+                            # Perform full analysis for the symbol
+                            logger.info(f"🔍 Performing full analysis for {symbol}...")
                             self.telegram_bot.send_message(
                                 chat_id=message.chat.id,
-                                text=analysis_msg,
+                                text=f"🔍 <b>Đang phân tích {symbol}...</b>\n⏳ Vui lòng chờ...",
                                 parse_mode='HTML'
                             )
-                        
-                        # Get WebApp URL and send chart button
-                        webapp_url = self.bot._get_webapp_url()
-                        if webapp_url:
-                            # Create WebApp button (works in private chat!)
-                            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
-                            keyboard = types.InlineKeyboardMarkup()
-                            keyboard.row(
-                                types.InlineKeyboardButton(
-                                    f"📊 View {symbol} Live Chart",
-                                    web_app=types.WebAppInfo(url=chart_webapp_url)
-                                )
-                            )
                             
-                            # Add AI Analysis button too
-                            keyboard.row(
-                                types.InlineKeyboardButton(
-                                    f"🤖 AI Phân Tích {symbol}",
-                                    callback_data=f"ai_analyze_{symbol}"
-                                )
-                            )
+                            # Get full analysis
+                            result = self._analyze_symbol_full(symbol)
                             
-                            # Send chart button to USER
-                            self.telegram_bot.send_message(
-                                chat_id=message.chat.id,
-                                text=f"📊 <b>Interactive Chart</b>\n\n"
-                                     f"Click buttons below for more:\n\n"
-                                     f"<i>📱 Live Chart opens in Telegram</i>",
-                                parse_mode='HTML',
-                                reply_markup=keyboard
-                            )
-                            return
-                        else:
-                            # No WebApp available
-                            self.telegram_bot.send_message(
-                                chat_id=message.chat.id,
-                                text=f"ℹ️ <i>Live Chart is currently unavailable.</i>",
-                                parse_mode='HTML'
-                            )
-                            return
+                            if result:
+                                # Format and send comprehensive analysis to USER in private chat
+                                from vietnamese_messages import get_signal_alert
+                                
+                                formatted_price = self.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                                md = result.get('market_data')
+                                if md:
+                                    md = md.copy()
+                                    md['high'] = self.binance.format_price(result['symbol'], md.get('high'))
+                                    md['low'] = self.binance.format_price(result['symbol'], md.get('low'))
+                                
+                                # Build analysis message
+                                analysis_msg = get_signal_alert(
+                                    result['symbol'],
+                                    result['timeframe_data'],
+                                    result['consensus'],
+                                    result['consensus_strength'],
+                                    formatted_price,
+                                    md,
+                                    result.get('volume_data')
+                                )
+                                
+                                # Send analysis to USER
+                                self.telegram_bot.send_message(
+                                    chat_id=message.chat.id,
+                                    text=analysis_msg,
+                                    parse_mode='HTML'
+                                )
+                            
+                            # Get WebApp URL and send chart button
+                            webapp_url = self.bot._get_webapp_url()
+                            if webapp_url:
+                                # Create WebApp button (works in private chat!)
+                                chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                                keyboard = types.InlineKeyboardMarkup()
+                                keyboard.row(
+                                    types.InlineKeyboardButton(
+                                        f"📊 View {symbol} Live Chart",
+                                        web_app=types.WebAppInfo(url=chart_webapp_url)
+                                    )
+                                )
+                                
+                                # Add AI Analysis button too
+                                keyboard.row(
+                                    types.InlineKeyboardButton(
+                                        f"🤖 AI Phân Tích {symbol}",
+                                        callback_data=f"ai_analyze_{symbol}"
+                                    )
+                                )
+                                
+                                # Send chart button to USER
+                                self.telegram_bot.send_message(
+                                    chat_id=message.chat.id,
+                                    text=f"📊 <b>Interactive Chart</b>\n\n"
+                                         f"Click buttons below for more:\n\n"
+                                         f"<i>📱 Live Chart opens in Telegram</i>",
+                                    parse_mode='HTML',
+                                    reply_markup=keyboard
+                                )
+                                return
+                            else:
+                                # No WebApp available
+                                self.telegram_bot.send_message(
+                                    chat_id=message.chat.id,
+                                    text=f"ℹ️ <i>Live Chart is currently unavailable.</i>",
+                                    parse_mode='HTML'
+                                )
+                                return
                 except Exception as e:
                     logger.error(f"Error processing chart deep link: {e}")
                     # Fall through to default help message
