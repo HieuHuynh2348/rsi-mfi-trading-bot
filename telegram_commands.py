@@ -808,7 +808,7 @@ class TelegramCommandHandler:
                         # Get klines data for chart
                         klines = self.binance.get_klines(symbol, '1h', limit=100)
                         
-                        if not klines or len(klines) < 10:
+                        if klines is None or klines.empty or len(klines) < 10:
                             self.telegram_bot.send_message(
                                 chat_id=call.message.chat.id,
                                 text=f"❌ Không thể lấy dữ liệu chart cho {symbol}",
