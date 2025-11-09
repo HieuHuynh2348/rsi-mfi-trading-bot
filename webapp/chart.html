@@ -292,14 +292,14 @@
            OHLCV LEGEND (Phase 2: TradingView-style legend)
            ============================================================ */
         #ohlcv-legend {
+            display: none;  /* Hidden - info already in header */
             position: absolute;
-            left: 10px;  /* Left side below timeframes */
-            top: 10px;  /* Inside chart container */
-            z-index: 5;  /* Lower z-index, no background needed */
+            left: 10px;
+            top: 10px;
+            z-index: 5;
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
             pointer-events: none;
             transition: opacity 0.2s ease;
-            /* Remove background for cleaner look */
         }
         
         #ohlcv-legend.hidden {
@@ -415,7 +415,10 @@
     
     <div id="header">
         <div id="symbol">Loading...</div>
-        <div id="price">--</div>
+        <div style="display: flex; align-items: baseline; gap: 8px;">
+            <div id="price">--</div>
+            <div id="price-change" style="font-size: 13px; font-weight: 500;">--</div>
+        </div>
     </div>
     
     <div id="tabs">
@@ -714,6 +717,7 @@
             const lowEl = document.getElementById('legend-low');
             const closeEl = document.getElementById('legend-close');
             const changeEl = document.getElementById('legend-change');
+            const priceChangeEl = document.getElementById('price-change');
             
             if (!legend || !symbolEl || !openEl || !highEl || !lowEl || !closeEl || !changeEl) {
                 console.error('OHLCV legend elements not found');
@@ -739,6 +743,12 @@
             
             changeEl.textContent = changeText;
             changeEl.className = change >= 0 ? 'legend-change positive' : 'legend-change negative';
+            
+            // Update price change in header
+            if (priceChangeEl) {
+                priceChangeEl.textContent = changeText;
+                priceChangeEl.className = change >= 0 ? 'price-up' : 'price-down';
+            }
             
             // Color-code close value
             closeEl.className = change >= 0 ? 'legend-value positive' : 'legend-value negative';
