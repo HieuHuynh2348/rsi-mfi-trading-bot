@@ -11,6 +11,7 @@ import io
 import time
 from datetime import datetime
 from vietnamese_messages import *
+import config
 
 logger = logging.getLogger(__name__)
 
