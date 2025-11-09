@@ -185,6 +185,23 @@
         tg.expand();
         tg.ready();
         
+        console.log('=== CHART INITIALIZATION START ===');
+        console.log('Telegram WebApp:', tg);
+        console.log('LightweightCharts available:', typeof LightweightCharts !== 'undefined');
+        
+        // Check if LightweightCharts is loaded
+        if (typeof LightweightCharts === 'undefined') {
+            console.error('❌ LightweightCharts library not loaded!');
+            document.getElementById('loading').innerHTML = `
+                <div style="color: red; padding: 20px; text-align: center;">
+                    <h3>⚠️ Error Loading Chart Library</h3>
+                    <p>LightweightCharts failed to load</p>
+                    <button onclick="location.reload()">Reload</button>
+                </div>
+            `;
+            throw new Error('LightweightCharts not loaded');
+        }
+        
         // Apply Telegram theme
         if (tg.colorScheme === 'dark') {
             document.body.style.background = '#1a1a1a';
@@ -218,10 +235,21 @@
         
         // Initialize chart
         function initChart() {
-            const container = document.getElementById('chartContainer');
-            const colors = getThemeColors();
-            
-            chart = LightweightCharts.createChart(container, {
+            try {
+                console.log('📊 Initializing chart...');
+                const container = document.getElementById('chartContainer');
+                
+                if (!container) {
+                    throw new Error('Chart container not found');
+                }
+                
+                console.log('Container dimensions:', container.clientWidth, 'x', container.clientHeight);
+                
+                const colors = getThemeColors();
+                console.log('Theme colors:', colors);
+                
+                console.log('Creating chart...');
+                chart = LightweightCharts.createChart(container, {
                 width: container.clientWidth,
                 height: container.clientHeight,
                 layout: {
@@ -255,6 +283,8 @@
                     pinch: true,  // Enable pinch zoom for mobile
                 },
             });
+            
+            console.log('Adding candlestick series...');
             candlestickSeries = chart.addCandlestickSeries({
                 upColor: colors.upColor,
                 downColor: colors.downColor,
@@ -262,7 +292,9 @@
                 wickUpColor: colors.upColor,
                 wickDownColor: colors.downColor,
             });
+            console.log('Candlestick series added');
             
+            console.log('Adding volume series...');
             volumeSeries = chart.addHistogramSeries({
                 color: '#26a69a',
                 priceFormat: {
@@ -270,6 +302,7 @@
                 },
                 priceScaleId: '',
             });
+            console.log('Volume series added');
             
             volumeSeries.priceScale().applyOptions({
                 scaleMargins: {
@@ -278,6 +311,8 @@
                 },
             });
             
+            console.log('✅ Chart initialized successfully');
+            
             // Handle resize
             window.addEventListener('resize', () => {
                 chart.applyOptions({
@@ -285,6 +320,19 @@
                     height: container.clientHeight,
                 });
             });
+            
+            } catch (error) {
+                console.error('❌ Error initializing chart:', error);
+                console.error('Error stack:', error.stack);
+                document.getElementById('loading').innerHTML = `
+                    <div style="color: red; padding: 20px; text-align: center;">
+                        <h3>⚠️ Chart Initialization Failed</h3>
+                        <p>${error.message}</p>
+                        <button onclick="location.reload()">Reload</button>
+                    </div>
+                `;
+                throw error;
+            }
         }
         
         // Load chart data
@@ -420,14 +468,21 @@
         // Timeframe buttons
         document.querySelectorAll('.tf-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                // Haptic feedback
-                hapticFeedback('light');
-                
-                document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                currentTimeframe = btn.dataset.tf;
-                loadChartData(currentTimeframe);
+                try {
+                    console.log('Timeframe button clicked:', btn.dataset.tf);
+                    
+                    // Haptic feedback
+                    hapticFeedback('light');
+                    
+                    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    currentTimeframe = btn.dataset.tf;
+                    console.log('Loading data for timeframe:', currentTimeframe);
+                    loadChartData(currentTimeframe);
+                } catch (error) {
+                    console.error('Error in timeframe button click:', error);
+                }
             });
         });
         
@@ -470,14 +525,30 @@
             document.body.style.paddingBottom = `${bottom}px`;
         }
         
-        // Initialize
-        initChart();
-        loadChartData(currentTimeframe);
-        
-        // Auto refresh every 30 seconds
-        setInterval(() => {
+        // Initialize with error handling
+        try {
+            console.log('=== Starting chart initialization ===');
+            initChart();
+            console.log('=== Starting data load ===');
             loadChartData(currentTimeframe);
-        }, 30000);
+            
+            // Auto refresh every 30 seconds
+            setInterval(() => {
+                loadChartData(currentTimeframe);
+            }, 30000);
+            
+            console.log('=== Initialization complete ===');
+        } catch (error) {
+            console.error('=== FATAL ERROR ===', error);
+            document.getElementById('loading').innerHTML = `
+                <div style="color: red; padding: 20px; text-align: center;">
+                    <h3>⚠️ Fatal Error</h3>
+                    <p>${error.message}</p>
+                    <pre style="font-size: 10px; text-align: left; background: #000; padding: 10px; overflow: auto;">${error.stack}</pre>
+                    <button onclick="location.reload()" style="margin-top: 10px; padding: 10px 20px; font-size: 16px;">Reload</button>
+                </div>
+            `;
+        }
     </script>
 </body>
 </html>

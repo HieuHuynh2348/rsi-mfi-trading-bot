@@ -43,6 +43,10 @@ class TelegramCommandHandler:
         self.user_usage = {}  # {user_id: {'date': 'YYYY-MM-DD', 'count': int}}
         self.daily_limit = 2  # 2 commands per day for non-group users
         
+        # Track group users to avoid confusion when they open private chat
+        # {user_id: {'username': str, 'first_name': str, 'group_id': str, 'last_seen': datetime}}
+        self.group_users = {}
+        
         # Initialize watchlist manager
         self.watchlist = WatchlistManager()
         
@@ -286,6 +290,16 @@ class TelegramCommandHandler:
                 command = message.text.split()[0] if message.text else "N/A"
                 
                 logger.info(f"📨 Bot access - User: {user_id} (@{username}), Chat: {chat_id}, Type: {chat_type}, Command: {command}")
+                
+                # Track group users to avoid confusion in private chat
+                if chat_type in ['group', 'supergroup'] and user_id:
+                    self.group_users[user_id] = {
+                        'username': username,
+                        'first_name': first_name,
+                        'group_id': str(chat_id),
+                        'last_seen': datetime.now()
+                    }
+                    logger.info(f"👥 Tracked group user: {user_id} (@{username}) in group {chat_id}")
                 
                 # Check usage limits for private chat users (not in groups)
                 if chat_type == 'private' and user_id:
@@ -1061,16 +1075,33 @@ class TelegramCommandHandler:
                             source_user_id = parts[2] if len(parts) >= 3 else None
                             source_chat_id = parts[3] if len(parts) >= 4 else None
                             
+                            # Get current user info
+                            current_user_id = message.from_user.id if message.from_user else None
+                            current_username = message.from_user.username if message.from_user and message.from_user.username else "N/A"
+                            current_first_name = message.from_user.first_name if message.from_user and message.from_user.first_name else "N/A"
+                            
+                            # Check if user is from group
+                            is_group_user = current_user_id in self.group_users
+                            group_info = ""
+                            if is_group_user:
+                                group_data = self.group_users[current_user_id]
+                                group_info = f"\n👥 <b>From Group:</b> <code>{group_data['group_id']}</code>\n📅 <b>Last seen in group:</b> {group_data['last_seen'].strftime('%Y-%m-%d %H:%M:%S')}"
+                            
                             # Log the access request
-                            logger.info(f"📊 Chart access request: Symbol={symbol}, From User={source_user_id}, From Chat={source_chat_id}")
+                            logger.info(f"📊 Chart access request: Symbol={symbol}, Current User={current_user_id}, From User={source_user_id}, From Chat={source_chat_id}, Is Group User={is_group_user}")
                             
                             # Send notification to admin with user/group IDs (to admin chat)
                             admin_message = f"""
 🔔 <b>Live Chart Access Request</b>
 
-👤 <b>User ID:</b> <code>{source_user_id}</code>
-💬 <b>Group ID:</b> <code>{source_chat_id}</code>
+👤 <b>Current User ID:</b> <code>{current_user_id}</code>
+📛 <b>Username:</b> @{current_username}
+� <b>Name:</b> {current_first_name}
+{group_info}
+
 📊 <b>Symbol:</b> {symbol}
+🔗 <b>Deep Link User ID:</b> <code>{source_user_id}</code>
+� <b>Deep Link Group ID:</b> <code>{source_chat_id}</code>
 🕒 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 <i>User clicked chart button in group and opened bot in private chat.</i>
