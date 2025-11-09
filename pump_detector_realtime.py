@@ -48,9 +48,10 @@ class RealtimePumpDetector:
         self.watchlist = watchlist_manager
         
         # Scan intervals for each layer
-        self.layer1_interval = 180  # 3 minutes (5m detection)
-        self.layer2_interval = 600  # 10 minutes (1h/4h confirmation)
-        self.layer3_interval = 900  # 15 minutes (1D trend)
+        self.layer1_interval = 60   # 1 minute (5m detection) - FAST
+        self.layer2_interval = 180  # 3 minutes (1h/4h confirmation)
+        self.layer3_interval = 300  # 5 minutes (1D trend)
+        self.quick_scan_interval = 30  # 30 seconds for top volume coins
         
         # Detection thresholds
         self.volume_spike_threshold = 3.0  # 3x average volume
@@ -58,6 +59,10 @@ class RealtimePumpDetector:
         self.buy_ratio_threshold = 0.70    # 70% buy orders
         self.price_momentum_threshold = 2.0  # 2% price increase in 5m
         self.rsi_momentum_threshold = 10   # RSI increase > 10 in 15m
+        
+        # Quick scan settings
+        self.quick_scan_enabled = True  # Enable ultra-fast detection
+        self.quick_scan_top_n = 50  # Scan top 50 volume coins every 30s
         
         # Accuracy settings (90% target)
         self.layer1_threshold = 60  # 60% score to trigger Layer 1
@@ -69,15 +74,22 @@ class RealtimePumpDetector:
         self.max_watchlist_size = 20   # Max coins to keep in watchlist
         
         # Alert cooldown (prevent spam)
-        self.alert_cooldown = 1800  # 30 minutes
+        self.alert_cooldown = 600  # 10 minutes (reduced from 30)
+        self.instant_alert_threshold = 90  # Score >= 90% bypasses cooldown
         self.last_alerts = {}  # {symbol: timestamp}
         
         # Tracking
         self.running = False
         self.thread = None
         self.detected_pumps = {}  # {symbol: detection_data}
+        self.top_volume_cache = []  # Cache for top volume coins
+        self.top_volume_cache_time = 0  # Last update time
         
-        logger.info(f"Realtime pump detector initialized (Layer1: {self.layer1_interval}s, Layer2: {self.layer2_interval}s, Layer3: {self.layer3_interval}s)")
+        logger.info(f"Realtime pump detector initialized")
+        logger.info(f"  • Layer1: {self.layer1_interval}s (full scan)")
+        logger.info(f"  • Layer2: {self.layer2_interval}s (confirmation)")
+        logger.info(f"  • Layer3: {self.layer3_interval}s (long-term)")
+        logger.info(f"  • Quick Scan: {self.quick_scan_interval}s (top {self.quick_scan_top_n} coins)")
     
     def start(self):
         """Start real-time pump monitoring"""
@@ -104,9 +116,10 @@ class RealtimePumpDetector:
         return True
     
     def _monitor_loop(self):
-        """Main monitoring loop"""
+        """Main monitoring loop with quick scan"""
         logger.info("Pump detector monitoring loop started")
         
+        last_quick_scan = 0
         last_layer1_scan = 0
         last_layer2_scan = 0
         last_layer3_scan = 0
@@ -115,32 +128,93 @@ class RealtimePumpDetector:
             try:
                 current_time = time.time()
                 
-                # Layer 1: Fast detection (every 3 minutes)
+                # QUICK SCAN: Ultra-fast detection for top volume coins (every 30s)
+                if self.quick_scan_enabled and current_time - last_quick_scan >= self.quick_scan_interval:
+                    logger.info("⚡ Quick Scan: Checking top volume coins (30s)...")
+                    self._quick_scan_top_volume()
+                    last_quick_scan = current_time
+                
+                # Layer 1: Fast detection (every 1 minute)
                 if current_time - last_layer1_scan >= self.layer1_interval:
                     logger.info("🔍 Layer 1: Scanning for early pump signals (5m)...")
                     self._scan_layer1()
                     last_layer1_scan = current_time
                 
-                # Layer 2: Confirmation (every 10 minutes)
+                # Layer 2: Confirmation (every 3 minutes)
                 if current_time - last_layer2_scan >= self.layer2_interval:
                     logger.info("🔍 Layer 2: Confirming pump signals (1h/4h)...")
                     self._scan_layer2()
                     last_layer2_scan = current_time
                 
-                # Layer 3: Long-term trend (every 15 minutes)
+                # Layer 3: Long-term trend (every 5 minutes)
                 if current_time - last_layer3_scan >= self.layer3_interval:
                     logger.info("🔍 Layer 3: Analyzing long-term trends (1D)...")
                     self._scan_layer3()
                     last_layer3_scan = current_time
                 
-                # Sleep 30 seconds between checks
-                time.sleep(30)
+                # Sleep 10 seconds between checks (reduced from 30)
+                time.sleep(10)
                 
             except Exception as e:
                 logger.error(f"Error in pump detector loop: {e}", exc_info=True)
                 time.sleep(60)
         
         logger.info("Pump detector monitoring loop stopped")
+    
+    def _quick_scan_top_volume(self):
+        """
+        Quick scan for top volume coins (ultra-fast pump detection)
+        Scans top 50 coins by 24h volume every 30 seconds
+        """
+        try:
+            current_time = time.time()
+            
+            # Update top volume cache every 5 minutes
+            if current_time - self.top_volume_cache_time > 300 or not self.top_volume_cache:
+                # Get all 24h tickers
+                tickers = self.binance.get_all_tickers()
+                if not tickers:
+                    return
+                
+                # Sort by volume and get top N
+                sorted_tickers = sorted(tickers, key=lambda x: x.get('volume', 0), reverse=True)
+                self.top_volume_cache = [t['symbol'] for t in sorted_tickers[:self.quick_scan_top_n]]
+                self.top_volume_cache_time = current_time
+                logger.info(f"Updated top volume cache: {len(self.top_volume_cache)} coins")
+            
+            # Quick scan cached top volume coins
+            detected = []
+            with ThreadPoolExecutor(max_workers=30) as executor:
+                futures = {executor.submit(self._analyze_layer1, symbol): symbol 
+                          for symbol in self.top_volume_cache}
+                
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        if result and result.get('pump_score', 0) >= self.layer1_threshold:
+                            detected.append(result)
+                    except Exception as e:
+                        logger.debug(f"Quick scan error: {e}")
+            
+            # Store detections
+            for detection in detected:
+                symbol = detection['symbol']
+                # Only add if not already detected or update if score is higher
+                if symbol not in self.detected_pumps or \
+                   detection['pump_score'] > self.detected_pumps[symbol]['layer1']['pump_score']:
+                    self.detected_pumps[symbol] = {
+                        'layer1': detection,
+                        'layer1_time': time.time(),
+                        'layer2': None,
+                        'layer3': None,
+                        'quick_scan': True  # Mark as quick scan detection
+                    }
+            
+            if detected:
+                logger.info(f"⚡ Quick Scan: Found {len(detected)} potential pumps (top volume)")
+                
+        except Exception as e:
+            logger.error(f"Error in quick scan: {e}", exc_info=True)
     
     def _scan_layer1(self):
         """
@@ -156,9 +230,9 @@ class RealtimePumpDetector:
             
             logger.info(f"Layer 1: Scanning {len(symbols)} coins...")
             
-            # Parallel scanning
+            # Parallel scanning with MORE workers for faster detection
             detected = []
-            with ThreadPoolExecutor(max_workers=10) as executor:
+            with ThreadPoolExecutor(max_workers=30) as executor:  # Increased from 10 to 30
                 futures = {executor.submit(self._analyze_layer1, symbol): symbol for symbol in symbols}
                 
                 for future in as_completed(futures):
@@ -480,14 +554,27 @@ class RealtimePumpDetector:
                     combined_score = self._calculate_final_score(data)
                     
                     if combined_score >= self.final_threshold:
-                        # Check cooldown
-                        if self._check_cooldown(symbol):
+                        # INSTANT ALERT for extremely strong pumps (bypass cooldown)
+                        if combined_score >= self.instant_alert_threshold:
                             final_alerts.append({
                                 'symbol': symbol,
                                 'combined_score': combined_score,
-                                'data': data
+                                'data': data,
+                                'instant': True
                             })
                             self.last_alerts[symbol] = time.time()
+                            logger.warning(f"⚡ INSTANT ALERT: {symbol} score={combined_score:.0f}% (bypassed cooldown)")
+                        # Regular alert with cooldown check
+                        elif self._check_cooldown(symbol):
+                            final_alerts.append({
+                                'symbol': symbol,
+                                'combined_score': combined_score,
+                                'data': data,
+                                'instant': False
+                            })
+                            self.last_alerts[symbol] = time.time()
+                        else:
+                            logger.info(f"⏸️ {symbol} in cooldown (score={combined_score:.0f}%)")
             
             # Send alerts
             for alert in final_alerts:
@@ -621,7 +708,11 @@ class RealtimePumpDetector:
         return final_score
     
     def _check_cooldown(self, symbol: str) -> bool:
-        """Check if symbol is in cooldown period"""
+        """
+        Check if symbol is in cooldown period
+        
+        Returns True if can alert, False if in cooldown
+        """
         if symbol not in self.last_alerts:
             return True
         
@@ -643,9 +734,15 @@ class RealtimePumpDetector:
             layer1 = data['layer1']
             layer2 = data['layer2']
             layer3 = data['layer3']
+            is_instant = alert_data.get('instant', False)
             
-            # Build Vietnamese message
-            msg = f"<b>🚀 PHÁT HIỆN PUMP - ĐỘ CHÍNH XÁC CAO</b>\n\n"
+            # Build Vietnamese message with INSTANT indicator
+            if is_instant:
+                msg = f"<b>⚡⚡⚡ PHÁT HIỆN PUMP CỰC MẠNH ⚡⚡⚡</b>\n"
+                msg += f"<b>🚨 INSTANT ALERT - KHÔNG CHỜ COOLDOWN</b>\n\n"
+            else:
+                msg = f"<b>🚀 PHÁT HIỆN PUMP - ĐỘ CHÍNH XÁC CAO</b>\n\n"
+            
             msg += f"<b>💎 {symbol}</b>\n"
             msg += f"<b>📊 Điểm tổng hợp: {score:.0f}%</b>\n\n"
             
