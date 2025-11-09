@@ -478,32 +478,6 @@
         <button class="tf-btn" data-tf="1d">1D</button>
     </div>
     
-    <!-- OHLCV Legend (Phase 2) -->
-    <div id="ohlcv-legend">
-        <div class="legend-symbol" id="legend-symbol">BTCUSDT</div>
-        <div class="legend-ohlcv">
-            <div class="legend-item">
-                <span class="legend-label">O</span>
-                <span class="legend-value" id="legend-open">--</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-label">H</span>
-                <span class="legend-value" id="legend-high">--</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-label">L</span>
-                <span class="legend-value" id="legend-low">--</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-label">C</span>
-                <span class="legend-value" id="legend-close">--</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-change" id="legend-change">--</span>
-            </div>
-        </div>
-    </div>
-    
     <div id="indicators">
         <div class="indicator-section">
             <div class="indicator-title">Technical Indicators</div>
@@ -537,8 +511,27 @@
     
     <div id="ai-analysis">
         <div id="ai-loading">
-            <div style="font-size: 16px; margin-bottom: 10px;">🤖 AI Analysis</div>
-            <div style="color: #555;">Click "AI Analysis" button in chat to load AI insights</div>
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #2962FF;">🤖 AI Analysis</div>
+            <button id="ai-analyze-btn" style="
+                background: linear-gradient(135deg, #2962FF 0%, #1E88E5 100%);
+                color: white;
+                border: none;
+                padding: 14px 32px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                box-shadow: 0 4px 12px rgba(41, 98, 255, 0.3);
+                transition: all 0.3s ease;
+                width: 100%;
+                max-width: 300px;
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(41, 98, 255, 0.4)'" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(41, 98, 255, 0.3)'">
+                🧠 Analyze with Gemini AI
+            </button>
+            <div style="color: #787B86; margin-top: 20px; font-size: 14px; line-height: 1.6;">
+                Get comprehensive market analysis powered by Gemini 2.0 Flash
+            </div>
         </div>
         <div id="ai-content"></div>
     </div>
@@ -587,7 +580,6 @@
         const indicatorsPanel = document.getElementById('indicators');
         const aiAnalysisPanel = document.getElementById('ai-analysis');
         const chartContainer = document.getElementById('chartContainer');
-        const ohlcvLegend = document.getElementById('ohlcv-legend');
         
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -601,7 +593,6 @@
                 indicatorsPanel.classList.remove('active');
                 aiAnalysisPanel.classList.remove('active');
                 chartContainer.style.display = 'none';
-                ohlcvLegend.style.display = 'none';
                 
                 if (tab === 'indicators') {
                     indicatorsPanel.classList.add('active');
@@ -609,7 +600,6 @@
                     aiAnalysisPanel.classList.add('active');
                 } else {
                     chartContainer.style.display = 'block';
-                    ohlcvLegend.style.display = 'block';
                 }
                 
                 // Haptic feedback
@@ -638,6 +628,60 @@
             } catch (e) {
                 console.error('Failed to load AI analysis:', e);
             }
+        }
+        
+        // AI Analyze button click handler
+        const aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
+        if (aiAnalyzeBtn) {
+            aiAnalyzeBtn.addEventListener('click', () => {
+                // Show loading state
+                aiAnalyzeBtn.disabled = true;
+                aiAnalyzeBtn.innerHTML = '⏳ Analyzing...';
+                aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
+                
+                // Send message back to Telegram bot to trigger AI analysis
+                const message = `Requesting AI analysis for ${symbol}`;
+                console.log(message);
+                
+                // Try to trigger bot command via Telegram WebApp
+                if (tg && tg.sendData) {
+                    tg.sendData(JSON.stringify({
+                        action: 'ai_analyze',
+                        symbol: symbol,
+                        timeframe: currentTimeframe
+                    }));
+                }
+                
+                // Haptic feedback
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('medium');
+                }
+                
+                // Show instruction to user
+                const aiLoadingEl = document.getElementById('ai-loading');
+                if (aiLoadingEl) {
+                    aiLoadingEl.innerHTML = `
+                        <div style="text-align: center; color: #2962FF;">
+                            <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">🤖 AI Analysis Requested</div>
+                            <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
+                                Please go back to chat and click the<br>
+                                <strong>"AI Analysis"</strong> button in the message<br>
+                                to view the full analysis.
+                            </div>
+                            <button onclick="window.Telegram.WebApp.close()" style="
+                                margin-top: 20px;
+                                background: #2962FF;
+                                color: white;
+                                border: none;
+                                padding: 10px 24px;
+                                border-radius: 6px;
+                                font-size: 14px;
+                                cursor: pointer;
+                            ">Back to Chat</button>
+                        </div>
+                    `;
+                }
+            });
         }
         
         // Chart instance
@@ -774,69 +818,26 @@
         }
         
         // ============================================================
-        // OHLCV LEGEND HELPERS (Phase 2: OHLCV Display)
+        // PRICE CHANGE UPDATER (Simplified - no OHLCV legend)
         // ============================================================
         
         /**
-         * Update OHLCV legend with bar data
+         * Update price change in header
          * @param {object} bar - Bar data {open, high, low, close}
          */
-        function updateOHLCVLegend(bar) {
+        function updatePriceChange(bar) {
             if (!bar) return;
             
-            const legend = document.getElementById('ohlcv-legend');
-            const symbolEl = document.getElementById('legend-symbol');
-            const openEl = document.getElementById('legend-open');
-            const highEl = document.getElementById('legend-high');
-            const lowEl = document.getElementById('legend-low');
-            const closeEl = document.getElementById('legend-close');
-            const changeEl = document.getElementById('legend-change');
             const priceChangeEl = document.getElementById('price-change');
-            
-            if (!legend || !symbolEl || !openEl || !highEl || !lowEl || !closeEl || !changeEl) {
-                console.error('OHLCV legend elements not found');
-                return;
-            }
-            
-            // Show legend
-            legend.style.display = 'block';
-            
-            // Update symbol
-            symbolEl.textContent = symbol;
-            
-            // Update OHLCV values with auto-precision
-            openEl.textContent = formatPrice(bar.open);
-            highEl.textContent = formatPrice(bar.high);
-            lowEl.textContent = formatPrice(bar.low);
-            closeEl.textContent = formatPrice(bar.close);
+            if (!priceChangeEl) return;
             
             // Calculate and display change
             const change = bar.close - bar.open;
             const changePercent = (change / bar.open) * 100;
             const changeText = `${change >= 0 ? '+' : ''}${formatPrice(Math.abs(change))} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
             
-            changeEl.textContent = changeText;
-            changeEl.className = change >= 0 ? 'legend-change positive' : 'legend-change negative';
-            
-            // Update price change in header
-            if (priceChangeEl) {
-                priceChangeEl.textContent = changeText;
-                priceChangeEl.className = change >= 0 ? 'price-up' : 'price-down';
-            }
-            
-            // Color-code close value
-            closeEl.className = change >= 0 ? 'legend-value positive' : 'legend-value negative';
-        }
-        
-        /**
-         * Hide OHLCV legend when crosshair leaves
-         */
-        function hideOHLCVLegend() {
-            const legend = document.getElementById('ohlcv-legend');
-            if (legend) {
-                // Keep legend visible with latest data instead of hiding completely
-                // legend.style.display = 'none';
-            }
+            priceChangeEl.textContent = changeText;
+            priceChangeEl.className = change >= 0 ? 'price-up' : 'price-down';
         }
         
         // ============================================================
@@ -1029,7 +1030,7 @@
                         updatePrice(data.close, data.close - data.open);
                         
                         // Update OHLCV legend (Phase 2)
-                        updateOHLCVLegend(data);
+                        updatePriceChange(data);
                     }
                 } else {
                     // Reset to latest when crosshair leaves
@@ -1037,8 +1038,7 @@
                         updateIndicatorDisplay(latestData.rsi, latestData.mfi);
                     }
                     
-                    // Hide OHLCV legend (Phase 2)
-                    hideOHLCVLegend();
+                    // No action needed when crosshair leaves
                 }
             });
             
@@ -1648,8 +1648,8 @@
                 // Update price display
                 updatePrice(data.currentPrice, data.priceChange);
                 
-                // Update OHLCV legend with latest data (Phase 2)
-                updateOHLCVLegend(newData);
+                // Update price change in header
+                updatePriceChange(newData);
                 
                 // Update indicators with dynamic display
                 updateIndicatorDisplay(data.rsi, data.mfi);
