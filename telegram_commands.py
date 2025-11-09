@@ -233,7 +233,7 @@ class TelegramCommandHandler:
             'startmarketscan', 'stopmarketscan', 'marketstatus',
             'startbotmonitor', 'stopbotmonitor', 'botmonitorstatus', 'botscan', 'botthreshold',
             'startpumpwatch', 'stoppumpwatch', 'pumpstatus', 'pumpscan',
-            'stochrsi', 'analyzer'
+            'stochrsi'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -2668,7 +2668,7 @@ class TelegramCommandHandler:
                                           [cmd.upper() for cmd in self.registered_commands] and
                                           m.text[1:].replace('USDT', '').replace('usdt', '').isalnum())
         def handle_symbol_analysis(message):
-            """Handle symbol analysis commands like /BTC, /ETH, /LINK"""
+            """Comprehensive analysis for symbol commands like /BTC, /ETH - includes PUMP + RSI/MFI + Stoch+RSI + AI Button"""
             if not check_authorized(message):
                 return
             
@@ -2682,40 +2682,44 @@ class TelegramCommandHandler:
                 else:
                     symbol = symbol_raw
                 
-                logger.info(f"Analyzing {symbol} on demand...")
+                logger.info(f"Comprehensive analysis for {symbol}...")
                 
                 # Send processing message
-                processing_msg = self.bot.send_message(f"🔍 Analyzing {symbol}...")
-                
-                # Get multi-timeframe data
-                klines_dict = self.binance.get_multi_timeframe_data(
-                    symbol,
-                    self._config.TIMEFRAMES,
-                    limit=200
+                self.bot.send_message(
+                    f"🔍 <b>COMPREHENSIVE ANALYSIS - {symbol}</b>\n\n"
+                    f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
+                    f"⏳ Vui lòng chờ 15-20 giây..."
                 )
                 
+                # === 1. PUMP/DUMP ANALYSIS ===
+                pump_result = self.pump_detector.manual_scan(symbol)
+                
+                # === 2. RSI/MFI ANALYSIS ===
+                timeframes = ['5m', '1h', '4h', '1d']
+                klines_dict = self.binance.get_multi_timeframe_data(symbol, timeframes, limit=200)
+                
                 if not klines_dict:
-                    self.bot.send_message(f"❌ No data found for {symbol}. Symbol may not exist or be delisted.")
+                    self.bot.send_message(
+                        f"❌ <b>Không thể lấy dữ liệu cho {symbol}</b>\n\n"
+                        "Symbol có thể không tồn tại hoặc không có đủ lịch sử giao dịch."
+                    )
                     return
                 
-                # Validate data types in all timeframes
+                # Validate data
                 for tf, df in klines_dict.items():
                     if df is None or len(df) < 14:
                         continue
-                    # Check for NaN values and ensure numeric types
                     if df[['high', 'low', 'close', 'volume']].isnull().any().any():
                         logger.warning(f"Skipping {symbol} {tf} - contains invalid data")
                         klines_dict[tf] = None
                 
-                # Remove None entries
                 klines_dict = {k: v for k, v in klines_dict.items() if v is not None}
                 
                 if not klines_dict:
                     self.bot.send_message(f"❌ Invalid data for {symbol}. Cannot analyze.")
                     return
                 
-                # Analyze
-                analysis = self._analyze_multi_timeframe(
+                rsi_mfi_result = self._analyze_multi_timeframe(
                     klines_dict,
                     self._config.RSI_PERIOD,
                     self._config.MFI_PERIOD,
@@ -2725,101 +2729,203 @@ class TelegramCommandHandler:
                     self._config.MFI_UPPER
                 )
                 
-                # Get price and market data
-                price = self.binance.get_current_price(symbol)
-                market_data = self.binance.get_24h_data(symbol)
-                
-                # Get volume analysis
-                volume_data = None
-                if self.volume_detector:
-                    try:
-                        main_tf = self._config.TIMEFRAMES[0] if self._config.TIMEFRAMES else '5m'
-                        if main_tf in klines_dict:
-                            volume_result = self.volume_detector.detect(klines_dict[main_tf], symbol)
-                            if volume_result:  # ✅ Always get volume data
-                                volume_data = volume_result
-                                logger.info(f"Volume analysis for {symbol}: Current={volume_result.get('current_volume', 0):.0f}, Last={volume_result.get('last_volume', 0):.0f}, Anomaly={volume_result.get('is_anomaly', False)}")
-                    except Exception as e:
-                        logger.error(f"Volume analysis failed for {symbol}: {e}")
-                
-                # Detect bot activity
-                bot_detection = None
-                try:
-                    logger.info(f"Detecting bot activity for {symbol}...")
-                    bot_detection = self.bot_detector.detect_bot_activity(symbol)
-                    if bot_detection:
-                        logger.info(f"Bot detection for {symbol}: Score={bot_detection['bot_score']}%, Likely={bot_detection['likely_bot_activity']}")
-                except Exception as e:
-                    logger.error(f"Bot detection failed for {symbol}: {e}")
-                
-                # Send analysis
-                self.bot.send_signal_alert(
-                    symbol,
-                    analysis['timeframes'],
-                    analysis['consensus'],
-                    analysis['consensus_strength'],
-                    price,
-                    market_data,
-                    volume_data
+                # === 3. STOCH+RSI ANALYSIS ===
+                stoch_rsi_result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
+                    symbol, 
+                    timeframes=['1m', '5m', '4h', '1d']
                 )
                 
-                # Send bot detection if available
-                if bot_detection:
-                    bot_msg = self.bot_detector.get_formatted_analysis(bot_detection)
-                    self.bot.send_message(bot_msg)
+                # Get price and market data
+                price = self.binance.get_current_price(symbol)
+                ticker_24h = self.binance.get_24h_data(symbol)
                 
-                # Send charts (2 separate charts)
-                if self._config.SEND_CHARTS:
-                    # Chart 1: Candlestick + Volume + RSI + MFI (single timeframe - 4h default)
-                    main_tf = '4h' if '4h' in self._config.TIMEFRAMES else self._config.TIMEFRAMES[0]
-                    
-                    if main_tf in klines_dict and main_tf in analysis['timeframes']:
-                        from indicators import calculate_rsi, calculate_mfi
-                        
-                        df = klines_dict[main_tf]
-                        tf_analysis = analysis['timeframes'][main_tf]
-                        
-                        # Calculate RSI and MFI series for the chart
-                        rsi_series = calculate_rsi(df, self._config.RSI_PERIOD)
-                        mfi_series = calculate_mfi(df, self._config.MFI_PERIOD)
-                        
-                        chart1_buf = self.chart_gen.create_rsi_mfi_chart(
-                            symbol,
-                            df,
-                            rsi_series,
-                            mfi_series,
-                            self._config.RSI_LOWER,
-                            self._config.RSI_UPPER,
-                            self._config.MFI_LOWER,
-                            self._config.MFI_UPPER,
-                            main_tf
-                        )
-                        
-                        if chart1_buf:
-                            self.bot.send_photo(
-                                chart1_buf,
-                                caption=f"📈 {symbol} - Candlestick Chart ({main_tf.upper()})\nWith RSI & MFI Indicators"
-                            )
-                    
-                    # Chart 2: Multi-timeframe candlestick charts (TradingView style)
-                    # Pass both analysis and klines_dict for candlestick plotting
-                    chart2_buf = self.chart_gen.create_multi_timeframe_chart(
-                        symbol,
-                        analysis['timeframes'],
-                        price,
-                        klines_dict  # Pass the DataFrame dict for candlestick plotting
-                    )
-                    
-                    if chart2_buf:
-                        self.bot.send_photo(
-                            chart2_buf,
-                            caption=f"📊 {symbol} - Multi-Timeframe Candlestick Charts\nAll Timeframes Overview"
-                        )
+                # === 4. BUILD COMPREHENSIVE MESSAGE ===
+                msg = f"<b>📊 COMPREHENSIVE ANALYSIS</b>\n\n"
+                msg += f"<b>💎 {symbol}</b>\n"
+                msg += f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
                 
-                logger.info(f"Analysis sent for {symbol}")
+                # Current Price
+                if ticker_24h:
+                    current_price = ticker_24h['last_price']
+                    price_change_24h = ticker_24h['price_change_percent']
+                    volume_24h = ticker_24h['volume']
+                    
+                    msg += f"<b>💰 Giá Hiện Tại:</b> ${current_price:,.8f}\n"
+                    msg += f"<b>📈 24h Change:</b> {price_change_24h:+.2f}%\n"
+                    msg += f"<b>💧 24h Volume:</b> ${volume_24h:,.0f}\n\n"
+                
+                msg += "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === PUMP/DUMP SECTION ===
+                msg += "<b>🚀 PUMP/DUMP DETECTION (3-Layer)</b>\n\n"
+                
+                if pump_result and 'final_score' in pump_result:
+                    score = pump_result['final_score']
+                    
+                    if score >= 80:
+                        status_emoji = "🔴"
+                        status_text = "PUMP CAO"
+                    elif score >= 60:
+                        status_emoji = "🟡"
+                        status_text = "PUMP VỪA"
+                    elif score >= 40:
+                        status_emoji = "🟢"
+                        status_text = "PUMP YẾU"
+                    else:
+                        status_emoji = "⚪"
+                        status_text = "KHÔNG PUMP"
+                    
+                    msg += f"{status_emoji} <b>Status:</b> {status_text}\n"
+                    msg += f"<b>🎯 Final Score:</b> {score:.0f}%\n\n"
+                    
+                    # Layer breakdown
+                    if 'layer1' in pump_result and pump_result['layer1']:
+                        layer1 = pump_result['layer1']
+                        msg += f"   ⚡ Layer 1 (5m): {layer1['pump_score']:.0f}%\n"
+                    
+                    if 'layer2' in pump_result and pump_result['layer2']:
+                        layer2 = pump_result['layer2']
+                        msg += f"   ✅ Layer 2 (1h/4h): {layer2['pump_score']:.0f}%\n"
+                    
+                    if 'layer3' in pump_result and pump_result['layer3']:
+                        layer3 = pump_result['layer3']
+                        msg += f"   📈 Layer 3 (1D): {layer3['pump_score']:.0f}%\n"
+                else:
+                    msg += "⚪ <b>Status:</b> Không có tín hiệu pump rõ ràng\n"
+                
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === RSI/MFI SECTION ===
+                msg += "<b>📊 RSI/MFI MULTI-TIMEFRAME</b>\n\n"
+                
+                if rsi_mfi_result and 'timeframes' in rsi_mfi_result:
+                    consensus = rsi_mfi_result['consensus']
+                    strength = rsi_mfi_result['consensus_strength']
+                    
+                    if consensus == 'BUY':
+                        consensus_emoji = "🟢"
+                    elif consensus == 'SELL':
+                        consensus_emoji = "🔴"
+                    else:
+                        consensus_emoji = "🟡"
+                    
+                    msg += f"{consensus_emoji} <b>Consensus:</b> {consensus} (Strength: {strength}/4)\n\n"
+                    
+                    # Timeframe breakdown
+                    for tf, data in rsi_mfi_result['timeframes'].items():
+                        signal = data['signal']
+                        rsi = data['rsi']
+                        mfi = data['mfi']
+                        
+                        signal_emoji = "🟢" if signal == 'BUY' else "🔴" if signal == 'SELL' else "🟡"
+                        
+                        msg += f"   {signal_emoji} <b>{tf}:</b> {signal}\n"
+                        msg += f"      RSI: {rsi:.1f} | MFI: {mfi:.1f}\n"
+                else:
+                    msg += "⚪ Không có dữ liệu RSI/MFI\n"
+                
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === STOCH+RSI SECTION ===
+                msg += "<b>📈 STOCH+RSI MULTI-TIMEFRAME</b>\n\n"
+                
+                if stoch_rsi_result and 'timeframes' in stoch_rsi_result:
+                    consensus = stoch_rsi_result['consensus']
+                    strength = stoch_rsi_result['consensus_strength']
+                    
+                    if consensus == 'BUY':
+                        consensus_emoji = "🟢"
+                    elif consensus == 'SELL':
+                        consensus_emoji = "🔴"
+                    else:
+                        consensus_emoji = "🟡"
+                    
+                    msg += f"{consensus_emoji} <b>Consensus:</b> {consensus} (Strength: {strength}/4)\n\n"
+                    
+                    # Timeframe breakdown
+                    for tf_data in stoch_rsi_result['timeframes']:
+                        tf = tf_data['timeframe']
+                        signal = tf_data['signal_text']
+                        rsi = tf_data['rsi']
+                        stoch_k = tf_data['stoch_k']
+                        
+                        signal_emoji = "🟢" if 'BUY' in signal else "🔴" if 'SELL' in signal else "🟡"
+                        
+                        msg += f"   {signal_emoji} <b>{tf}:</b> {signal}\n"
+                        msg += f"      RSI: {rsi:.1f} | Stoch: {stoch_k:.1f}\n"
+                else:
+                    msg += "⚪ Không có dữ liệu Stoch+RSI\n"
+                
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === TRADING RECOMMENDATION ===
+                msg += "<b>🎯 TỔNG KẾT & KHUYẾN NGHỊ</b>\n\n"
+                
+                # Calculate overall signal
+                buy_signals = 0
+                sell_signals = 0
+                total_signals = 0
+                
+                # Count RSI/MFI signals
+                if rsi_mfi_result and 'consensus' in rsi_mfi_result:
+                    total_signals += 1
+                    if rsi_mfi_result['consensus'] == 'BUY':
+                        buy_signals += 1
+                    elif rsi_mfi_result['consensus'] == 'SELL':
+                        sell_signals += 1
+                
+                # Count Stoch+RSI signals
+                if stoch_rsi_result and 'consensus' in stoch_rsi_result:
+                    total_signals += 1
+                    if stoch_rsi_result['consensus'] == 'BUY':
+                        buy_signals += 1
+                    elif stoch_rsi_result['consensus'] == 'SELL':
+                        sell_signals += 1
+                
+                # Count Pump signal
+                if pump_result and 'final_score' in pump_result:
+                    total_signals += 1
+                    if pump_result['final_score'] >= 60:
+                        buy_signals += 1
+                
+                # Overall recommendation
+                if buy_signals >= 2 and sell_signals == 0:
+                    msg += "✅ <b>KHUYẾN NGHỊ: MUA/LONG</b>\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += "   • Đa số indicators đồng thuận BUY\n"
+                elif sell_signals >= 2 and buy_signals == 0:
+                    msg += "❌ <b>KHUYẾN NGHỊ: BÁN/SHORT</b>\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Đa số indicators đồng thuận SELL\n"
+                elif buy_signals > sell_signals:
+                    msg += "🟢 <b>KHUYẾN NGHỊ: CHỜ XÁC NHẬN MUA</b>\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Theo dõi thêm trước khi vào lệnh\n"
+                elif sell_signals > buy_signals:
+                    msg += "🔴 <b>KHUYẾN NGHỊ: CHỜ XÁC NHẬN BÁN</b>\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += "   • Có xu hướng giảm, cẩn trọng\n"
+                else:
+                    msg += "🟡 <b>KHUYẾN NGHỊ: CHỜ ĐỢI</b>\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Indicators mâu thuẫn nhau\n"
+                    msg += "   • Tránh vào lệnh trong lúc này\n"
+                
+                msg += "\n⚠️ <i>Đây là phân tích kỹ thuật tự động, không phải tư vấn tài chính</i>"
+                
+                # Create AI Analysis button
+                ai_keyboard = self.bot.create_ai_analysis_keyboard(symbol)
+                
+                # Send comprehensive analysis
+                self.bot.send_message(msg, reply_markup=ai_keyboard)
+                
+                logger.info(f"✅ Sent comprehensive analysis for {symbol}")
                 
             except Exception as e:
-                logger.error(f"Error analyzing symbol: {e}")
+                logger.error(f"Error analyzing symbol: {e}", exc_info=True)
                 self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
         
         logger.info("All command handlers registered")

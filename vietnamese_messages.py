@@ -12,27 +12,26 @@ HELP_MESSAGE = """
 <b>🎛️ MENU TƯƠNG TÁC:</b>
 /menu - Mở menu nút bấm (khuyên dùng!)
 
-<b>📊 PHÂN TÍCH COIN:</b>
-/<b>SYMBOL</b> - Phân tích bất kỳ coin nào
+<b>📊 PHÂN TÍCH TOÀN DIỆN:</b>
+/<b>SYMBOL</b> - Phân tích TẤT CẢ indicators
 Ví dụ: /BTC /ETH /LINK
+
+<b>Bao gồm:</b>
+   ✅ PUMP/DUMP Detection (3 layers)
+   ✅ RSI/MFI Multi-timeframe
+   ✅ Stoch+RSI Multi-timeframe
+   ✅ Trading Recommendation
+   🤖 AI Analysis Button
 
 <b>🔍 THÔNG TIN THỊ TRƯỜNG:</b>
 /price <b>SYMBOL</b> - Giá hiện tại
 /24h <b>SYMBOL</b> - Dữ liệu 24h
 /top - Top 10 coin khối lượng cao
 
-<b>📈 PHÂN TÍCH KỸ THUẬT:</b>
+<b>📈 PHÂN TÍCH RIÊNG LẺ:</b>
 /rsi <b>SYMBOL</b> - Chỉ RSI
 /mfi <b>SYMBOL</b> - Chỉ MFI
 /chart <b>SYMBOL</b> - Xem biểu đồ
-
-<b>🎯 PHÂN TÍCH TOÀN DIỆN:</b>
-/analyzer <b>SYMBOL</b> - Phân tích TẤT CẢ indicators
-   • PUMP/DUMP Detection (3 layers)
-   • RSI/MFI Multi-timeframe
-   • Stoch+RSI Multi-timeframe
-   • Volume Analysis
-   • 🤖 AI Analysis Button
 
 <b>🚀 PUMP & DUMP:</b>
 /pumpscan <b>SYMBOL</b> - Quét pump 3 layers
@@ -81,7 +80,7 @@ Ví dụ: /BTC /ETH /LINK
 /help - Hiện tin nhắn này
 /about - Về bot
 
-<i>💡 Mẹo: Dùng /menu để có nút bấm dễ dàng! 🎯</i>
+<i>💡 Mẹo: Dùng /BTC để có phân tích toàn diện + AI! 🎯</i>
 """
 
 ABOUT_MESSAGE = """
