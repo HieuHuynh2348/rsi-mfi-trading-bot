@@ -909,28 +909,51 @@ class TelegramCommandHandler:
                         # Format into 3 messages
                         msg1, msg2, msg3 = self.gemini_analyzer.format_response(result)
                         
-                        # Send 3 messages sequentially
-                        self.telegram_bot.send_message(
-                            chat_id=call.message.chat.id,
-                            text=msg1,
-                            parse_mode='HTML'
-                        )
+                        # Helper function to split and send long messages
+                        def send_message_parts(chat_id, message, parse_mode='HTML'):
+                            """Split long message and send all parts"""
+                            max_length = 4000
+                            if len(message) <= max_length:
+                                self.telegram_bot.send_message(
+                                    chat_id=chat_id,
+                                    text=message,
+                                    parse_mode=parse_mode
+                                )
+                            else:
+                                # Split message into parts
+                                parts = []
+                                current_part = ""
+                                lines = message.split('\n')
+                                
+                                for line in lines:
+                                    if len(current_part) + len(line) + 1 > max_length:
+                                        if current_part:
+                                            parts.append(current_part.rstrip())
+                                            current_part = ""
+                                    current_part += line + '\n'
+                                
+                                if current_part:
+                                    parts.append(current_part.rstrip())
+                                
+                                # Send all parts
+                                for i, part in enumerate(parts):
+                                    if i > 0:  # Add continuation indicator for parts after first
+                                        part = f"<i>...tiếp theo...</i>\n\n{part}"
+                                    self.telegram_bot.send_message(
+                                        chat_id=chat_id,
+                                        text=part,
+                                        parse_mode=parse_mode
+                                    )
+                                    time.sleep(0.5)  # Small delay between parts
                         
-                        time.sleep(1)  # Small delay between messages
-                        
-                        self.telegram_bot.send_message(
-                            chat_id=call.message.chat.id,
-                            text=msg2,
-                            parse_mode='HTML'
-                        )
-                        
+                        # Send all messages (with auto-splitting if needed)
+                        send_message_parts(call.message.chat.id, msg1)
                         time.sleep(1)
                         
-                        self.telegram_bot.send_message(
-                            chat_id=call.message.chat.id,
-                            text=msg3,
-                            parse_mode='HTML'
-                        )
+                        send_message_parts(call.message.chat.id, msg2)
+                        time.sleep(1)
+                        
+                        send_message_parts(call.message.chat.id, msg3)
                         
                         logger.info(f"✅ Sent AI analysis for {symbol} to user")
                         

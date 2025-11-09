@@ -1263,21 +1263,38 @@ Return ONLY valid JSON, no markdown formatting.
         Returns:
             Tuple of (summary_msg, technical_msg, reasoning_msg)
         """
-        def truncate_message(msg: str, max_length: int = 4000) -> str:
-            """Truncate message if too long, keeping formatting intact"""
+        def split_long_message(msg: str, max_length: int = 4000) -> list:
+            """
+            Split message into multiple parts if too long, keeping formatting intact
+            
+            Args:
+                msg: Message to split
+                max_length: Maximum length per message part
+                
+            Returns:
+                List of message parts
+            """
             if len(msg) <= max_length:
-                return msg
+                return [msg]
             
-            # Find last complete line before max_length
-            truncated = msg[:max_length]
-            last_newline = truncated.rfind('\n')
-            if last_newline > 0:
-                truncated = truncated[:last_newline]
+            parts = []
+            current_part = ""
+            lines = msg.split('\n')
             
-            # Add truncation notice
-            truncated += "\n\n⚠️ <i>(Nội dung đã được rút gọn do quá dài)</i>\n"
-            truncated += "═══════════════════════════════════"
-            return truncated
+            for line in lines:
+                # If adding this line would exceed limit, save current part and start new one
+                if len(current_part) + len(line) + 1 > max_length:
+                    if current_part:
+                        parts.append(current_part.rstrip())
+                        current_part = ""
+                
+                current_part += line + '\n'
+            
+            # Add last part
+            if current_part:
+                parts.append(current_part.rstrip())
+            
+            return parts
         
         try:
             symbol = analysis['symbol']
@@ -1423,10 +1440,9 @@ Return ONLY valid JSON, no markdown formatting.
             reasoning += "Luôn DYOR (Do Your Own Research) trước khi đầu tư.</i>\n"
             reasoning += "═══════════════════════════════════"
             
-            # Truncate messages if they exceed Telegram limit (4096 chars)
-            summary = truncate_message(summary, 4000)
-            tech = truncate_message(tech, 4000)
-            reasoning = truncate_message(reasoning, 4000)
+            # Return as-is, splitting will be handled by caller if needed
+            # Store split_long_message function for external use
+            self._split_message = split_long_message
             
             return summary, tech, reasoning
             
