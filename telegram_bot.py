@@ -421,6 +421,43 @@ class TelegramBot:
         
         return keyboard
     
+    def create_group_chart_keyboard(self, symbol):
+        """
+        Create keyboard for group chat with t.me link to open Live Chart in private
+        
+        Args:
+            symbol: Trading symbol (e.g., BTCUSDT)
+        """
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Get bot username for t.me link
+        bot_username = self._get_bot_username()
+        if bot_username:
+            # Create t.me link to open bot in private and show Live Chart
+            # Format: chart:SYMBOL (simple format for deep linking)
+            data_string = f"chart:{symbol}"
+            encoded = base64.urlsafe_b64encode(data_string.encode()).decode().rstrip('=')
+            bot_link = f"https://t.me/{bot_username}?start={encoded}"
+            
+            logger.info(f"🔗 Creating group chart link - Symbol: {symbol}, Encoded: {encoded}")
+            
+            # Button to open Live Chart in private chat
+            keyboard.row(
+                types.InlineKeyboardButton(
+                    "📊 Xem Live Chart", 
+                    url=bot_link
+                )
+            )
+        
+        # TradingView fallback buttons (always work in groups)
+        from chart_generator import get_tradingview_chart_url
+        keyboard.row(
+            types.InlineKeyboardButton("📈 TradingView 1H", url=get_tradingview_chart_url(symbol, '60')),
+            types.InlineKeyboardButton("📈 TradingView 4H", url=get_tradingview_chart_url(symbol, '240'))
+        )
+        
+        return keyboard
+    
     def create_monitor_keyboard(self):
         """Create monitor control keyboard"""
         keyboard = types.InlineKeyboardMarkup(row_width=2)
@@ -706,12 +743,15 @@ class TelegramBot:
             # Check if it's the group chat
             is_group = str(target_chat_id) == str(config.GROUP_CHAT_ID) if hasattr(config, 'GROUP_CHAT_ID') else False
             
-            # Add buttons only for private chat
+            # Create keyboard based on chat type
             keyboard = None
             if not is_group:
+                # Private chat: Full buttons with WebApp
                 keyboard = self.create_symbol_analysis_keyboard(symbol)
             else:
-                logger.info(f"📢 Sending to group {target_chat_id} - Skipping Live Chart button")
+                # Group chat: Add button to open Live Chart in private chat with bot
+                keyboard = self.create_group_chart_keyboard(symbol)
+                logger.info(f"📢 Sending to group {target_chat_id} - Using group keyboard with t.me link")
             
             logger.info(f"✅ Đang gửi cảnh báo tín hiệu cho {symbol}")
             result = self.send_message(message, reply_markup=keyboard, chat_id=target_chat_id)
