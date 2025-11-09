@@ -227,24 +227,48 @@ class TelegramBot:
         return keyboard
     
     def create_ai_analysis_keyboard(self, symbol):
-        """Create AI analysis button for a coin"""
-        keyboard = types.InlineKeyboardMarkup(row_width=1)
-        
-        keyboard.row(
-            types.InlineKeyboardButton(f"🤖 Phân Tích AI - {symbol}", callback_data=f"ai_analyze_{symbol}")
-        )
-        
-        return keyboard
-    
-    def create_symbol_analysis_keyboard(self, symbol):
-        """Create keyboard with AI analysis and Chart buttons"""
+        """Create AI analysis and Live Chart buttons"""
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
-        # Add both AI and Chart buttons in one row
+        # Row 1: AI Analysis and Chart buttons
         keyboard.row(
             types.InlineKeyboardButton(f"🤖 AI Phân Tích", callback_data=f"ai_analyze_{symbol}"),
             types.InlineKeyboardButton(f"📊 Chart", callback_data=f"chart_{symbol}")
         )
+        
+        # Row 2: Live Chart (WebApp) if available
+        webapp_url = config.WEBAPP_URL if hasattr(config, 'WEBAPP_URL') and config.WEBAPP_URL else None
+        if webapp_url:
+            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+            keyboard.row(
+                types.InlineKeyboardButton(
+                    "📊 Live Chart (in Telegram)", 
+                    web_app=types.WebAppInfo(url=chart_webapp_url)
+                )
+            )
+        
+        return keyboard
+    
+    def create_symbol_analysis_keyboard(self, symbol):
+        """Create keyboard with AI analysis, Chart and Live Chart buttons"""
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Row 1: AI and Chart buttons
+        keyboard.row(
+            types.InlineKeyboardButton(f"🤖 AI Phân Tích", callback_data=f"ai_analyze_{symbol}"),
+            types.InlineKeyboardButton(f"📊 Chart", callback_data=f"chart_{symbol}")
+        )
+        
+        # Row 2: Live Chart (WebApp) if available
+        webapp_url = config.WEBAPP_URL if hasattr(config, 'WEBAPP_URL') and config.WEBAPP_URL else None
+        if webapp_url:
+            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+            keyboard.row(
+                types.InlineKeyboardButton(
+                    "📊 Live Chart (in Telegram)", 
+                    web_app=types.WebAppInfo(url=chart_webapp_url)
+                )
+            )
         
         return keyboard
     
