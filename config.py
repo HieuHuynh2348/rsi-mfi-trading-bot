@@ -14,9 +14,9 @@ BINANCE_API_SECRET = os.getenv("BINANCE_API_SECRET")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# WebApp URL for live charts - HOSTED ON GITHUB PAGES (External Resource)
-# GitHub Pages is separate from Railway - no conflicts!
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://hieuhhuynh2348.github.io/rsi-mfi-trading-bot/webapp/chart.html")
+# WebApp URL for live charts - HOSTED ON RAILWAY
+# Railway serves both bot and webapp on same domain - use different routes
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://rsi-mfi-trading-bot-production.up.railway.app/webapp/chart.html")
 
 # ============================================================================
 # TRADING PARAMETERS
