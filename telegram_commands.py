@@ -3209,6 +3209,103 @@ class TelegramCommandHandler:
                 logger.error(f"Error analyzing symbol: {e}", exc_info=True)
                 self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
         
+        # WebApp data handler - receives data from chart webapp
+        @self.telegram_bot.message_handler(content_types=['web_app_data'])
+        def handle_webapp_data(message):
+            """
+            Handle data sent from WebApp
+            WebApp sends: ai_{symbol}_{timeframe}
+            """
+            try:
+                # Get data from webapp
+                webapp_data = message.web_app_data.data
+                logger.info(f"📱 WebApp data received: {webapp_data}")
+                
+                # Parse data: ai_BTCUSDT_1h
+                if webapp_data.startswith('ai_'):
+                    parts = webapp_data.split('_')
+                    if len(parts) >= 2:
+                        symbol = parts[1]
+                        timeframe = parts[2] if len(parts) > 2 else '1h'
+                        
+                        logger.info(f"🤖 Processing AI analysis request from WebApp: {symbol} @ {timeframe}")
+                        
+                        # Send processing message
+                        processing_msg = self.bot.send_message(
+                            f"🤖 <b>Analyzing {symbol}...</b>\n\n"
+                            f"⏳ Please wait 10-20 seconds for Gemini AI analysis..."
+                        )
+                        
+                        # Perform AI analysis
+                        try:
+                            result = self.gemini_analyzer.analyze(
+                                symbol=symbol,
+                                pump_data=None,
+                                trading_style='swing',
+                                use_cache=True
+                            )
+                            
+                            if result:
+                                # Delete processing message
+                                try:
+                                    self.telegram_bot.delete_message(
+                                        chat_id=message.chat.id,
+                                        message_id=processing_msg.message_id
+                                    )
+                                except:
+                                    pass
+                                
+                                # Format and send AI analysis
+                                from format_analysis import format_gemini_analysis
+                                analysis_msg = format_gemini_analysis(symbol, result)
+                                
+                                # Create keyboard for webapp
+                                keyboard = types.InlineKeyboardMarkup()
+                                chart_webapp_url = f"https://hieuhhuynh2348.github.io/rsi-mfi-trading-bot/webapp/chart.html?symbol={symbol}&timeframe={timeframe}"
+                                keyboard.row(
+                                    types.InlineKeyboardButton(
+                                        text=f"📊 View {symbol} Chart",
+                                        web_app=types.WebAppInfo(url=chart_webapp_url)
+                                    )
+                                )
+                                
+                                # Send analysis to chat
+                                self.bot.send_message(analysis_msg, reply_markup=keyboard)
+                                
+                                # Also send result back to WebApp using answerWebAppQuery
+                                # This will display in the webapp's AI Analysis tab
+                                try:
+                                    import json
+                                    # Telegram WebApp will receive this via window.Telegram.WebApp.onEvent('web_app_data_sent')
+                                    self.telegram_bot.answer_web_app_query(
+                                        web_app_query_id=message.web_app_data.button_text if hasattr(message.web_app_data, 'button_text') else None,
+                                        result=types.InlineQueryResultArticle(
+                                            id='1',
+                                            title=f'{symbol} AI Analysis',
+                                            input_message_content=types.InputTextMessageContent(
+                                                message_text=json.dumps({
+                                                    'success': True,
+                                                    'symbol': symbol,
+                                                    'analysis': result
+                                                })
+                                            )
+                                        )
+                                    )
+                                except Exception as e:
+                                    logger.error(f"Could not send to WebApp: {e}")
+                                
+                                logger.info(f"✅ AI analysis completed and sent for {symbol}")
+                            else:
+                                self.bot.send_message(f"❌ AI analysis failed for {symbol}")
+                                
+                        except Exception as e:
+                            logger.error(f"❌ AI analysis error: {e}")
+                            self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
+                    
+            except Exception as e:
+                logger.error(f"Error handling webapp data: {e}")
+                self.bot.send_message(f"❌ Error processing request: {str(e)}")
+        
         logger.info("All command handlers registered")
     
     def start_polling(self):
@@ -3231,7 +3328,7 @@ class TelegramCommandHandler:
                     timeout=30,  # Increased timeout
                     long_polling_timeout=20,  # Increased long polling
                     skip_pending=True,  # Skip old messages on restart
-                    allowed_updates=['message', 'callback_query']  # Only handle relevant updates
+                    allowed_updates=['message', 'callback_query', 'web_app_data']  # Handle webapp data
                 )
                 break  # If successful, exit loop
                 

@@ -447,6 +447,22 @@
             text-align: center;
             max-width: 80%;
         }
+        
+        /* Loading spinner */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2962FF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -663,41 +679,57 @@
                 }
                 
                 try {
-                    // Send command to bot - bot will send AI analysis to Telegram chat
-                    const command = `/${symbol.toLowerCase()}`;
+                    // Send data to bot via WebApp API
+                    const webappData = `ai_${symbol}_${currentTimeframe}`;
                     
-                    // Show success message
+                    // Show waiting message
                     if (aiLoadingEl) {
                         aiLoadingEl.innerHTML = `
-                            <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
-                                <div style="font-size: 72px; margin-bottom: 24px;">✅</div>
-                                <div style="font-size: 22px; font-weight: 700; margin-bottom: 20px; color: #131722;">
-                                    Request Sent!
+                            <div style="text-align: center; color: #2962FF; padding: 32px 24px;">
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">🤖 Analyzing with Gemini AI...</div>
+                                <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
+                                    📊 Collecting market data<br>
+                                    🧠 Processing indicators<br>
+                                    🔮 Generating insights<br><br>
+                                    <strong>Waiting for response... (10-20 seconds)</strong>
                                 </div>
-                                <div style="color: #787B86; font-size: 16px; line-height: 1.8; max-width: 340px; margin: 0 auto;">
-                                    Your <strong>Gemini AI analysis</strong> request for <strong style="color: #2962FF;">${symbol}</strong> has been sent to the bot.
-                                    <br><br>
-                                    The bot will send you the complete analysis in your <strong>Telegram chat</strong> within <strong style="color: #26A69A;">10-20 seconds</strong>.
-                                    <br><br>
-                                    <div style="background: #F0F3FA; padding: 16px; border-radius: 8px; margin-top: 20px;">
-                                        📱 <em>You can close this window and check your Telegram messages for the results.</em>
-                                    </div>
+                                <div style="margin-top: 24px;">
+                                    <div class="loading-spinner"></div>
                                 </div>
                             </div>
                         `;
                     }
                     
-                    // Reset button after 3 seconds
-                    setTimeout(() => {
-                        aiAnalyzeBtn.disabled = false;
-                        aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
-                        aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
-                    }, 3000);
+                    // Listen for response from bot
+                    let responseReceived = false;
+                    const responseTimeout = setTimeout(() => {
+                        if (!responseReceived && aiLoadingEl) {
+                            aiLoadingEl.innerHTML = `
+                                <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
+                                    <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+                                    <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #131722;">
+                                        Analysis Sent to Chat!
+                                    </div>
+                                    <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
+                                        Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> has been sent to your Telegram chat.
+                                        <br><br>
+                                        📱 <em>Check your messages to see the complete analysis.</em>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Reset button
+                            setTimeout(() => {
+                                aiAnalyzeBtn.disabled = false;
+                                aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
+                                aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
+                            }, 2000);
+                        }
+                    }, 30000); // 30 second timeout
                     
-                    // Send command via Telegram
-                    setTimeout(() => {
-                        tg.sendData(command);
-                    }, 1500);
+                    // Send data to bot
+                    tg.sendData(webappData);
+                    console.log(`📤 Sent to bot: ${webappData}`);
                     
                     // Success haptic
                     if (tg.HapticFeedback) {
