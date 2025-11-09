@@ -811,26 +811,34 @@ class TelegramCommandHandler:
                         )
                         
                         # Get klines data for chart
+                        logger.info(f"Fetching klines data for {symbol} chart...")
                         klines = self.binance.get_klines(symbol, '1h', limit=100)
                         
                         if klines is None or klines.empty or len(klines) < 10:
+                            logger.error(f"Insufficient klines data for {symbol}: {len(klines) if klines is not None else 0} rows")
                             self.telegram_bot.send_message(
                                 chat_id=call.message.chat.id,
-                                text=f"❌ Không thể lấy dữ liệu chart cho {symbol}",
+                                text=f"❌ Không thể lấy dữ liệu chart cho {symbol}\n"
+                                     f"Vui lòng thử lại sau.",
                                 parse_mode='HTML'
                             )
                             return
                         
+                        logger.info(f"Got {len(klines)} candles for {symbol}")
+                        
                         # Generate chart with indicators
+                        logger.info(f"Generating chart for {symbol}...")
                         chart_path = self.chart_gen.generate_chart_with_indicators(
                             symbol, 
                             klines, 
                             rsi_period=14, 
-                            mfi_period=14
+                            mfi_period=14,
+                            timeframe='1h'
                         )
                         
                         if chart_path and os.path.exists(chart_path):
                             # Send chart photo
+                            logger.info(f"Sending chart photo for {symbol}...")
                             with open(chart_path, 'rb') as photo:
                                 self.telegram_bot.send_photo(
                                     chat_id=call.message.chat.id,
@@ -845,9 +853,11 @@ class TelegramCommandHandler:
                             os.remove(chart_path)
                             logger.info(f"✅ Sent chart for {symbol}")
                         else:
+                            logger.error(f"Chart path invalid for {symbol}: {chart_path}")
                             self.telegram_bot.send_message(
                                 chat_id=call.message.chat.id,
-                                text=f"❌ Không thể tạo chart cho {symbol}",
+                                text=f"❌ Không thể tạo chart cho {symbol}\n"
+                                     f"Vui lòng kiểm tra log để biết chi tiết.",
                                 parse_mode='HTML'
                             )
                     

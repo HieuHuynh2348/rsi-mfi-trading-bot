@@ -844,12 +844,40 @@ class ChartGenerator:
             
             logger.info(f"Generating chart with indicators for {symbol}")
             
+            # Validate DataFrame
+            if df is None or df.empty:
+                logger.error(f"Empty DataFrame for {symbol}")
+                return None
+            
+            required_columns = ['open', 'high', 'low', 'close', 'volume']
+            missing_cols = [col for col in required_columns if col not in df.columns]
+            if missing_cols:
+                logger.error(f"Missing columns for {symbol}: {missing_cols}")
+                return None
+            
+            if len(df) < max(rsi_period, mfi_period) + 1:
+                logger.error(f"Insufficient data for {symbol}: {len(df)} rows (need {max(rsi_period, mfi_period) + 1})")
+                return None
+            
+            logger.info(f"DataFrame valid for {symbol}: {len(df)} rows")
+            
             # Calculate indicators
+            logger.info(f"Calculating RSI for {symbol}...")
             rsi_series = calculate_rsi(df['close'], period=rsi_period)
-            mfi_series = calculate_mfi(df['high'], df['low'], df['close'], 
-                                      df['volume'], period=mfi_period)
+            if rsi_series is None or rsi_series.empty:
+                logger.error(f"Failed to calculate RSI for {symbol}")
+                return None
+            
+            logger.info(f"Calculating MFI for {symbol}...")
+            mfi_series = calculate_mfi(df, period=mfi_period)
+            if mfi_series is None or mfi_series.empty:
+                logger.error(f"Failed to calculate MFI for {symbol}")
+                return None
+            
+            logger.info(f"Indicators calculated for {symbol} (RSI: {len(rsi_series)}, MFI: {len(mfi_series)})")
             
             # Create chart
+            logger.info(f"Creating chart buffer for {symbol}...")
             chart_buffer = self.create_rsi_mfi_chart(
                 symbol=symbol,
                 df=df,
@@ -863,7 +891,7 @@ class ChartGenerator:
             )
             
             if chart_buffer is None:
-                logger.error("Failed to create chart buffer")
+                logger.error(f"Failed to create chart buffer for {symbol}")
                 return None
             
             # Save to temporary file
@@ -872,9 +900,9 @@ class ChartGenerator:
             temp_file.write(chart_buffer.getvalue())
             temp_file.close()
             
-            logger.info(f"Chart saved to {temp_path}")
+            logger.info(f"✅ Chart saved to {temp_path} for {symbol}")
             return temp_path
             
         except Exception as e:
-            logger.error(f"Error generating chart with indicators: {e}", exc_info=True)
+            logger.error(f"❌ Error generating chart with indicators for {symbol}: {e}", exc_info=True)
             return None
