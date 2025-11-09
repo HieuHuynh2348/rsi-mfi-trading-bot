@@ -518,19 +518,22 @@
         // ============================================================
         
         /**
-         * Detect optimal precision based on price value
-         * BTC $43,250 → 2 decimals
-         * ETH $3,526 → 3 decimals
-         * Small coins $0.00012 → 8 decimals
+         * Detect optimal precision based on price value (Phase 6: Refined)
+         * @param {number} price - Price value
+         * @returns {number} Precision (2-8 decimal places)
          */
         function detectPrecision(price) {
             if (!price || price === 0) return 2;
             
             const absPrice = Math.abs(price);
+            
+            // Phase 6: Refined precision logic
             if (absPrice >= 1000) return 2;      // BTC: $43,250.50
-            if (absPrice >= 10) return 3;        // ETH: $3,526.440
-            if (absPrice >= 1) return 4;         // BNB: $654.3210
-            if (absPrice >= 0.01) return 6;      // DOGE: $0.123456
+            if (absPrice >= 100) return 3;       // ETH: $3,526.440
+            if (absPrice >= 10) return 4;        // BNB: $654.3210
+            if (absPrice >= 1) return 5;         // ADA: $1.23450
+            if (absPrice >= 0.1) return 6;       // DOGE: $0.123456
+            if (absPrice >= 0.001) return 7;     // Small: $0.0123456
             return 8;                             // SHIB: $0.00001234
         }
         
@@ -763,16 +766,18 @@
                     crosshair: {
                         mode: LightweightCharts.CrosshairMode.Normal,
                         vertLine: {
-                            color: '#758696',  // TradingView crosshair
+                            color: '#758696',  // TradingView professional crosshair
                             width: 1,
-                            style: 3,  // Dotted
-                            labelBackgroundColor: '#2962FF',
+                            style: LightweightCharts.LineStyle.Dashed,  // Dashed line (Phase 4)
+                            labelBackgroundColor: '#2962FF',  // TradingView blue
+                            labelVisible: true,
                         },
                         horzLine: {
-                            color: '#758696',
+                            color: '#758696',  // TradingView professional crosshair
                             width: 1,
-                            style: 3,
-                            labelBackgroundColor: '#2962FF',
+                            style: LightweightCharts.LineStyle.Dashed,  // Dashed line (Phase 4)
+                            labelBackgroundColor: '#2962FF',  // TradingView blue
+                            labelVisible: true,
                         },
                     },
                     rightPriceScale: {
@@ -796,13 +801,17 @@
                     handleScroll: {
                         mouseWheel: true,
                         pressedMouseMove: true,
-                        horzTouchDrag: true,
-                        vertTouchDrag: true,
+                        horzTouchDrag: true,  // Enable horizontal touch drag (Phase 5)
+                        vertTouchDrag: true,  // Enable vertical touch drag (Phase 5)
                     },
                     handleScale: {
                         axisPressedMouseMove: true,
                         mouseWheel: true,
-                        pinch: true,  // Enable pinch zoom for mobile
+                        pinch: true,  // Enable pinch zoom for mobile (Phase 5)
+                    },
+                    kineticScroll: {
+                        touch: true,  // Enable kinetic scrolling on mobile (Phase 5)
+                        mouse: false,
                     },
                 });
             
@@ -834,10 +843,19 @@
             });
             console.log('Volume series added');
             
+            // Apply K/M/B formatting to volume axis (Phase 3)
             volumeSeries.priceScale().applyOptions({
                 scaleMargins: {
                     top: 0.8,
                     bottom: 0,
+                },
+            });
+            
+            // Override volume formatter with K/M/B notation
+            volumeSeries.applyOptions({
+                priceFormat: {
+                    type: 'custom',
+                    formatter: (volume) => formatVolume(volume),
                 },
             });
             
@@ -869,7 +887,7 @@
             // Subscribe to visible range changes
             let lastVisibleRange = null;
             chart.timeScale().subscribeVisibleTimeRangeChange((timeRange) => {
-                // Debounce haptic feedback
+                // Debounce haptic feedback (Phase 5)
                 if (timeRange && lastVisibleRange) {
                     const diff = Math.abs(
                         (timeRange.to - timeRange.from) - 
@@ -877,11 +895,50 @@
                     );
                     // Only trigger haptic if zoom changed significantly
                     if (diff > 100) {
-                        hapticFeedback('light');
+                        hapticFeedback('light');  // Light haptic for zoom
                     }
                 }
                 lastVisibleRange = timeRange;
             });
+            
+            // Mobile touch gesture enhancements (Phase 5)
+            let touchStartTime = 0;
+            let touchTimer = null;
+            const LONG_PRESS_DURATION = 300; // 300ms for long-press
+            
+            container.addEventListener('touchstart', (e) => {
+                touchStartTime = Date.now();
+                
+                // Set timer for long-press detection
+                touchTimer = setTimeout(() => {
+                    // Long-press detected - trigger haptic
+                    hapticFeedback('medium');
+                    console.log('Long-press detected');
+                }, LONG_PRESS_DURATION);
+            }, { passive: true });
+            
+            container.addEventListener('touchend', (e) => {
+                const touchDuration = Date.now() - touchStartTime;
+                
+                // Clear long-press timer
+                if (touchTimer) {
+                    clearTimeout(touchTimer);
+                    touchTimer = null;
+                }
+                
+                // Quick tap - light haptic
+                if (touchDuration < LONG_PRESS_DURATION) {
+                    hapticFeedback('light');
+                }
+            }, { passive: true });
+            
+            container.addEventListener('touchmove', (e) => {
+                // Clear long-press timer on move
+                if (touchTimer) {
+                    clearTimeout(touchTimer);
+                    touchTimer = null;
+                }
+            }, { passive: true });
             
             // Handle resize with debounce (Best practice from docs)
             let resizeTimeout;
