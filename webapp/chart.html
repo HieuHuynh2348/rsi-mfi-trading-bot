@@ -1386,18 +1386,41 @@
                 };
                 const interval = intervalMap[tf] || '1h';
                 
-                // Fetch klines directly from Binance API
-                const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`;
-                const response = await fetch(binanceUrl);
+                // Fetch klines directly from Binance API with retry logic
+                let klines = null;
+                let retries = 3;
                 
-                console.log('Response status:', response.status);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: Failed to fetch from Binance`);
+                while (retries > 0 && !klines) {
+                    try {
+                        const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`;
+                        console.log('Fetching from:', binanceUrl);
+                        
+                        const response = await fetch(binanceUrl, {
+                            method: 'GET',
+                            headers: {
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        console.log('Response status:', response.status);
+                        
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+                        
+                        klines = await response.json();
+                        console.log('Received klines:', klines.length);
+                        
+                    } catch (fetchError) {
+                        retries--;
+                        console.error(`Fetch attempt failed (${3 - retries}/3):`, fetchError);
+                        if (retries > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        } else {
+                            throw fetchError;
+                        }
+                    }
                 }
-                
-                const klines = await response.json();
-                console.log('Received klines:', klines.length);
                 
                 // Validate data
                 if (!klines || klines.length === 0) {
@@ -1415,6 +1438,8 @@
                 }));
                 
                 console.log('Converted candles:', candles.length);
+                console.log('First candle time:', new Date(candles[0].time * 1000).toISOString());
+                console.log('Last candle time:', new Date(candles[candles.length - 1].time * 1000).toISOString());
                 
                 // Get current price (last close)
                 const currentPrice = candles[candles.length - 1].close;
@@ -1425,6 +1450,8 @@
                 const closes = candles.map(c => c.close);
                 const rsi = calculateSimpleRSI(closes, 6);
                 const mfi = 50; // Placeholder - MFI requires volume calculation
+                
+                console.log('Calculated RSI:', rsi, 'MFI:', mfi);
                 
                 // Haptic feedback on success
                 hapticFeedback('success');
@@ -1639,11 +1666,31 @@
         
         function showError(message) {
             const errorEl = document.getElementById('error');
-            errorEl.textContent = message;
+            errorEl.innerHTML = `
+                <div style="text-align: center;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 12px;">Chart Load Error</div>
+                    <div style="font-size: 14px; margin-bottom: 20px;">${message}</div>
+                    <button onclick="location.reload()" style="
+                        background: #2962FF;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        box-shadow: 0 2px 8px rgba(41, 98, 255, 0.3);
+                    ">🔄 Retry</button>
+                </div>
+            `;
             errorEl.style.display = 'block';
+            
+            // Auto retry after 5 seconds
             setTimeout(() => {
-                errorEl.style.display = 'none';
-            }, 3000);
+                console.log('Auto retrying...');
+                location.reload();
+            }, 5000);
         }
         
         // Timeframe buttons
