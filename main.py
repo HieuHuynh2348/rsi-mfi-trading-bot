@@ -59,16 +59,6 @@ class TradingBot:
             logger.error("Failed to initialize connections. Exiting.")
             sys.exit(1)
         
-        # Start WebApp API request processor in background
-        self.webapp_processor_running = True
-        self.webapp_processor_thread = threading.Thread(
-            target=self.process_webapp_requests,
-            daemon=True,
-            name='WebAppProcessor'
-        )
-        self.webapp_processor_thread.start()
-        logger.info("✅ WebApp request processor started")
-        
         logger.info("Trading Bot initialized successfully")
     
     def test_connections(self):
@@ -422,75 +412,6 @@ class TradingBot:
             f"Sent detailed analysis for all {total_signals} signals"
         )
     
-    def process_webapp_requests(self):
-        """
-        Background worker to process WebApp API requests
-        Checks for pending analysis requests and processes them
-        """
-        import requests
-        
-        logger.info("🌐 WebApp request processor started")
-        
-        while self.webapp_processor_running:
-            try:
-                # Check for pending requests every 5 seconds
-                time.sleep(5)
-                
-                # Get pending requests from API
-                response = requests.get('http://localhost:8080/api/get-pending-requests', timeout=5)
-                if response.status_code != 200:
-                    continue
-                
-                data = response.json()
-                pending = data.get('pending_requests', [])
-                
-                if not pending:
-                    continue
-                
-                logger.info(f"📝 Found {len(pending)} pending WebApp requests")
-                
-                # Process each request
-                for req in pending:
-                    request_id = req['request_id']
-                    symbol = req['symbol']
-                    timeframe = req.get('timeframe', '1h')
-                    
-                    logger.info(f"🤖 Processing WebApp request: {symbol} @ {timeframe}")
-                    
-                    try:
-                        # Get Gemini analyzer
-                        gemini = self.command_handler.gemini_analyzer
-                        
-                        # Perform analysis
-                        result = gemini.analyze(
-                            symbol=symbol,
-                            pump_data=None,
-                            trading_style='swing',
-                            use_cache=True
-                        )
-                        
-                        if result:
-                            # Submit result back to API
-                            requests.post('http://localhost:8080/api/submit-result', json={
-                                'request_id': request_id,
-                                'symbol': symbol,
-                                'timeframe': timeframe,
-                                'analysis': result
-                            }, timeout=5)
-                            
-                            logger.info(f"✅ WebApp result submitted for {symbol}")
-                        else:
-                            logger.error(f"❌ Analysis failed for {symbol}")
-                            
-                    except Exception as e:
-                        logger.error(f"❌ Error processing WebApp request: {e}")
-                        
-            except Exception as e:
-                # Don't crash on errors, just log and continue
-                if 'Connection refused' not in str(e):
-                    logger.error(f"WebApp processor error: {e}")
-                time.sleep(10)
-    
     def run(self):
         """Main bot loop - Commands only mode (no auto-scan)"""
         logger.info("Bot is now running in COMMAND-ONLY mode...")
@@ -532,21 +453,7 @@ def main():
         print("\n⚠️  WARNING: Please configure your API keys in config.py first!\n")
         sys.exit(1)
     
-    # Start WebApp API server in background (for chart webapp)
-    import os
-    port = int(os.getenv('PORT', 8080))
-    
-    logger.info(f"🌐 Starting WebApp API server on port {port}...")
-    from webapp_api import app as webapp_app
-    api_thread = threading.Thread(
-        target=lambda: webapp_app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False),
-        daemon=True,
-        name='WebAppAPI'
-    )
-    api_thread.start()
-    logger.info(f"✅ WebApp API running in background")
-    
-    # Start Telegram bot (main thread)
+    # Start Telegram bot (no Flask API - no conflicts)
     bot = TradingBot()
     bot.run()
 
