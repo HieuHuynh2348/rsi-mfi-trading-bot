@@ -9,9 +9,9 @@ import logging
 import re
 import io
 import time
+import os
 from datetime import datetime
 from vietnamese_messages import *
-import config
 
 logger = logging.getLogger(__name__)
 
@@ -238,7 +238,7 @@ class TelegramBot:
         )
         
         # Row 2: Live Chart (WebApp) if available
-        webapp_url = config.WEBAPP_URL if hasattr(config, 'WEBAPP_URL') and config.WEBAPP_URL else None
+        webapp_url = self._get_webapp_url()
         if webapp_url:
             chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
             keyboard.row(
@@ -261,7 +261,7 @@ class TelegramBot:
         )
         
         # Row 2: Live Chart (WebApp) if available
-        webapp_url = config.WEBAPP_URL if hasattr(config, 'WEBAPP_URL') and config.WEBAPP_URL else None
+        webapp_url = self._get_webapp_url()
         if webapp_url:
             chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
             keyboard.row(
@@ -272,6 +272,17 @@ class TelegramBot:
             )
         
         return keyboard
+    
+    def _get_webapp_url(self):
+        """Get WebApp URL from environment variables"""
+        # Railway automatically provides RAILWAY_PUBLIC_DOMAIN
+        railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+        if railway_domain:
+            return f"https://{railway_domain}"
+        
+        # Fallback to manual WEBAPP_URL
+        webapp_url = os.getenv("WEBAPP_URL", "")
+        return webapp_url if webapp_url else None
     
     def create_chart_keyboard(self, symbol, webapp_url=None):
         """Create keyboard with Live Chart (WebApp) and timeframe options"""
