@@ -278,11 +278,18 @@ class TelegramBot:
         # Railway automatically provides RAILWAY_PUBLIC_DOMAIN
         railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
         if railway_domain:
-            return f"https://{railway_domain}"
+            webapp_url = f"https://{railway_domain}"
+            logger.info(f"✅ Using Railway domain for WebApp: {webapp_url}")
+            return webapp_url
         
         # Fallback to manual WEBAPP_URL
         webapp_url = os.getenv("WEBAPP_URL", "")
-        return webapp_url if webapp_url else None
+        if webapp_url:
+            logger.info(f"✅ Using manual WEBAPP_URL: {webapp_url}")
+            return webapp_url
+        
+        logger.warning("⚠️ No WEBAPP_URL or RAILWAY_PUBLIC_DOMAIN found - Live Chart button disabled")
+        return None
     
     def create_chart_keyboard(self, symbol, webapp_url=None):
         """Create keyboard with Live Chart (WebApp) and timeframe options"""
