@@ -957,17 +957,18 @@ class TelegramCommandHandler:
                         # Log the access request
                         logger.info(f"📊 Chart access request: Symbol={symbol}, From User={source_user_id}, From Chat={source_chat_id}")
                         
-                        # Send notification to admin with user/group IDs
+                        # Send notification to admin with user/group IDs (to admin chat)
                         admin_message = f"""
 🔔 <b>Live Chart Access Request</b>
 
 👤 <b>User ID:</b> <code>{source_user_id}</code>
-💬 <b>Chat ID:</b> <code>{source_chat_id}</code>
+💬 <b>Group ID:</b> <code>{source_chat_id}</code>
 📊 <b>Symbol:</b> {symbol}
 🕒 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 
 <i>User clicked chart button in group and opened bot in private chat.</i>
 """
+                        # Send to admin (default chat_id)
                         self.bot.send_message(admin_message, parse_mode='HTML')
                         
                         # Get WebApp URL
@@ -983,18 +984,22 @@ class TelegramCommandHandler:
                                 )
                             )
                             
-                            self.bot.send_message(
-                                f"✅ <b>Welcome!</b>\n\n"
-                                f"Click the button below to view <b>{symbol}</b> live chart:\n\n"
-                                f"<i>📱 Chart will open directly in Telegram</i>",
+                            # Send to USER in private chat (message.chat.id)
+                            self.telegram_bot.send_message(
+                                chat_id=message.chat.id,
+                                text=f"✅ <b>Welcome!</b>\n\n"
+                                     f"Click the button below to view <b>{symbol}</b> live chart:\n\n"
+                                     f"<i>📱 Chart will open directly in Telegram</i>",
                                 parse_mode='HTML',
                                 reply_markup=keyboard
                             )
                             return
                         else:
-                            self.bot.send_message(
-                                f"⚠️ Live Chart is currently unavailable.\n\n"
-                                f"Please try again later.",
+                            # Send to USER in private chat
+                            self.telegram_bot.send_message(
+                                chat_id=message.chat.id,
+                                text=f"⚠️ Live Chart is currently unavailable.\n\n"
+                                     f"Please try again later.",
                                 parse_mode='HTML'
                             )
                             return
