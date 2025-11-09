@@ -2946,6 +2946,111 @@ class TelegramCommandHandler:
                 
                 msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
                 
+                # === INSTITUTIONAL INDICATORS SECTION ===
+                msg += "<b>🏛️ INSTITUTIONAL INDICATORS</b>\n\n"
+                
+                try:
+                    # Initialize institutional analyzers
+                    from volume_profile import VolumeProfileAnalyzer
+                    from fair_value_gaps import FairValueGapDetector
+                    from order_blocks import OrderBlockDetector
+                    from support_resistance import SupportResistanceDetector
+                    from smart_money_concepts import SmartMoneyAnalyzer
+                    
+                    vp_analyzer = VolumeProfileAnalyzer(self.binance)
+                    fvg_detector = FairValueGapDetector(self.binance, auto_threshold=True)
+                    ob_detector = OrderBlockDetector(self.binance)
+                    sr_detector = SupportResistanceDetector(self.binance)
+                    smc_analyzer = SmartMoneyAnalyzer(self.binance)
+                    
+                    current_price = ticker_24h['last_price'] if ticker_24h else price
+                    
+                    # Volume Profile (1D only for summary)
+                    vp_1d = vp_analyzer.analyze_multi_timeframe(symbol, ['1d']).get('1d')
+                    if vp_1d:
+                        poc = vp_1d['poc']['price']
+                        vah = vp_1d['vah']
+                        val = vp_1d['val']
+                        position = vp_analyzer.get_current_position_in_profile(current_price, vp_1d)
+                        
+                        msg += f"<b>📊 Volume Profile (1D):</b>\n"
+                        msg += f"   • POC: ${self.binance.format_price(symbol, poc)}\n"
+                        msg += f"   • VAH: ${self.binance.format_price(symbol, vah)}\n"
+                        msg += f"   • VAL: ${self.binance.format_price(symbol, val)}\n"
+                        msg += f"   • Position: <b>{position.get('position', 'UNKNOWN')}</b>\n"
+                        msg += f"   • Bias: {position.get('bias', 'N/A')}\n\n"
+                    
+                    # Fair Value Gaps (1D only)
+                    fvg_1d = fvg_detector.analyze_multi_timeframe(symbol, ['1d']).get('1d')
+                    if fvg_1d and fvg_1d.get('nearest_gaps'):
+                        nearest_bull = fvg_1d['nearest_gaps'].get('bullish')
+                        nearest_bear = fvg_1d['nearest_gaps'].get('bearish')
+                        stats = fvg_1d['statistics']
+                        
+                        msg += f"<b>🔳 Fair Value Gaps (1D):</b>\n"
+                        msg += f"   • Bullish FVG: {stats['unfilled_bullish_gaps']} unfilled\n"
+                        msg += f"   • Bearish FVG: {stats['unfilled_bearish_gaps']} unfilled\n"
+                        
+                        if nearest_bull:
+                            msg += f"   • Nearest Support FVG: ${self.binance.format_price(symbol, nearest_bull['bottom'])}\n"
+                        if nearest_bear:
+                            msg += f"   • Nearest Resistance FVG: ${self.binance.format_price(symbol, nearest_bear['top'])}\n"
+                        msg += "\n"
+                    
+                    # Order Blocks (1D only)
+                    ob_1d = ob_detector.analyze_multi_timeframe(symbol, ['1d']).get('1d')
+                    if ob_1d and ob_1d.get('nearest_blocks'):
+                        nearest_swing = ob_1d['nearest_blocks'].get('swing')
+                        stats = ob_1d['statistics']
+                        
+                        msg += f"<b>📦 Order Blocks (1D):</b>\n"
+                        msg += f"   • Active Swing OB: {stats['active_swing_obs']}\n"
+                        msg += f"   • Active Internal OB: {stats['active_internal_obs']}\n"
+                        
+                        if nearest_swing:
+                            msg += f"   • Nearest OB ({nearest_swing['bias']}): "
+                            msg += f"${self.binance.format_price(symbol, nearest_swing['bottom'])} - "
+                            msg += f"${self.binance.format_price(symbol, nearest_swing['top'])}\n"
+                        msg += "\n"
+                    
+                    # Support/Resistance (1D only)
+                    sr_1d = sr_detector.analyze_multi_timeframe(symbol, ['1d']).get('1d')
+                    if sr_1d and sr_1d.get('nearest_zones'):
+                        nearest_support = sr_1d['nearest_zones'].get('support')
+                        nearest_resistance = sr_1d['nearest_zones'].get('resistance')
+                        
+                        msg += f"<b>📍 Support/Resistance (1D):</b>\n"
+                        
+                        if nearest_support:
+                            msg += f"   • Support: ${self.binance.format_price(symbol, nearest_support['price'])} "
+                            msg += f"(Vol: {nearest_support['volume_ratio']:.1f}x)\n"
+                        if nearest_resistance:
+                            msg += f"   • Resistance: ${self.binance.format_price(symbol, nearest_resistance['price'])} "
+                            msg += f"(Vol: {nearest_resistance['volume_ratio']:.1f}x)\n"
+                        msg += "\n"
+                    
+                    # Smart Money Concepts (1D only)
+                    smc_1d = smc_analyzer.analyze_multi_timeframe(symbol, ['1d']).get('1d')
+                    if smc_1d:
+                        swing_trend = smc_1d['swing_structure']['trend'] or 'NEUTRAL'
+                        stats = smc_1d['statistics']
+                        bias_info = smc_analyzer.get_trading_bias(smc_1d)
+                        
+                        trend_emoji = "🟢" if swing_trend == 'BULLISH' else "🔴" if swing_trend == 'BEARISH' else "🟡"
+                        
+                        msg += f"<b>🧠 Smart Money Concepts (1D):</b>\n"
+                        msg += f"   • Trend: {trend_emoji} <b>{swing_trend}</b>\n"
+                        msg += f"   • BOS: Bullish {stats['recent_bullish_bos']} | Bearish {stats['recent_bearish_bos']}\n"
+                        msg += f"   • CHoCH: Bullish {stats['recent_bullish_choch']} | Bearish {stats['recent_bearish_choch']}\n"
+                        msg += f"   • Trading Bias: <b>{bias_info['bias']}</b> ({bias_info['confidence']}%)\n"
+                        msg += f"   • Reason: {bias_info['reason'][:80]}...\n\n"
+                    
+                except Exception as e:
+                    logger.error(f"Error loading institutional indicators: {e}")
+                    msg += "⚠️ <i>Institutional indicators đang được tải...</i>\n\n"
+                
+                msg += "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
                 # === TRADING RECOMMENDATION ===
                 msg += "<b>🎯 TỔNG KẾT & KHUYẾN NGHỊ</b>\n\n"
                 
