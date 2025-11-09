@@ -82,15 +82,26 @@ def get_chart_data():
         df['mfi'] = calculate_mfi(df, 14)
         
         # Get current price and 24h change
-        ticker = binance.get_ticker_24h(symbol)
-        current_price = float(ticker.get('last_price', 0))
-        price_change = float(ticker.get('price_change_percent', 0))
+        try:
+            ticker_data = binance.client.get_ticker(symbol=symbol)
+            current_price = float(ticker_data['lastPrice'])
+            price_change = float(ticker_data['priceChangePercent'])
+        except:
+            # Fallback to last close price
+            current_price = float(df['close'].iloc[-1])
+            price_change = 0.0
         
         # Format candles for chart
         candles = []
         for idx, row in df.iterrows():
-            # Convert timestamp to seconds
-            time = int(row['timestamp'].timestamp()) if hasattr(row['timestamp'], 'timestamp') else int(row['timestamp'] / 1000)
+            # Use index as timestamp (it's already datetime)
+            if isinstance(idx, int):
+                time = idx
+            elif hasattr(idx, 'timestamp'):
+                time = int(idx.timestamp())
+            else:
+                # Fallback to close_time if available
+                time = int(row.get('close_time', idx) / 1000) if 'close_time' in row else idx
             
             candles.append({
                 'time': time,
