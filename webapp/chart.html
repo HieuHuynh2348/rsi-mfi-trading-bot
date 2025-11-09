@@ -57,23 +57,22 @@
         
         #header {
             background: #1E222D;  /* TradingView panel BG */
-            padding: 12px 16px;
+            padding: 8px 16px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 4px;
             border-bottom: 1px solid #2A2E39;  /* TradingView border */
-            height: 48px;
         }
         
         #symbol {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: #D1D4DC;  /* TradingView text */
             letter-spacing: -0.02em;
         }
         
         #price {
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 600;
             font-variant-numeric: tabular-nums;  /* Monospace numbers */
         }
@@ -170,7 +169,7 @@
         
         #chartContainer {
             width: 100%;
-            height: calc(100vh - 155px);  /* header 48px + tabs 45px + timeframes 50px + borders */
+            height: calc(100vh - 165px);  /* header 60px + tabs 45px + timeframes 50px + borders */
             position: relative;
             touch-action: pan-x pan-y;
             -webkit-user-select: none;
@@ -181,7 +180,7 @@
             display: none;  /* Hidden by default */
             padding: 20px;
             background: #1a1a1a;
-            height: calc(100vh - 155px);
+            height: calc(100vh - 165px);
             overflow-y: auto;
         }
         
