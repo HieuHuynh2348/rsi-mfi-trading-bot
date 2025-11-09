@@ -1,6 +1,6 @@
 """
 Gemini AI Trading Analyzer
-Integrates Google Gemini 2.0 Flash Experimental for comprehensive trading analysis
+Integrates Google Gemini 1.5 Pro for comprehensive trading analysis
 
 Author: AI Assistant
 Date: November 9, 2025
@@ -56,7 +56,7 @@ class GeminiAnalyzer:
         
         # Configure Gemini
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        self.model = genai.GenerativeModel('gemini-1.5-pro')
         
         # Cache system (15 minutes)
         self.cache = {}  # {symbol: {'data': result, 'timestamp': time.time()}}
@@ -66,7 +66,7 @@ class GeminiAnalyzer:
         self.last_request_time = 0
         self.min_request_interval = 1.0  # 1 second between requests
         
-        logger.info("Gemini AI Analyzer initialized (Model: gemini-2.0-flash-exp, Institutional indicators loaded)")
+        logger.info("Gemini AI Analyzer initialized (Model: gemini-1.5-pro, Institutional indicators loaded)")
     
     def _check_cache(self, symbol: str) -> Optional[Dict]:
         """

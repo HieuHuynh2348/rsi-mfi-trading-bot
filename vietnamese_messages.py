@@ -83,7 +83,7 @@ ABOUT_MESSAGE = """
 <b>📌 Phiên bản:</b> 3.0 INSTITUTIONAL
 <b>☁️ Nền tảng:</b> Railway.app
 <b>🏦 Sàn:</b> Binance
-<b>🤖 AI Engine:</b> Google Gemini 2.0 Flash Exp
+<b>🤖 AI Engine:</b> Google Gemini 1.5 Pro
 
 <b>✨ TÍNH NĂNG CHÍNH:</b>
 ✅ Phân tích đa khung thời gian (1m-1d)
@@ -116,7 +116,7 @@ ABOUT_MESSAGE = """
 • Multi-TF consensus: 4 timeframes
 
 <b>🤖 AI ANALYSIS:</b>
-• Gemini 2.0 Flash Exp model
+• Gemini 1.5 Pro model
 • JSON structured data input
 • 60% weight on institutional indicators
 • Confluence analysis across all indicators
@@ -156,7 +156,7 @@ def get_status_message(config):
 <b>⚡ Hệ thống:</b> ✅ Trực tuyến
 <b>🔗 Binance:</b> ✅ Đã kết nối
 <b>💬 Telegram:</b> ✅ Đã kết nối
-<b>🤖 AI Engine:</b> ✅ Gemini 2.0 Flash Exp
+<b>🤖 AI Engine:</b> ✅ Gemini 1.5 Pro
 
 <b>⚙️ Cài đặt Technical:</b>
 • Khoảng quét: {config.SCAN_INTERVAL}s
@@ -221,7 +221,7 @@ def get_settings_message(config):
 • Parallel processing: ✅ Active
 
 <b>🤖 AI Configuration:</b>
-• Model: Gemini 2.0 Flash Exp
+• Model: Gemini 1.5 Pro
 • Input format: JSON structured
 • Weight: 60% institutional + 40% technical
 • Output: Vietnamese + Entry/Exit points
