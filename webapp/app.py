@@ -9,6 +9,7 @@ import os
 import sys
 import logging
 from datetime import datetime
+import threading
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -32,6 +33,17 @@ try:
 except Exception as e:
     logger.error(f"❌ Failed to initialize Binance client: {e}")
     binance = None
+
+
+def start_telegram_bot():
+    """Start Telegram bot in background thread"""
+    try:
+        logger.info("🤖 Starting Telegram bot in background...")
+        # Import and run bot
+        import main
+        main.main()
+    except Exception as e:
+        logger.error(f"❌ Bot failed to start: {e}", exc_info=True)
 
 
 @app.route('/')
@@ -150,6 +162,11 @@ def health():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     logger.info(f"🚀 Starting Flask server on port {port}")
+    
+    # Start Telegram bot in background thread
+    bot_thread = threading.Thread(target=start_telegram_bot, daemon=True)
+    bot_thread.start()
+    logger.info("✅ Telegram bot thread started")
     
     # Production mode: use Waitress WSGI server
     try:
