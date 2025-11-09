@@ -1,57 +1,36 @@
 """
-API Server for Trading Bot
-Handles web requests for charts and AI analysis
+Flask API Routes for Trading Bot
+Provides web endpoints for charts and AI analysis
+This module is imported by main.py to run alongside the Telegram bot
 """
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import os
 import logging
-import sys
-
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(__file__))
-
-from binance_client import BinanceClient
-from stoch_rsi_analyzer import StochRSIAnalyzer
-from gemini_analyzer import GeminiAnalyzer
-import config
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize Flask app
-app = Flask(__name__, static_folder='webapp', static_url_path='')
-CORS(app)  # Enable CORS for all routes
+# Flask app will be created and configured by main.py
+app = None
+bot_instance = None
 
-# Initialize clients
-binance = None
-gemini_analyzer = None
-
-def init_clients():
-    """Initialize API clients"""
-    global binance, gemini_analyzer
+def create_app(trading_bot=None):
+    """
+    Create and configure Flask app
+    Called from main.py with TradingBot instance
+    """
+    global app, bot_instance
     
-    try:
-        logger.info("Initializing API clients...")
-        binance = BinanceClient()
-        
-        # Get Gemini API key
-        gemini_api_key = os.getenv('GEMINI_API_KEY')
-        if not gemini_api_key:
-            logger.error("GEMINI_API_KEY not found in environment")
-            return False
-        
-        stoch_rsi = StochRSIAnalyzer(binance)
-        gemini_analyzer = GeminiAnalyzer(gemini_api_key, binance, stoch_rsi)
-        
-        logger.info("✅ API clients initialized successfully")
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize clients: {e}")
-        return False
+    bot_instance = trading_bot
+    
+    app = Flask(__name__, static_folder='webapp', static_url_path='')
+    CORS(app)  # Enable CORS for all routes
+    
+    logger.info("✅ Flask API app created")
+    return app
 
 @app.route('/')
 def index():
@@ -85,12 +64,18 @@ def ai_analyze():
         
         logger.info(f"AI Analysis request: {symbol} @ {timeframe}")
         
-        # Check if clients initialized
-        if gemini_analyzer is None:
-            raise Exception("Gemini analyzer not initialized")
+        # Check if bot instance available
+        if bot_instance is None:
+            raise Exception("Bot not initialized")
+        
+        # Get gemini analyzer from bot
+        if not hasattr(bot_instance, 'command_handler') or not hasattr(bot_instance.command_handler, 'gemini'):
+            raise Exception("Gemini analyzer not available")
+        
+        gemini = bot_instance.command_handler.gemini
         
         # Perform analysis
-        result = gemini_analyzer.analyze(
+        result = gemini.analyze(
             symbol=symbol,
             pump_data=None,
             trading_style='swing',
@@ -132,8 +117,12 @@ def chart_data():
         
         logger.info(f"Chart data request: {symbol} @ {timeframe}")
         
-        if binance is None:
-            raise Exception("Binance client not initialized")
+        # Check if bot instance available
+        if bot_instance is None:
+            raise Exception("Bot not initialized")
+        
+        # Get binance client from bot
+        binance = bot_instance.binance
         
         # Get candle data
         candles = binance.get_historical_klines(symbol, timeframe, limit=500)
@@ -155,20 +144,5 @@ def chart_data():
             'error': str(e)
         }), 500
 
-if __name__ == '__main__':
-    # Initialize clients
-    if not init_clients():
-        logger.error("Failed to initialize clients. Exiting.")
-        sys.exit(1)
-    
-    # Get port from environment or use 8080
-    port = int(os.getenv('PORT', 8080))
-    
-    logger.info(f"🚀 Starting API server on port {port}...")
-    
-    # Run Flask app
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=False
-    )
+# This file is now imported by main.py, not run standalone
+# The Flask app is started by main.py alongside the Telegram bot
