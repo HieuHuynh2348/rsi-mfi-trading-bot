@@ -7,6 +7,7 @@ import logging
 import os
 from datetime import datetime
 import time
+from telebot import types
 from watchlist import WatchlistManager
 from watchlist_monitor import WatchlistMonitor
 from volume_detector import VolumeDetector
@@ -942,7 +943,66 @@ class TelegramCommandHandler:
                 logger.warning(f"Unauthorized access attempt from {message.chat.id}")
                 return
             
-            # Use Vietnamese help message
+            # Check if this is a deep link for chart access from group
+            if message.text and message.text.startswith('/start chart_'):
+                try:
+                    # Parse parameters: /start chart_SYMBOL_USERID_CHATID
+                    params = message.text[14:].split('_')  # Skip "/start chart_"
+                    
+                    if len(params) >= 1:
+                        symbol = params[0]
+                        source_user_id = params[1] if len(params) >= 2 else None
+                        source_chat_id = params[2] if len(params) >= 3 else None
+                        
+                        # Log the access request
+                        logger.info(f"📊 Chart access request: Symbol={symbol}, From User={source_user_id}, From Chat={source_chat_id}")
+                        
+                        # Send notification to admin with user/group IDs
+                        admin_message = f"""
+🔔 <b>Live Chart Access Request</b>
+
+👤 <b>User ID:</b> <code>{source_user_id}</code>
+💬 <b>Chat ID:</b> <code>{source_chat_id}</code>
+📊 <b>Symbol:</b> {symbol}
+🕒 <b>Time:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+<i>User clicked chart button in group and opened bot in private chat.</i>
+"""
+                        self.bot.send_message(admin_message, parse_mode='HTML')
+                        
+                        # Get WebApp URL
+                        webapp_url = self.bot._get_webapp_url()
+                        if webapp_url:
+                            # Create WebApp button (works in private chat!)
+                            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                            keyboard = types.InlineKeyboardMarkup()
+                            keyboard.row(
+                                types.InlineKeyboardButton(
+                                    f"📊 View {symbol} Live Chart",
+                                    web_app=types.WebAppInfo(url=chart_webapp_url)
+                                )
+                            )
+                            
+                            self.bot.send_message(
+                                f"✅ <b>Welcome!</b>\n\n"
+                                f"Click the button below to view <b>{symbol}</b> live chart:\n\n"
+                                f"<i>📱 Chart will open directly in Telegram</i>",
+                                parse_mode='HTML',
+                                reply_markup=keyboard
+                            )
+                            return
+                        else:
+                            self.bot.send_message(
+                                f"⚠️ Live Chart is currently unavailable.\n\n"
+                                f"Please try again later.",
+                                parse_mode='HTML'
+                            )
+                            return
+                except Exception as e:
+                    logger.error(f"Error processing chart deep link: {e}")
+                    # Fall through to default help message
+            
+            # Default help message
             from vietnamese_messages import HELP_MESSAGE
             keyboard = self.bot.create_main_menu_keyboard()
             self.bot.send_message(HELP_MESSAGE, reply_markup=keyboard)
@@ -2522,8 +2582,17 @@ class TelegramCommandHandler:
                 
                 msg += "\n⚠️ <i>Đây là phân tích kỹ thuật tự động, không phải tư vấn tài chính</i>"
                 
-                # Create AI Analysis button
-                ai_keyboard = self.bot.create_ai_analysis_keyboard(symbol)
+                # Create AI Analysis button with user/chat info
+                user_id = message.from_user.id if message.from_user else None
+                chat_id = message.chat.id
+                chat_type = message.chat.type  # 'private', 'group', 'supergroup'
+                
+                ai_keyboard = self.bot.create_ai_analysis_keyboard(
+                    symbol, 
+                    user_id=user_id, 
+                    chat_id=chat_id, 
+                    chat_type=chat_type
+                )
                 
                 # Send comprehensive analysis
                 self.bot.send_message(msg, reply_markup=ai_keyboard)
@@ -2895,7 +2964,16 @@ class TelegramCommandHandler:
                 msg += "\n⚠️ <i>Đây là phân tích kỹ thuật tự động, không phải tư vấn tài chính</i>"
                 
                 # Create keyboard with AI Analysis and Chart buttons
-                analysis_keyboard = self.bot.create_symbol_analysis_keyboard(symbol)
+                user_id = message.from_user.id if message.from_user else None
+                chat_id = message.chat.id
+                chat_type = message.chat.type  # 'private', 'group', 'supergroup'
+                
+                analysis_keyboard = self.bot.create_symbol_analysis_keyboard(
+                    symbol,
+                    user_id=user_id,
+                    chat_id=chat_id,
+                    chat_type=chat_type
+                )
                 
                 # Send comprehensive analysis
                 self.bot.send_message(msg, reply_markup=analysis_keyboard)

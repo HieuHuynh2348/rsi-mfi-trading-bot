@@ -227,8 +227,16 @@ class TelegramBot:
         
         return keyboard
     
-    def create_ai_analysis_keyboard(self, symbol):
-        """Create AI analysis and Live Chart buttons"""
+    def create_ai_analysis_keyboard(self, symbol, user_id=None, chat_id=None, chat_type='private'):
+        """
+        Create AI analysis and Live Chart buttons
+        
+        Args:
+            symbol: Trading symbol (e.g., BTCUSDT)
+            user_id: User ID who clicked the button (for logging)
+            chat_id: Chat ID where button was clicked (for logging)
+            chat_type: Type of chat ('private', 'group', 'supergroup')
+        """
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
         # Row 1: AI Analysis and Chart buttons
@@ -237,21 +245,48 @@ class TelegramBot:
             types.InlineKeyboardButton(f"📊 Chart", callback_data=f"chart_{symbol}")
         )
         
-        # Row 2: Live Chart (WebApp) if available
+        # Row 2: Live Chart - Different behavior based on chat type
         webapp_url = self._get_webapp_url()
         if webapp_url:
-            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
-            keyboard.row(
-                types.InlineKeyboardButton(
-                    "📊 Live Chart (in Telegram)", 
-                    web_app=types.WebAppInfo(url=chart_webapp_url)
+            if chat_type == 'private':
+                # In private chat: Use WebApp (opens IN Telegram)
+                chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                keyboard.row(
+                    types.InlineKeyboardButton(
+                        "📊 Live Chart (in Telegram)", 
+                        web_app=types.WebAppInfo(url=chart_webapp_url)
+                    )
                 )
-            )
+            else:
+                # In groups: Use t.me link to open private chat with bot
+                # This will start bot in PM with user, then open WebApp
+                bot_username = self._get_bot_username()
+                if bot_username:
+                    # Format: https://t.me/botname?start=chart_SYMBOL_USERID_CHATID
+                    start_param = f"chart_{symbol}_{user_id}_{chat_id}" if user_id and chat_id else f"chart_{symbol}"
+                    bot_link = f"https://t.me/{bot_username}?start={start_param}"
+                    keyboard.row(
+                        types.InlineKeyboardButton(
+                            "📊 Open Live Chart in Bot", 
+                            url=bot_link
+                        )
+                    )
+                    # Log access attempt
+                    if user_id and chat_id:
+                        logger.info(f"📊 Chart access from group - User ID: {user_id}, Chat ID: {chat_id}, Symbol: {symbol}")
         
         return keyboard
     
-    def create_symbol_analysis_keyboard(self, symbol):
-        """Create keyboard with AI analysis, Chart and Live Chart buttons"""
+    def create_symbol_analysis_keyboard(self, symbol, user_id=None, chat_id=None, chat_type='private'):
+        """
+        Create keyboard with AI analysis, Chart and Live Chart buttons
+        
+        Args:
+            symbol: Trading symbol (e.g., BTCUSDT)
+            user_id: User ID who clicked the button (for logging)
+            chat_id: Chat ID where button was clicked (for logging)
+            chat_type: Type of chat ('private', 'group', 'supergroup')
+        """
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
         # Row 1: AI and Chart buttons
@@ -260,16 +295,33 @@ class TelegramBot:
             types.InlineKeyboardButton(f"📊 Chart", callback_data=f"chart_{symbol}")
         )
         
-        # Row 2: Live Chart (WebApp) if available
+        # Row 2: Live Chart - Different behavior based on chat type
         webapp_url = self._get_webapp_url()
         if webapp_url:
-            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
-            keyboard.row(
-                types.InlineKeyboardButton(
-                    "📊 Live Chart (in Telegram)", 
-                    web_app=types.WebAppInfo(url=chart_webapp_url)
+            if chat_type == 'private':
+                # In private chat: Use WebApp (opens IN Telegram)
+                chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                keyboard.row(
+                    types.InlineKeyboardButton(
+                        "📊 Live Chart (in Telegram)", 
+                        web_app=types.WebAppInfo(url=chart_webapp_url)
+                    )
                 )
-            )
+            else:
+                # In groups: Use t.me link to open private chat with bot
+                bot_username = self._get_bot_username()
+                if bot_username:
+                    start_param = f"chart_{symbol}_{user_id}_{chat_id}" if user_id and chat_id else f"chart_{symbol}"
+                    bot_link = f"https://t.me/{bot_username}?start={start_param}"
+                    keyboard.row(
+                        types.InlineKeyboardButton(
+                            "📊 Open Live Chart in Bot", 
+                            url=bot_link
+                        )
+                    )
+                    # Log access attempt
+                    if user_id and chat_id:
+                        logger.info(f"📊 Chart access from group - User ID: {user_id}, Chat ID: {chat_id}, Symbol: {symbol}")
         
         return keyboard
     
@@ -284,17 +336,33 @@ class TelegramBot:
         
         # Fallback to manual WEBAPP_URL
         webapp_url = os.getenv("WEBAPP_URL", "")
-        if webapp_url:
+        
+        # Validate URL - must be real, not placeholder
+        if webapp_url and not any(placeholder in webapp_url for placeholder in ['your-app', 'example', 'placeholder']):
             logger.info(f"✅ Using manual WEBAPP_URL: {webapp_url}")
             return webapp_url
+        elif webapp_url:
+            logger.warning(f"⚠️ WEBAPP_URL is set but appears to be a placeholder: {webapp_url}")
         
         # For testing/development - you can uncomment and set your Railway URL here
         # Example: return "https://your-app-name.up.railway.app"
         
-        logger.warning("⚠️ No WEBAPP_URL or RAILWAY_PUBLIC_DOMAIN found - Live Chart button disabled")
+        logger.warning("⚠️ No valid WEBAPP_URL or RAILWAY_PUBLIC_DOMAIN found - Live Chart button disabled")
         logger.warning("⚠️ Please set RAILWAY_PUBLIC_DOMAIN or WEBAPP_URL environment variable")
-        logger.warning("⚠️ Example: WEBAPP_URL=https://your-app-name.up.railway.app")
+        logger.warning("⚠️ Example: WEBAPP_URL=https://rsi-mfi-bot-production.up.railway.app")
         return None
+    
+    def _get_bot_username(self):
+        """Get bot username (cached)"""
+        if not hasattr(self, '_bot_username'):
+            try:
+                bot_info = self.bot.get_me()
+                self._bot_username = bot_info.username
+                logger.info(f"✅ Bot username: @{self._bot_username}")
+            except Exception as e:
+                logger.error(f"❌ Error getting bot username: {e}")
+                self._bot_username = None
+        return self._bot_username
     
     def create_chart_keyboard(self, symbol, webapp_url=None):
         """Create keyboard with Live Chart (WebApp) and timeframe options"""
