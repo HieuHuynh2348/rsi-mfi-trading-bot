@@ -220,11 +220,11 @@
             50% { opacity: 0.85; }
         }
         
-        /* Signal badge - Reduced animation */
+        /* Signal badge - Move to left side, below indicators */
         .signal-badge {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 340px;  /* Below indicators panel (120px top + ~200px height) */
+            left: 10px;
             padding: 8px 16px;
             border-radius: 20px;
             font-weight: bold;
@@ -257,7 +257,7 @@
            ============================================================ */
         #ohlcv-legend {
             position: absolute;
-            left: 12px;
+            right: 12px;  /* Move to right side to avoid blocking indicators */
             top: 60px;  /* Below header */
             z-index: 2;
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -324,7 +324,7 @@
         /* Mobile compact legend */
         @media (max-width: 567px) {
             #ohlcv-legend {
-                left: 8px;
+                right: 8px;  /* Keep on right side on mobile */
                 top: 52px;
                 font-size: 10px;
                 padding: 6px 10px;
@@ -338,6 +338,14 @@
             .legend-ohlcv {
                 font-size: 10px;
                 gap: 8px;
+            }
+            
+            /* Move signal badge higher on mobile to avoid blocking chart */
+            .signal-badge {
+                top: 300px;
+                left: 8px;
+                font-size: 12px;
+                padding: 6px 12px;
             }
         }
         
