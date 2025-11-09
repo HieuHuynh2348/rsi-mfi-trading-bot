@@ -303,34 +303,38 @@ class TelegramCommandHandler:
                 
                 # Check usage limits for private chat users (not in groups)
                 if chat_type == 'private' and user_id:
-                    today = datetime.now().strftime('%Y-%m-%d')
-                    
-                    # Initialize or update usage tracking
-                    if user_id not in self.user_usage:
-                        self.user_usage[user_id] = {'date': today, 'count': 0}
+                    # Skip limit check for owner
+                    if user_id == config.OWNER_USER_ID:
+                        logger.info(f"👑 Owner user {user_id} (@{username}) - No limits applied")
                     else:
-                        # Reset count if new day
-                        if self.user_usage[user_id]['date'] != today:
+                        today = datetime.now().strftime('%Y-%m-%d')
+                        
+                        # Initialize or update usage tracking
+                        if user_id not in self.user_usage:
                             self.user_usage[user_id] = {'date': today, 'count': 0}
-                    
-                    # Check if user exceeded daily limit
-                    if self.user_usage[user_id]['count'] >= self.daily_limit:
-                        # Send limit exceeded message
-                        self.telegram_bot.send_message(
-                            chat_id=message.chat.id,
-                            text=f"⚠️ <b>Giới hạn sử dụng</b>\n\n"
-                                 f"Bạn đã sử dụng hết <b>{self.daily_limit} lần</b> trong ngày hôm nay.\n\n"
-                                 f"🕐 Vui lòng quay lại vào ngày mai!\n\n"
-                                 f"💡 <b>Tip:</b> Tham gia group để sử dụng không giới hạn!",
-                            parse_mode='HTML'
-                        )
-                        logger.info(f"🚫 User {user_id} exceeded daily limit ({self.user_usage[user_id]['count']}/{self.daily_limit})")
-                        return False
-                    
-                    # Increment usage count
-                    self.user_usage[user_id]['count'] += 1
-                    remaining = self.daily_limit - self.user_usage[user_id]['count']
-                    logger.info(f"✅ User {user_id} usage: {self.user_usage[user_id]['count']}/{self.daily_limit}, Remaining: {remaining}")
+                        else:
+                            # Reset count if new day
+                            if self.user_usage[user_id]['date'] != today:
+                                self.user_usage[user_id] = {'date': today, 'count': 0}
+                        
+                        # Check if user exceeded daily limit
+                        if self.user_usage[user_id]['count'] >= self.daily_limit:
+                            # Send limit exceeded message
+                            self.telegram_bot.send_message(
+                                chat_id=message.chat.id,
+                                text=f"⚠️ <b>Giới hạn sử dụng</b>\n\n"
+                                     f"Bạn đã sử dụng hết <b>{self.daily_limit} lần</b> trong ngày hôm nay.\n\n"
+                                     f"🕐 Vui lòng quay lại vào ngày mai!\n\n"
+                                     f"💡 <b>Tip:</b> Tham gia group để sử dụng không giới hạn!",
+                                parse_mode='HTML'
+                            )
+                            logger.info(f"🚫 User {user_id} exceeded daily limit ({self.user_usage[user_id]['count']}/{self.daily_limit})")
+                            return False
+                        
+                        # Increment usage count
+                        self.user_usage[user_id]['count'] += 1
+                        remaining = self.daily_limit - self.user_usage[user_id]['count']
+                        logger.info(f"✅ User {user_id} usage: {self.user_usage[user_id]['count']}/{self.daily_limit}, Remaining: {remaining}")
                 
                 # Check if we should send tracking notification (rate limiting)
                 # Only track private chat users (not group users)
@@ -354,13 +358,19 @@ class TelegramCommandHandler:
                     try:
                         # Get usage info
                         usage_info = ""
+                        user_badge = ""
+                        
+                        # Add owner badge if owner
+                        if user_id == config.OWNER_USER_ID:
+                            user_badge = " 👑 <b>OWNER</b>"
+                        
                         if chat_type == 'private' and user_id in self.user_usage:
-                            usage_info = f"\n📊 <b>Usage Today:</b> {self.user_usage[user_id]['count']}/{self.daily_limit}"
+                            usage_info = f"\n📊 <b>Usage Today:</b> {self.user_usage[user_id]['count']}/{self.daily_limit if user_id != config.OWNER_USER_ID else '∞'}"
                         
                         tracking_message = f"""
 📊 <b>Bot Usage Tracking</b>
 
-👤 <b>User ID:</b> <code>{user_id}</code>
+👤 <b>User ID:</b> <code>{user_id}</code>{user_badge}
 👤 <b>Username:</b> @{username}
 👤 <b>Name:</b> {first_name}
 💬 <b>Chat ID:</b> <code>{chat_id}</code>

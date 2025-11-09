@@ -56,6 +56,10 @@ MIN_VOLUME_USDT = 0  # Analyze all coins regardless of volume
 # ============================================================================
 # BOT SETTINGS
 # ============================================================================
+# Owner user (no restrictions applied)
+OWNER_USER_ID = 6228875204  # @Hieuhuynh234
+OWNER_USERNAME = "Hieuhuynh234"
+
 # How often to scan (in seconds)
 SCAN_INTERVAL = 300  # 5 minutes
 
