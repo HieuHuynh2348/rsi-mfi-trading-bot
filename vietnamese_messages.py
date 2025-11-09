@@ -23,21 +23,12 @@ Ví dụ: /BTC /ETH /LINK
    ✅ Trading Recommendation
    🤖 AI Analysis Button
 
-<b>🔍 THÔNG TIN THỊ TRƯỜNG:</b>
-/price <b>SYMBOL</b> - Giá hiện tại
-/24h <b>SYMBOL</b> - Dữ liệu 24h
-/top - Top 10 coin khối lượng cao
-
-<b>📈 PHÂN TÍCH RIÊNG LẺ:</b>
-/rsi <b>SYMBOL</b> - Chỉ RSI
-/mfi <b>SYMBOL</b> - Chỉ MFI
-/chart <b>SYMBOL</b> - Xem biểu đồ
-
 <b>🚀 PUMP & DUMP:</b>
 /pumpscan <b>SYMBOL</b> - Quét pump 3 layers
 /startpumpwatch - Tự động phát hiện pump
 /stoppumpwatch - Dừng pump watch
 /pumpstatus - Trạng thái & settings
+/top - Top 10 coin khối lượng cao
 
 <b>📊 STOCH+RSI:</b>
 /stochrsi <b>SYMBOL</b> - Stochastic + RSI 4 TF
