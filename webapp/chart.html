@@ -845,9 +845,6 @@
             candles: []
         };
         
-        // API endpoint (your bot's server)
-        const API_BASE = window.location.origin;
-        
         // Indicator thresholds (Matching Pine Script: rsi_lower=20, rsi_upper=80)
         const RSI_OVERSOLD = 20;
         const RSI_OVERBOUGHT = 80;
@@ -1347,68 +1344,108 @@
             }
         }
         
+        // Calculate simple RSI (for display purposes)
+        function calculateSimpleRSI(prices, period = 14) {
+            if (prices.length < period + 1) return 50;
+            
+            let gains = 0;
+            let losses = 0;
+            
+            // Calculate initial average gain/loss
+            for (let i = prices.length - period; i < prices.length; i++) {
+                const change = prices[i] - prices[i - 1];
+                if (change > 0) gains += change;
+                else losses += Math.abs(change);
+            }
+            
+            const avgGain = gains / period;
+            const avgLoss = losses / period;
+            
+            if (avgLoss === 0) return 100;
+            
+            const rs = avgGain / avgLoss;
+            const rsi = 100 - (100 / (1 + rs));
+            
+            return Math.round(rsi * 100) / 100;
+        }
+        
         // Load chart data
         async function loadChartData(tf) {
             try {
                 showLoading();
                 
-                console.log(`Fetching data: ${API_BASE}/api/chart?symbol=${symbol}&timeframe=${tf}`);
+                console.log(`Fetching data directly from Binance: ${symbol} ${tf}`);
                 
-                // Fetch data from your backend
-                const response = await fetch(`${API_BASE}/api/chart?symbol=${symbol}&timeframe=${tf}`);
+                // Map timeframe to Binance interval
+                const intervalMap = {
+                    '5m': '5m',
+                    '15m': '15m',
+                    '1h': '1h',
+                    '4h': '4h',
+                    '1d': '1d'
+                };
+                const interval = intervalMap[tf] || '1h';
+                
+                // Fetch klines directly from Binance API
+                const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`;
+                const response = await fetch(binanceUrl);
                 
                 console.log('Response status:', response.status);
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Error response:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: Failed to fetch from Binance`);
                 }
                 
-                const data = await response.json();
-                console.log('Received data:', data);
-                console.log('Number of candles:', data.candles?.length);
+                const klines = await response.json();
+                console.log('Received klines:', klines.length);
                 
                 // Validate data
-                if (!data.candles || data.candles.length === 0) {
-                    throw new Error('No candle data received');
+                if (!klines || klines.length === 0) {
+                    throw new Error('No candle data received from Binance');
                 }
                 
-                // Check timestamp format
-                const firstTime = data.candles[0].time;
-                console.log('First timestamp:', firstTime, typeof firstTime);
+                // Convert Binance klines format to our format
+                const candles = klines.map(k => ({
+                    time: Math.floor(k[0] / 1000), // Convert ms to seconds
+                    open: parseFloat(k[1]),
+                    high: parseFloat(k[2]),
+                    low: parseFloat(k[3]),
+                    close: parseFloat(k[4]),
+                    volume: parseFloat(k[5])
+                }));
                 
-                // Validate timestamp is in seconds (not milliseconds)
-                // Unix timestamp in seconds should be around 1.7 billion (year 2024)
-                // Unix timestamp in milliseconds would be 1700+ billion
-                if (firstTime > 10000000000) {
-                    console.warn('Timestamp appears to be in milliseconds, converting to seconds');
-                    // Convert all timestamps to seconds
-                    data.candles.forEach(c => {
-                        c.time = Math.floor(c.time / 1000);
-                    });
-                }
+                console.log('Converted candles:', candles.length);
+                
+                // Get current price (last close)
+                const currentPrice = candles[candles.length - 1].close;
+                const previousClose = candles[candles.length - 2]?.close || currentPrice;
+                const priceChange = ((currentPrice - previousClose) / previousClose) * 100;
+                
+                // Calculate RSI and MFI (simple calculation for display)
+                const closes = candles.map(c => c.close);
+                const rsi = calculateSimpleRSI(closes, 6);
+                const mfi = 50; // Placeholder - MFI requires volume calculation
                 
                 // Haptic feedback on success
                 hapticFeedback('success');
                 
                 // Update header
                 document.getElementById('symbol').textContent = symbol;
-                updatePrice(data.currentPrice, data.priceChange);
+                updatePrice(currentPrice, priceChange);
                 
                 // Store latest data
-                latestData.rsi = data.rsi;
-                latestData.mfi = data.mfi;
+                latestData.rsi = rsi;
+                latestData.mfi = mfi;
                 
                 // Update indicators with dynamic display
-                updateIndicatorDisplay(data.rsi, data.mfi);
+                updateIndicatorDisplay(rsi, mfi);
                 
                 // Update signal badge
-                updateSignalBadge(data.rsi, data.mfi);
+                updateSignalBadge(rsi, mfi);
                 
                 // Update chart with data validation (Best practice from docs)
                 // LightweightCharts REQUIRES sorted data by time (ascending)
-                const sortedCandles = data.candles.sort((a, b) => a.time - b.time);
+                const sortedCandles = candles.sort((a, b) => a.time - b.time);
                 
                 // Remove duplicates (Best practice)
                 const uniqueCandles = [];
@@ -1750,26 +1787,30 @@
             if (!isChartReady || !candlestickSeries) return;
             
             try {
-                const response = await fetch(`${API_BASE}/api/chart?symbol=${symbol}&timeframe=${currentTimeframe}`);
+                // Fetch latest candle directly from Binance
+                const intervalMap = {
+                    '5m': '5m',
+                    '15m': '15m',
+                    '1h': '1h',
+                    '4h': '4h',
+                    '1d': '1d'
+                };
+                const interval = intervalMap[currentTimeframe] || '1h';
+                const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=1`;
+                
+                const response = await fetch(binanceUrl);
                 if (!response.ok) return;
                 
-                const data = await response.json();
-                if (!data.candles || data.candles.length === 0) return;
+                const klines = await response.json();
+                if (!klines || klines.length === 0) return;
                 
-                // Get last candle
-                const lastCandle = data.candles[data.candles.length - 1];
-                
-                // Validate timestamp
-                let time = lastCandle.time;
-                if (time > 10000000000) {
-                    time = Math.floor(time / 1000);
-                }
-                
-                // Validate OHLC
-                const open = parseFloat(lastCandle.open);
-                const high = parseFloat(lastCandle.high);
-                const low = parseFloat(lastCandle.low);
-                const close = parseFloat(lastCandle.close);
+                // Convert last candle
+                const k = klines[0];
+                const time = Math.floor(k[0] / 1000);
+                const open = parseFloat(k[1]);
+                const high = parseFloat(k[2]);
+                const low = parseFloat(k[3]);
+                const close = parseFloat(k[4]);
                 const validHigh = Math.max(open, high, low, close);
                 const validLow = Math.min(open, high, low, close);
                 
