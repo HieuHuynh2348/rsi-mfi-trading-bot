@@ -26,6 +26,23 @@ Ví dụ: /BTC /ETH /LINK
 /mfi <b>SYMBOL</b> - Chỉ MFI
 /chart <b>SYMBOL</b> - Xem biểu đồ
 
+<b>🎯 PHÂN TÍCH TOÀN DIỆN:</b>
+/analyzer <b>SYMBOL</b> - Phân tích TẤT CẢ indicators
+   • PUMP/DUMP Detection (3 layers)
+   • RSI/MFI Multi-timeframe
+   • Stoch+RSI Multi-timeframe
+   • Volume Analysis
+   • 🤖 AI Analysis Button
+
+<b>🚀 PUMP & DUMP:</b>
+/pumpscan <b>SYMBOL</b> - Quét pump 3 layers
+/startpumpwatch - Tự động phát hiện pump
+/stoppumpwatch - Dừng pump watch
+/pumpstatus - Trạng thái & settings
+
+<b>📊 STOCH+RSI:</b>
+/stochrsi <b>SYMBOL</b> - Stochastic + RSI 4 TF
+
 <b>⚙️ ĐIỀU KHIỂN BOT:</b>
 /status - Trạng thái bot & cài đặt
 /scan - Quét thị trường ngay

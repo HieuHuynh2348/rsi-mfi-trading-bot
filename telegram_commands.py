@@ -233,7 +233,7 @@ class TelegramCommandHandler:
             'startmarketscan', 'stopmarketscan', 'marketstatus',
             'startbotmonitor', 'stopbotmonitor', 'botmonitorstatus', 'botscan', 'botthreshold',
             'startpumpwatch', 'stoppumpwatch', 'pumpstatus', 'pumpscan',
-            'stochrsi'
+            'stochrsi', 'analyzer'
         ]
         
         # Allow commands from specific chat/group only (for security)
@@ -2399,6 +2399,266 @@ class TelegramCommandHandler:
                 
             except Exception as e:
                 logger.error(f"Error in /stochrsi: {e}")
+                from vietnamese_messages import ERROR_OCCURRED
+                self.bot.send_message(ERROR_OCCURRED.format(error=str(e)))
+        
+        @self.telegram_bot.message_handler(commands=['analyzer'])
+        def handle_comprehensive_analyzer(message):
+            """Comprehensive analysis: PUMP/DUMP + RSI/MFI + Stoch+RSI + AI Button"""
+            if not check_authorized(message):
+                return
+            
+            try:
+                # Parse symbol from command
+                parts = message.text.split()
+                
+                if len(parts) < 2:
+                    self.bot.send_message(
+                        "❌ <b>Vui lòng chỉ định symbol</b>\n\n"
+                        "<b>Cú pháp:</b>\n"
+                        "   /analyzer BTCUSDT\n"
+                        "   /analyzer BTC\n\n"
+                        "<b>Phân tích toàn diện:</b>\n"
+                        "   ✅ PUMP/DUMP Detection (3 layers)\n"
+                        "   ✅ RSI/MFI Multi-timeframe\n"
+                        "   ✅ Stoch+RSI Multi-timeframe\n"
+                        "   ✅ Volume Analysis\n"
+                        "   🤖 AI Analysis Button"
+                    )
+                    return
+                
+                symbol_raw = parts[1].upper()
+                
+                # Auto-add USDT if not present
+                if not symbol_raw.endswith('USDT'):
+                    symbol = symbol_raw + 'USDT'
+                else:
+                    symbol = symbol_raw
+                
+                self.bot.send_message(
+                    f"🔍 <b>COMPREHENSIVE ANALYSIS - {symbol}</b>\n\n"
+                    f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
+                    f"⏳ Vui lòng chờ 15-20 giây..."
+                )
+                
+                # === 1. PUMP/DUMP ANALYSIS ===
+                pump_result = self.pump_detector.manual_scan(symbol)
+                
+                # === 2. RSI/MFI ANALYSIS ===
+                timeframes = ['5m', '1h', '4h', '1d']
+                klines_dict = self.binance.get_multi_timeframe_data(symbol, timeframes, limit=200)
+                
+                if not klines_dict:
+                    self.bot.send_message(
+                        f"❌ <b>Không thể lấy dữ liệu cho {symbol}</b>\n\n"
+                        "Symbol có thể không tồn tại hoặc không có đủ lịch sử giao dịch."
+                    )
+                    return
+                
+                rsi_mfi_result = self._analyze_multi_timeframe(
+                    klines_dict,
+                    self._config.RSI_PERIOD,
+                    self._config.MFI_PERIOD,
+                    self._config.RSI_LOWER,
+                    self._config.RSI_UPPER,
+                    self._config.MFI_LOWER,
+                    self._config.MFI_UPPER
+                )
+                
+                # === 3. STOCH+RSI ANALYSIS ===
+                stoch_rsi_result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
+                    symbol, 
+                    timeframes=['1m', '5m', '4h', '1d']
+                )
+                
+                # === 4. BUILD COMPREHENSIVE MESSAGE ===
+                msg = f"<b>📊 COMPREHENSIVE ANALYSIS</b>\n\n"
+                msg += f"<b>💎 {symbol}</b>\n"
+                msg += f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                
+                # Current Price
+                ticker_24h = self.binance.get_24h_data(symbol)
+                if ticker_24h:
+                    current_price = ticker_24h['last_price']
+                    price_change_24h = ticker_24h['price_change_percent']
+                    volume_24h = ticker_24h['volume']
+                    
+                    msg += f"<b>💰 Giá Hiện Tại:</b> ${current_price:,.8f}\n"
+                    msg += f"<b>📈 24h Change:</b> {price_change_24h:+.2f}%\n"
+                    msg += f"<b>💧 24h Volume:</b> ${volume_24h:,.0f}\n\n"
+                
+                msg += "━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === PUMP/DUMP SECTION ===
+                msg += "<b>🚀 PUMP/DUMP DETECTION (3-Layer)</b>\n\n"
+                
+                if pump_result and 'final_score' in pump_result:
+                    score = pump_result['final_score']
+                    
+                    if score >= 80:
+                        status_emoji = "🔴"
+                        status_text = "PUMP CAO"
+                    elif score >= 60:
+                        status_emoji = "🟡"
+                        status_text = "PUMP VỪA"
+                    elif score >= 40:
+                        status_emoji = "🟢"
+                        status_text = "PUMP YẾU"
+                    else:
+                        status_emoji = "⚪"
+                        status_text = "KHÔNG PUMP"
+                    
+                    msg += f"{status_emoji} <b>Status:</b> {status_text}\n"
+                    msg += f"<b>🎯 Final Score:</b> {score:.0f}%\n\n"
+                    
+                    # Layer breakdown
+                    if 'layer1' in pump_result and pump_result['layer1']:
+                        layer1 = pump_result['layer1']
+                        msg += f"   ⚡ Layer 1 (5m): {layer1['pump_score']:.0f}%\n"
+                    
+                    if 'layer2' in pump_result and pump_result['layer2']:
+                        layer2 = pump_result['layer2']
+                        msg += f"   ✅ Layer 2 (1h/4h): {layer2['pump_score']:.0f}%\n"
+                    
+                    if 'layer3' in pump_result and pump_result['layer3']:
+                        layer3 = pump_result['layer3']
+                        msg += f"   📈 Layer 3 (1D): {layer3['pump_score']:.0f}%\n"
+                else:
+                    msg += "⚪ <b>Status:</b> Không có tín hiệu pump rõ ràng\n"
+                
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === RSI/MFI SECTION ===
+                msg += "<b>📊 RSI/MFI MULTI-TIMEFRAME</b>\n\n"
+                
+                if rsi_mfi_result and 'timeframes' in rsi_mfi_result:
+                    consensus = rsi_mfi_result['consensus']
+                    strength = rsi_mfi_result['consensus_strength']
+                    
+                    if consensus == 'BUY':
+                        consensus_emoji = "🟢"
+                    elif consensus == 'SELL':
+                        consensus_emoji = "🔴"
+                    else:
+                        consensus_emoji = "🟡"
+                    
+                    msg += f"{consensus_emoji} <b>Consensus:</b> {consensus} (Strength: {strength}/4)\n\n"
+                    
+                    # Timeframe breakdown
+                    for tf, data in rsi_mfi_result['timeframes'].items():
+                        signal = data['signal']
+                        rsi = data['rsi']
+                        mfi = data['mfi']
+                        
+                        signal_emoji = "🟢" if signal == 'BUY' else "🔴" if signal == 'SELL' else "🟡"
+                        
+                        msg += f"   {signal_emoji} <b>{tf}:</b> {signal}\n"
+                        msg += f"      RSI: {rsi:.1f} | MFI: {mfi:.1f}\n"
+                else:
+                    msg += "⚪ Không có dữ liệu RSI/MFI\n"
+                
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === STOCH+RSI SECTION ===
+                msg += "<b>📈 STOCH+RSI MULTI-TIMEFRAME</b>\n\n"
+                
+                if stoch_rsi_result and 'timeframes' in stoch_rsi_result:
+                    consensus = stoch_rsi_result['consensus']
+                    strength = stoch_rsi_result['consensus_strength']
+                    
+                    if consensus == 'BUY':
+                        consensus_emoji = "🟢"
+                    elif consensus == 'SELL':
+                        consensus_emoji = "🔴"
+                    else:
+                        consensus_emoji = "🟡"
+                    
+                    msg += f"{consensus_emoji} <b>Consensus:</b> {consensus} (Strength: {strength}/4)\n\n"
+                    
+                    # Timeframe breakdown
+                    for tf_data in stoch_rsi_result['timeframes']:
+                        tf = tf_data['timeframe']
+                        signal = tf_data['signal_text']
+                        rsi = tf_data['rsi']
+                        stoch_k = tf_data['stoch_k']
+                        
+                        signal_emoji = "🟢" if 'BUY' in signal else "🔴" if 'SELL' in signal else "🟡"
+                        
+                        msg += f"   {signal_emoji} <b>{tf}:</b> {signal}\n"
+                        msg += f"      RSI: {rsi:.1f} | Stoch: {stoch_k:.1f}\n"
+                else:
+                    msg += "⚪ Không có dữ liệu Stoch+RSI\n"
+                
+                msg += "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                
+                # === TRADING RECOMMENDATION ===
+                msg += "<b>🎯 TỔNG KẾT & KHUYẾN NGHỊ</b>\n\n"
+                
+                # Calculate overall signal
+                buy_signals = 0
+                sell_signals = 0
+                total_signals = 0
+                
+                # Count RSI/MFI signals
+                if rsi_mfi_result and 'consensus' in rsi_mfi_result:
+                    total_signals += 1
+                    if rsi_mfi_result['consensus'] == 'BUY':
+                        buy_signals += 1
+                    elif rsi_mfi_result['consensus'] == 'SELL':
+                        sell_signals += 1
+                
+                # Count Stoch+RSI signals
+                if stoch_rsi_result and 'consensus' in stoch_rsi_result:
+                    total_signals += 1
+                    if stoch_rsi_result['consensus'] == 'BUY':
+                        buy_signals += 1
+                    elif stoch_rsi_result['consensus'] == 'SELL':
+                        sell_signals += 1
+                
+                # Count Pump signal
+                if pump_result and 'final_score' in pump_result:
+                    total_signals += 1
+                    if pump_result['final_score'] >= 60:
+                        buy_signals += 1
+                
+                # Overall recommendation
+                if buy_signals >= 2 and sell_signals == 0:
+                    msg += "✅ <b>KHUYẾN NGHỊ: MUA/LONG</b>\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += "   • Đa số indicators đồng thuận BUY\n"
+                elif sell_signals >= 2 and buy_signals == 0:
+                    msg += "❌ <b>KHUYẾN NGHỊ: BÁN/SHORT</b>\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Đa số indicators đồng thuận SELL\n"
+                elif buy_signals > sell_signals:
+                    msg += "🟢 <b>KHUYẾN NGHỊ: CHỜ XÁC NHẬN MUA</b>\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += "   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Theo dõi thêm trước khi vào lệnh\n"
+                elif sell_signals > buy_signals:
+                    msg += "🔴 <b>KHUYẾN NGHỊ: CHỜ XÁC NHẬN BÁN</b>\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += "   • Có xu hướng giảm, cẩn trọng\n"
+                else:
+                    msg += "🟡 <b>KHUYẾN NGHỊ: CHỜ ĐỢI</b>\n"
+                    msg += f"   • Tín hiệu BUY: {buy_signals}/{total_signals}\n"
+                    msg += f"   • Tín hiệu SELL: {sell_signals}/{total_signals}\n"
+                    msg += "   • Indicators mâu thuẫn nhau\n"
+                    msg += "   • Tránh vào lệnh trong lúc này\n"
+                
+                msg += "\n⚠️ <i>Đây là phân tích kỹ thuật tự động, không phải tư vấn tài chính</i>"
+                
+                # Create AI Analysis button
+                ai_keyboard = self.bot.create_ai_analysis_keyboard(symbol)
+                
+                # Send comprehensive analysis
+                self.bot.send_message(msg, reply_markup=ai_keyboard)
+                
+                logger.info(f"✅ Sent comprehensive analysis for {symbol}")
+                
+            except Exception as e:
+                logger.error(f"Error in /analyzer: {e}", exc_info=True)
                 from vietnamese_messages import ERROR_OCCURRED
                 self.bot.send_message(ERROR_OCCURRED.format(error=str(e)))
         
