@@ -225,7 +225,8 @@ class WatchlistMonitor:
                         result['consensus_strength'],
                         formatted_price,
                         md,
-                        result.get('volume_data')
+                        result.get('volume_data'),
+                        result.get('stoch_rsi_data')
                     )
                     logger.info(f"✅ Successfully sent alert for {result['symbol']}")
                     
@@ -385,7 +386,8 @@ class WatchlistMonitor:
                         result['consensus_strength'],
                         formatted_price,
                         md,
-                        result.get('volume_data')
+                        result.get('volume_data'),
+                        result.get('stoch_rsi_data')
                     )
                     
                     # Send chart if enabled

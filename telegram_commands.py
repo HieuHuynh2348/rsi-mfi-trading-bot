@@ -199,6 +199,20 @@ class TelegramCommandHandler:
             has_signal = (analysis['consensus'] != 'NEUTRAL' and 
                          analysis['consensus_strength'] >= self._config.MIN_CONSENSUS_STRENGTH)
             
+            # Get Stoch+RSI analysis (optional, only if available)
+            stoch_rsi_data = None
+            if hasattr(self, 'stoch_rsi_analyzer') and self.stoch_rsi_analyzer:
+                try:
+                    stoch_rsi_result = self.stoch_rsi_analyzer.analyze_multi_timeframe(
+                        symbol,
+                        timeframes=['1m', '5m', '1h', '4h', '1d']
+                    )
+                    if stoch_rsi_result:
+                        stoch_rsi_data = stoch_rsi_result
+                        logger.info(f"Stoch+RSI for {symbol}: {stoch_rsi_result.get('consensus')} (Strength: {stoch_rsi_result.get('consensus_strength')})")
+                except Exception as e:
+                    logger.error(f"Stoch+RSI analysis failed for {symbol}: {e}")
+            
             result_data = {
                 'symbol': symbol,
                 'timeframe_data': analysis['timeframes'],
@@ -207,6 +221,7 @@ class TelegramCommandHandler:
                 'price': price,
                 'market_data': market_data,
                 'volume_data': volume_data,
+                'stoch_rsi_data': stoch_rsi_data,
                 'klines_dict': klines_dict,
                 'has_signal': has_signal
             }

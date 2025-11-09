@@ -487,7 +487,7 @@ class TelegramBot:
             logger.error(f"Error sending photo: {e}")
             return False
     
-    def send_signal_alert(self, symbol, timeframe_data, consensus, consensus_strength, price=None, market_data=None, volume_data=None):
+    def send_signal_alert(self, symbol, timeframe_data, consensus, consensus_strength, price=None, market_data=None, volume_data=None, stoch_rsi_data=None):
         """
         Send a formatted signal alert with detailed information in Vietnamese
         
@@ -499,16 +499,14 @@ class TelegramBot:
             price: Current price (optional)
             market_data: Dictionary with 24h data (high, low, change, volume)
             volume_data: Dictionary with volume analysis (current, last, avg, ratios)
+            stoch_rsi_data: Dictionary with Stoch+RSI analysis (optional)
         """
         try:
             # Use Vietnamese message generator
-            message = get_signal_alert(symbol, timeframe_data, consensus, consensus_strength, price, market_data, volume_data)
+            message = get_signal_alert(symbol, timeframe_data, consensus, consensus_strength, price, market_data, volume_data, stoch_rsi_data)
             
-            # Add action buttons
-            keyboard = types.InlineKeyboardMarkup()
-            keyboard.add(types.InlineKeyboardButton("📈 Xem Biểu Đồ", callback_data=f"viewchart_{symbol.upper()}"))
-            keyboard.add(types.InlineKeyboardButton("⭐ Thêm vào Watchlist", callback_data=f"addwatch_{symbol.upper()}"))
-            keyboard.add(types.InlineKeyboardButton("🔙 Menu Chính", callback_data="cmd_menu"))
+            # Add AI Analysis and Chart buttons
+            keyboard = self.create_symbol_analysis_keyboard(symbol)
             
             logger.info(f"✅ Đang gửi cảnh báo tín hiệu cho {symbol}")
             result = self.send_message(message, reply_markup=keyboard)

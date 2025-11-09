@@ -230,8 +230,8 @@ def get_settings_message(config):
 """
 
 # Signal Messages
-def get_signal_alert(symbol, timeframe_data, consensus, strength, price, market_data, volume_data):
-    """Generate signal alert message in Vietnamese"""
+def get_signal_alert(symbol, timeframe_data, consensus, strength, price, market_data, volume_data, stoch_rsi_data=None):
+    """Generate signal alert message in Vietnamese with optional Stoch+RSI data"""
     
     # Consensus emoji and text
     if consensus == "BUY":
@@ -298,6 +298,46 @@ def get_signal_alert(symbol, timeframe_data, consensus, strength, price, market_
             trend = "↗" if change > 0 else ("↘" if change < 0 else "→")
             msg += f"  {tf.upper()}: {mfi_val:.2f} {emoji} {status} {trend}\n"
         
+        msg += "\n"
+    
+    # Stoch+RSI Analysis (if provided)
+    if stoch_rsi_data:
+        stoch_consensus = stoch_rsi_data.get('consensus', 'NEUTRAL')
+        stoch_strength = stoch_rsi_data.get('consensus_strength', 0)
+        stoch_timeframes = stoch_rsi_data.get('timeframes', [])
+        
+        if stoch_consensus == "BUY":
+            stoch_emoji = "🟢"
+            stoch_text = "MUA"
+        elif stoch_consensus == "SELL":
+            stoch_emoji = "🔴"
+            stoch_text = "BÁN"
+        else:
+            stoch_emoji = "⚪"
+            stoch_text = "TRUNG LẬP"
+        
+        msg += f"<b>🎯 STOCH+RSI:</b> {stoch_emoji} {stoch_text}"
+        if stoch_strength:
+            stoch_bar = "█" * stoch_strength + "░" * (5 - stoch_strength)
+            msg += f" ({stoch_bar} {stoch_strength}/5)"
+        msg += "\n"
+        
+        # Show key timeframes
+        if stoch_timeframes:
+            key_tfs = ['1h', '4h', '1d']
+            shown_tfs = [tf for tf in stoch_timeframes if tf.get('timeframe') in key_tfs][:3]
+            if shown_tfs:
+                msg += "  "
+                for tf_data in shown_tfs:
+                    tf = tf_data.get('timeframe', '')
+                    signal = tf_data.get('signal_text', 'NEUTRAL')
+                    if signal == 'BUY':
+                        msg += f"{tf.upper()}:🟢 "
+                    elif signal == 'SELL':
+                        msg += f"{tf.upper()}:🔴 "
+                    else:
+                        msg += f"{tf.upper()}:⚪ "
+                msg += "\n"
         msg += "\n"
     
     # Price info
