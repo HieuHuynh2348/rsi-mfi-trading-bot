@@ -1,13 +1,14 @@
-# 📊 /analyzer Command - Comprehensive Analysis Guide
+# 📊 Symbol Analysis Command - Comprehensive Guide
 
 **Date:** November 9, 2025  
-**Status:** ✅ Deployed to Railway
+**Status:** ✅ Deployed to Railway  
+**Update:** Enhanced `/SYMBOL` commands with full comprehensive analysis
 
 ---
 
 ## 🎯 Overview
 
-The `/analyzer` command provides **comprehensive multi-indicator analysis** combining ALL available technical indicators in a single, easy-to-read report with AI analysis button.
+Symbol commands like `/BTC`, `/ETH`, `/SOL` now provide **comprehensive multi-indicator analysis** combining ALL available technical indicators in a single, easy-to-read report with AI analysis button.
 
 ### What Makes It Special?
 
@@ -16,6 +17,7 @@ The `/analyzer` command provides **comprehensive multi-indicator analysis** comb
 - 🤖 **AI Button**: Quick access to Gemini AI deep analysis
 - 📊 **Visual Formatting**: Color-coded signals with emojis
 - ⚡ **Fast**: Parallel data collection (15-20 seconds)
+- 🎯 **Short Commands**: Just `/BTC` instead of `/analyzer BTC`
 
 ---
 
@@ -23,18 +25,41 @@ The `/analyzer` command provides **comprehensive multi-indicator analysis** comb
 
 ### Basic Syntax
 ```
-/analyzer SYMBOL
+/SYMBOL
 ```
 
 ### Examples
 ```
-/analyzer BTC
-/analyzer ETHUSDT
-/analyzer SOLUSDT
-/analyzer LINK
+/BTC          # Auto-adds USDT → BTCUSDT
+/ETH          # → ETHUSDT
+/SOL          # → SOLUSDT  
+/LINK         # → LINKUSDT
+/BTCUSDT      # Direct symbol also works
 ```
 
 **Note:** Auto-adds `USDT` if not present
+
+---
+
+## 🆕 What Changed?
+
+### Before (Old `/analyzer` command):
+```
+/analyzer BTC
+/analyzer ETHUSDT
+```
+
+### After (Enhanced `/SYMBOL` command):
+```
+/BTC
+/ETHUSDT
+```
+
+**Benefits:**
+- ✅ Shorter command
+- ✅ More intuitive
+- ✅ Same comprehensive features
+- ✅ Consistent with bot patterns
 
 ---
 
@@ -239,11 +264,11 @@ if pump_score >= 60:
 ## 💡 Use Cases
 
 ### 1. Pre-Trade Analysis
-Before entering a position, check `/analyzer SYMBOL` to see if all indicators align.
+Before entering a position, check `/BTC` (or any symbol) to see if all indicators align.
 
 **Example Decision Flow:**
 ```
-/analyzer BTCUSDT
+/BTC
 → PUMP: 85% ✅
 → RSI/MFI: BUY (3/4) ✅
 → Stoch+RSI: BUY (4/4) ✅
@@ -253,11 +278,11 @@ Decision: Enter LONG position
 ```
 
 ### 2. Confirmation Check
-Already in a position? Verify with `/analyzer` to confirm continuation.
+Already in a position? Verify with `/SYMBOL` to confirm continuation.
 
 **Example:**
 ```
-/analyzer ETHUSDT
+/ETH
 → PUMP: 45% (Weak)
 → RSI/MFI: NEUTRAL
 → Stoch+RSI: SELL (2/4) ⚠️
@@ -271,7 +296,7 @@ After seeing comprehensive analysis, click AI button for detailed insights.
 
 **Flow:**
 ```
-/analyzer SOLUSDT
+/SOL
 → View all indicators
 → See recommendation
 → Click [🤖 Phân Tích AI - SOLUSDT]
@@ -286,13 +311,13 @@ Compare multiple coins before choosing which to trade.
 
 **Example:**
 ```
-/analyzer BTC
+/BTC
 → BUY: 3/3 ✅
 
-/analyzer ETH
+/ETH
 → BUY: 2/3 🟢
 
-/analyzer SOL
+/SOL
 → WAIT: 1/3 🟡
 
 Decision: Trade BTC (strongest signals)
@@ -304,14 +329,13 @@ Decision: Trade BTC (strongest signals)
 
 | Command | What It Does | Use When |
 |---------|--------------|----------|
-| `/analyzer` | **All indicators** + recommendation + AI button | Pre-trade comprehensive check |
-| `/pumpscan` | **Only pump detection** (3 layers) | Looking for pump opportunities |
-| `/stochrsi` | **Only Stoch+RSI** (4 timeframes) | Quick momentum check |
+| `/BTC` `/ETH` `/SOL` | **All indicators** + recommendation + AI button | Pre-trade comprehensive check |
+| `/pumpscan SYMBOL` | **Only pump detection** (3 layers) | Looking for pump opportunities |
+| `/stochrsi SYMBOL` | **Only Stoch+RSI** (4 timeframes) | Quick momentum check |
 | `/scan` | **Only RSI/MFI** on watchlist | Monitoring multiple coins |
-| `/BTC` | **RSI/MFI** single symbol | Quick single-coin check |
 
 **Recommendation:**
-- Use `/analyzer` for **serious trading decisions**
+- Use `/BTC` `/ETH` etc for **serious trading decisions**
 - Use other commands for **quick checks** or **specific indicators**
 
 ---
@@ -362,16 +386,16 @@ Decision: Trade BTC (strongest signals)
 
 ### Command Registration
 ```python
-self.registered_commands = [
-    # ... other commands ...
-    'stochrsi', 'analyzer'
-]
+# Symbol analysis is handled by catch-all handler
+# NOT in registered_commands list
+# Matches: /BTC, /ETH, /SOL, etc.
 ```
 
 ### Handler Function
 ```python
-@self.telegram_bot.message_handler(commands=['analyzer'])
-def handle_comprehensive_analyzer(message):
+@self.telegram_bot.message_handler(func=lambda m: ...)
+def handle_symbol_analysis(message):
+    # Comprehensive analysis for /SYMBOL commands
     # Parse symbol
     # Collect data from all indicators
     # Aggregate signals
@@ -393,7 +417,7 @@ def handle_comprehensive_analyzer(message):
 
 ### Scenario 1: Strong Buy Signal
 ```
-/analyzer BTCUSDT
+/BTC
 
 📊 COMPREHENSIVE ANALYSIS
 
@@ -456,7 +480,7 @@ def handle_comprehensive_analyzer(message):
 
 ### Scenario 2: Conflicting Signals (Wait)
 ```
-/analyzer ETHUSDT
+/ETH
 
 📊 COMPREHENSIVE ANALYSIS
 
@@ -542,7 +566,7 @@ def handle_comprehensive_analyzer(message):
 1. **Don't Enter** any new positions
 2. **Use AI Analysis** to understand conflicts
 3. **Wait for Clearer Signals** (30min - 2h)
-4. **Re-run /analyzer** after time passes
+4. **Re-run /SYMBOL** after time passes
 5. **Look at Other Symbols**
 
 ---
@@ -559,13 +583,14 @@ def handle_comprehensive_analyzer(message):
 
 ## 🎉 Summary
 
-The `/analyzer` command is your **one-stop solution** for comprehensive cryptocurrency analysis:
+Symbol commands (`/BTC`, `/ETH`, etc.) are your **one-stop solution** for comprehensive cryptocurrency analysis:
 
 ✅ **All Indicators** in one command  
 ✅ **Smart Recommendation** engine  
 ✅ **AI Analysis** button for deep insights  
 ✅ **Clear Visual** formatting  
 ✅ **Fast Execution** (15-20s)  
+✅ **Short Commands** - just `/BTC`!
 
 **Perfect for:** Pre-trade analysis, position confirmation, comparing multiple coins, and making informed decisions.
 
@@ -573,7 +598,7 @@ The `/analyzer` command is your **one-stop solution** for comprehensive cryptocu
 
 **🚀 Ready to use! Try it now:**
 ```
-/analyzer BTC
+/BTC
 ```
 
 Then click the AI button for even deeper insights! 🤖
