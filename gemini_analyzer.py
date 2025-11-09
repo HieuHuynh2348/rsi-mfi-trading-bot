@@ -179,61 +179,94 @@ class GeminiAnalyzer:
     
     def _get_historical_comparison(self, symbol: str, klines_dict: Dict) -> Dict:
         """
-        Compare current data with last week
+        Compare current data with last week and get previous candle info for H4/D1
         
         Args:
             symbol: Trading symbol
             klines_dict: Multi-timeframe klines data
             
         Returns:
-            Dict with historical comparison
+            Dict with historical comparison and previous candle data
         """
         try:
-            # Get 1d klines for weekly comparison
-            if '1d' not in klines_dict:
-                return {}
+            result = {}
             
-            df_1d = klines_dict['1d']
+            # === WEEKLY COMPARISON (D1 TIMEFRAME) ===
+            if '1d' in klines_dict:
+                df_1d = klines_dict['1d']
+                
+                if len(df_1d) >= 14:  # Need at least 2 weeks
+                    # Current week (last 7 days)
+                    current_week = df_1d.tail(7)
+                    # Last week (8-14 days ago)
+                    last_week = df_1d.iloc[-14:-7]
+                    
+                    # Price comparison
+                    current_price = float(current_week['close'].iloc[-1])
+                    week_ago_price = float(last_week['close'].iloc[-1])
+                    price_change_pct = ((current_price - week_ago_price) / week_ago_price) * 100
+                    
+                    # Volume comparison
+                    current_volume = float(current_week['volume'].sum())
+                    last_week_volume = float(last_week['volume'].sum())
+                    volume_change_pct = ((current_volume - last_week_volume) / last_week_volume) * 100 if last_week_volume > 0 else 0
+                    
+                    # RSI comparison
+                    from indicators import calculate_rsi, calculate_hlcc4
+                    
+                    current_week_hlcc4 = calculate_hlcc4(current_week)
+                    last_week_hlcc4 = calculate_hlcc4(last_week)
+                    
+                    current_rsi = float(calculate_rsi(current_week_hlcc4, 14).iloc[-1])
+                    last_week_rsi = float(calculate_rsi(last_week_hlcc4, 14).iloc[-1])
+                    rsi_change = current_rsi - last_week_rsi
+                    
+                    result.update({
+                        'price_change_vs_last_week': round(price_change_pct, 2),
+                        'volume_change_vs_last_week': round(volume_change_pct, 2),
+                        'rsi_change_vs_last_week': round(rsi_change, 2),
+                        'current_price': current_price,
+                        'week_ago_price': week_ago_price,
+                        'current_volume': current_volume,
+                        'last_week_volume': last_week_volume,
+                        'current_rsi': current_rsi,
+                        'last_week_rsi': last_week_rsi
+                    })
+                    
+                    # === D1 PREVIOUS CANDLE INFO ===
+                    if len(df_1d) >= 2:
+                        prev_candle = df_1d.iloc[-2]
+                        result['d1_prev_candle'] = {
+                            'open': float(prev_candle['open']),
+                            'high': float(prev_candle['high']),
+                            'low': float(prev_candle['low']),
+                            'close': float(prev_candle['close']),
+                            'volume': float(prev_candle['volume']),
+                            'body_size': abs(float(prev_candle['close']) - float(prev_candle['open'])),
+                            'is_bullish': float(prev_candle['close']) > float(prev_candle['open']),
+                            'upper_wick': float(prev_candle['high']) - max(float(prev_candle['open']), float(prev_candle['close'])),
+                            'lower_wick': min(float(prev_candle['open']), float(prev_candle['close'])) - float(prev_candle['low'])
+                        }
             
-            if len(df_1d) < 14:  # Need at least 2 weeks
-                return {}
+            # === H4 PREVIOUS CANDLE INFO ===
+            if '4h' in klines_dict:
+                df_4h = klines_dict['4h']
+                
+                if len(df_4h) >= 2:
+                    prev_candle = df_4h.iloc[-2]
+                    result['h4_prev_candle'] = {
+                        'open': float(prev_candle['open']),
+                        'high': float(prev_candle['high']),
+                        'low': float(prev_candle['low']),
+                        'close': float(prev_candle['close']),
+                        'volume': float(prev_candle['volume']),
+                        'body_size': abs(float(prev_candle['close']) - float(prev_candle['open'])),
+                        'is_bullish': float(prev_candle['close']) > float(prev_candle['open']),
+                        'upper_wick': float(prev_candle['high']) - max(float(prev_candle['open']), float(prev_candle['close'])),
+                        'lower_wick': min(float(prev_candle['open']), float(prev_candle['close'])) - float(prev_candle['low'])
+                    }
             
-            # Current week (last 7 days)
-            current_week = df_1d.tail(7)
-            # Last week (8-14 days ago)
-            last_week = df_1d.iloc[-14:-7]
-            
-            # Price comparison
-            current_price = float(current_week['close'].iloc[-1])
-            week_ago_price = float(last_week['close'].iloc[-1])
-            price_change_pct = ((current_price - week_ago_price) / week_ago_price) * 100
-            
-            # Volume comparison
-            current_volume = float(current_week['volume'].sum())
-            last_week_volume = float(last_week['volume'].sum())
-            volume_change_pct = ((current_volume - last_week_volume) / last_week_volume) * 100 if last_week_volume > 0 else 0
-            
-            # RSI comparison
-            from indicators import calculate_rsi, calculate_hlcc4
-            
-            current_week_hlcc4 = calculate_hlcc4(current_week)
-            last_week_hlcc4 = calculate_hlcc4(last_week)
-            
-            current_rsi = float(calculate_rsi(current_week_hlcc4, 14).iloc[-1])
-            last_week_rsi = float(calculate_rsi(last_week_hlcc4, 14).iloc[-1])
-            rsi_change = current_rsi - last_week_rsi
-            
-            return {
-                'price_change_vs_last_week': round(price_change_pct, 2),
-                'volume_change_vs_last_week': round(volume_change_pct, 2),
-                'rsi_change_vs_last_week': round(rsi_change, 2),
-                'current_price': current_price,
-                'week_ago_price': week_ago_price,
-                'current_volume': current_volume,
-                'last_week_volume': last_week_volume,
-                'current_rsi': current_rsi,
-                'last_week_rsi': last_week_rsi
-            }
+            return result
             
         except Exception as e:
             logger.error(f"Error in historical comparison: {e}")
@@ -292,9 +325,37 @@ class GeminiAnalyzer:
         hist_text = "Historical data unavailable"
         if historical:
             hist_text = f"""Week-over-Week Comparison:
-  Price: {historical['price_change_vs_last_week']:+.2f}% (${historical['week_ago_price']:,.2f} → ${historical['current_price']:,.2f})
-  Volume: {historical['volume_change_vs_last_week']:+.2f}% change
-  RSI: {historical['rsi_change_vs_last_week']:+.1f} points change ({historical['last_week_rsi']:.1f} → {historical['current_rsi']:.1f})
+  Price: {historical.get('price_change_vs_last_week', 0):+.2f}% (${historical.get('week_ago_price', 0):,.2f} → ${historical.get('current_price', 0):,.2f})
+  Volume: {historical.get('volume_change_vs_last_week', 0):+.2f}% change
+  RSI: {historical.get('rsi_change_vs_last_week', 0):+.1f} points change ({historical.get('last_week_rsi', 0):.1f} → {historical.get('current_rsi', 0):.1f})
+"""
+            
+            # Add D1 previous candle if available
+            if 'd1_prev_candle' in historical:
+                candle = historical['d1_prev_candle']
+                candle_type = "🟢 Bullish" if candle['is_bullish'] else "🔴 Bearish"
+                hist_text += f"""
+D1 Previous Candle Analysis:
+  Type: {candle_type}
+  Open: ${candle['open']:,.4f} | Close: ${candle['close']:,.4f}
+  High: ${candle['high']:,.4f} | Low: ${candle['low']:,.4f}
+  Body Size: ${candle['body_size']:,.4f}
+  Upper Wick: ${candle['upper_wick']:,.4f} | Lower Wick: ${candle['lower_wick']:,.4f}
+  Volume: {candle['volume']:,.0f}
+"""
+            
+            # Add H4 previous candle if available
+            if 'h4_prev_candle' in historical:
+                candle = historical['h4_prev_candle']
+                candle_type = "🟢 Bullish" if candle['is_bullish'] else "🔴 Bearish"
+                hist_text += f"""
+H4 Previous Candle Analysis:
+  Type: {candle_type}
+  Open: ${candle['open']:,.4f} | Close: ${candle['close']:,.4f}
+  High: ${candle['high']:,.4f} | Low: ${candle['low']:,.4f}
+  Body Size: ${candle['body_size']:,.4f}
+  Upper Wick: ${candle['upper_wick']:,.4f} | Lower Wick: ${candle['lower_wick']:,.4f}
+  Volume: {candle['volume']:,.0f}
 """
         
         # Build full prompt
@@ -369,16 +430,30 @@ Provide a comprehensive trading analysis in JSON format with the following struc
 }}
 
 IMPORTANT GUIDELINES:
-1. Reasoning MUST be in Vietnamese language
-2. Consider ALL indicators (RSI, MFI, Stochastic, Volume, Pump signals)
-3. Weight high-confidence pump signals (>=80%) heavily in your decision
-4. Be specific with entry/exit points based on current price
-5. Identify conflicting signals between different timeframes
-6. Adjust recommendations based on trading style (scalping vs swing)
-7. Consider historical trends - strong week-over-week growth is bullish
-8. Be conservative - if conflicting signals, recommend WAIT
-9. Technical score = aggregate of all technical indicators
-10. Fundamental score = volume, liquidity, market sentiment
+1. Reasoning MUST be in Vietnamese language (300-500 words)
+2. **Analyze ALL technical indicators systematically:**
+   - RSI+MFI consensus and individual timeframe signals
+   - Stochastic+RSI momentum across timeframes
+   - Volume patterns and 24h trading activity
+   - Pump detection signals (if >=80%, consider high risk/reward)
+   - Previous candle patterns on H4 and D1 (wick analysis, body size, bullish/bearish)
+3. **Candle Pattern Analysis (CRITICAL):**
+   - D1/H4 previous candles show institutional behavior
+   - Large wicks indicate rejection or absorption zones
+   - Bullish candles with small upper wicks = continuation potential
+   - Bearish candles with long lower wicks = support testing
+   - Compare body size to average - larger bodies = stronger momentum
+4. Weight high-confidence pump signals (>=80%) heavily but note dump risk
+5. Be specific with entry/exit points based on current price and support/resistance
+6. Identify conflicting signals between different timeframes explicitly
+7. Adjust recommendations based on trading style:
+   - **Scalping**: Tight stops (1-2%), quick 3-5% targets, 1-4 hour holding
+   - **Swing**: Wider stops (3-5%), 10-20% targets, 3-7 day holding
+8. Consider historical trends - strong week-over-week growth is bullish indicator
+9. Be conservative - if major conflicting signals exist, recommend WAIT
+10. **Scoring methodology:**
+    - Technical score = weighted average (RSI+MFI: 30%, Stoch+RSI: 30%, Volume: 20%, Candle patterns: 20%)
+    - Fundamental score = volume strength (40%), liquidity (30%), market sentiment (30%)
 
 Return ONLY valid JSON, no markdown formatting.
 """
