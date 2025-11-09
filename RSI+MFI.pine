@@ -67,12 +67,12 @@ f_format_timeframe(tf) =>
     result
 
 // ============================================================================
-// CUSTOM RSI CALCULATION (HLCC/4)
+// CUSTOM RSI CALCULATION (HLCO/4)
 // ============================================================================
 
-// Function to calculate HLCC/4
-f_hlcc4() =>
-    (high + low + close + close) / 4
+// Function to calculate HLCO/4 (also known as OHLC average)
+f_hlco4() =>
+    (high + low + close + open) / 4
 
 f_custom_rsi(src, len) =>
     delta = ta.change(src)
@@ -120,22 +120,22 @@ f_get_signal(rsi_val, mfi_val, rsi_low, rsi_high, mfi_low, mfi_high) =>
 // ============================================================================
 
 // Current Timeframe (or TF1)
-rsi_tf1 = tf1 == "" ? f_custom_rsi(f_hlcc4(), rsi_period) : request.security(syminfo.tickerid, tf1, f_custom_rsi(f_hlcc4(), rsi_period))
+rsi_tf1 = tf1 == "" ? f_custom_rsi(f_hlco4(), rsi_period) : request.security(syminfo.tickerid, tf1, f_custom_rsi(f_hlco4(), rsi_period))
 mfi_tf1 = tf1 == "" ? f_mfi(mfi_period) : request.security(syminfo.tickerid, tf1, f_mfi(mfi_period))
 signal_tf1 = f_get_signal(rsi_tf1, mfi_tf1, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
 // Timeframe 2
-rsi_tf2 = request.security(syminfo.tickerid, tf2, f_custom_rsi(f_hlcc4(), rsi_period))
+rsi_tf2 = request.security(syminfo.tickerid, tf2, f_custom_rsi(f_hlco4(), rsi_period))
 mfi_tf2 = request.security(syminfo.tickerid, tf2, f_mfi(mfi_period))
 signal_tf2 = f_get_signal(rsi_tf2, mfi_tf2, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
 // Timeframe 3
-rsi_tf3 = request.security(syminfo.tickerid, tf3, f_custom_rsi(f_hlcc4(), rsi_period))
+rsi_tf3 = request.security(syminfo.tickerid, tf3, f_custom_rsi(f_hlco4(), rsi_period))
 mfi_tf3 = request.security(syminfo.tickerid, tf3, f_mfi(mfi_period))
 signal_tf3 = f_get_signal(rsi_tf3, mfi_tf3, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
 // Timeframe 4
-rsi_tf4 = request.security(syminfo.tickerid, tf4, f_custom_rsi(f_hlcc4(), rsi_period))
+rsi_tf4 = request.security(syminfo.tickerid, tf4, f_custom_rsi(f_hlco4(), rsi_period))
 mfi_tf4 = request.security(syminfo.tickerid, tf4, f_mfi(mfi_period))
 signal_tf4 = f_get_signal(rsi_tf4, mfi_tf4, rsi_lower, rsi_upper, mfi_lower, mfi_upper)
 
