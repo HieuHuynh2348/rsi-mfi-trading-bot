@@ -1,0 +1,13 @@
+# WebApp Static Files Only
+
+This folder contains ONLY static HTML/CSS/JS files.
+
+**NO Python files allowed here!**
+
+- ✅ chart.html - Main webapp
+- ✅ README.md - Documentation
+- ❌ NO app.py
+- ❌ NO Flask
+- ❌ NO backend code
+
+All server-side logic is in the parent directory (Railway bot).
