@@ -171,16 +171,21 @@ class RealtimePumpDetector:
             
             # Update top volume cache every 5 minutes
             if current_time - self.top_volume_cache_time > 300 or not self.top_volume_cache:
-                # Get all 24h tickers
-                tickers = self.binance.get_all_tickers()
-                if not tickers:
+                # Get all USDT symbols sorted by volume (already sorted by get_all_symbols)
+                symbols_data = self.binance.get_all_symbols(
+                    quote_asset='USDT',
+                    excluded_keywords=['BEAR', 'BULL', 'DOWN', 'UP'],
+                    min_volume=100000  # Minimum 100k USDT volume
+                )
+                
+                if not symbols_data:
+                    logger.warning("No symbols data for quick scan")
                     return
                 
-                # Sort by volume and get top N
-                sorted_tickers = sorted(tickers, key=lambda x: x.get('volume', 0), reverse=True)
-                self.top_volume_cache = [t['symbol'] for t in sorted_tickers[:self.quick_scan_top_n]]
+                # Already sorted by volume descending, just take top N symbols
+                self.top_volume_cache = [s['symbol'] for s in symbols_data[:self.quick_scan_top_n]]
                 self.top_volume_cache_time = current_time
-                logger.info(f"Updated top volume cache: {len(self.top_volume_cache)} coins")
+                logger.info(f"Updated top volume cache: {len(self.top_volume_cache)} coins (min volume: 100k USDT)")
             
             # Quick scan cached top volume coins
             detected = []
