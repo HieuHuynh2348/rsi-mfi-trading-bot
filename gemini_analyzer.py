@@ -209,6 +209,10 @@ class GeminiAnalyzer:
             logger.info(f"Calculating historical comparison for {symbol}...")
             historical = self._get_historical_comparison(symbol, klines_dict)
             
+            # Extended historical klines context
+            logger.info(f"Getting extended historical context for {symbol}...")
+            historical_klines = self._get_historical_klines_context(symbol)
+            
             # Market data
             market_data = {
                 'price': current_price,
@@ -229,6 +233,7 @@ class GeminiAnalyzer:
                 'pump_data': pump_data,
                 'volume_data': volume_data,
                 'historical': historical,
+                'historical_klines': historical_klines,  # Extended historical context
                 # Institutional indicators
                 'volume_profile': vp_result,
                 'fair_value_gaps': fvg_result,
@@ -240,6 +245,153 @@ class GeminiAnalyzer:
         except Exception as e:
             logger.error(f"❌ Error collecting data for {symbol}: {e}", exc_info=True)
             return None
+    
+    def _get_historical_klines_context(self, symbol: str) -> Dict:
+        """
+        Get extended historical klines for better AI context
+        - 1H: Last 7 days (168 candles)
+        - 4H: Last 30 days (180 candles)
+        - 1D: Last 90 days (90 candles)
+        
+        Args:
+            symbol: Trading symbol
+            
+        Returns:
+            Dict with historical klines statistics
+        """
+        try:
+            result = {}
+            
+            # 1H Historical (7 days = 168 hours)
+            logger.info(f"Getting 1H historical data for {symbol}...")
+            df_1h = self.binance.get_klines(symbol, '1h', limit=168)
+            if df_1h is not None and len(df_1h) > 0:
+                result['1h'] = self._analyze_historical_period(df_1h, '1H (7 ngày)')
+            
+            # 4H Historical (30 days = 180 candles)
+            logger.info(f"Getting 4H historical data for {symbol}...")
+            df_4h = self.binance.get_klines(symbol, '4h', limit=180)
+            if df_4h is not None and len(df_4h) > 0:
+                result['4h'] = self._analyze_historical_period(df_4h, '4H (30 ngày)')
+            
+            # 1D Historical (90 days)
+            logger.info(f"Getting 1D historical data for {symbol}...")
+            df_1d = self.binance.get_klines(symbol, '1d', limit=90)
+            if df_1d is not None and len(df_1d) > 0:
+                result['1d'] = self._analyze_historical_period(df_1d, '1D (90 ngày)')
+            
+            logger.info(f"✅ Got historical context for {len(result)} timeframes")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error getting historical klines context: {e}")
+            return {}
+    
+    def _analyze_historical_period(self, df, period_name: str) -> Dict:
+        """
+        Analyze a historical period and extract key statistics
+        
+        Args:
+            df: DataFrame with OHLCV data
+            period_name: Name of the period for logging
+            
+        Returns:
+            Dict with statistics
+        """
+        try:
+            from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
+            
+            # Price statistics
+            high_price = float(df['high'].max())
+            low_price = float(df['low'].min())
+            current_price = float(df['close'].iloc[-1])
+            avg_price = float(df['close'].mean())
+            price_range_pct = ((high_price - low_price) / low_price) * 100
+            
+            # Position in range
+            position_in_range = ((current_price - low_price) / (high_price - low_price)) * 100 if high_price > low_price else 50
+            
+            # Volume statistics
+            avg_volume = float(df['volume'].mean())
+            current_volume = float(df['volume'].iloc[-1])
+            max_volume = float(df['volume'].max())
+            volume_trend = "tăng" if current_volume > avg_volume else "giảm"
+            
+            # RSI statistics
+            hlcc4 = calculate_hlcc4(df)
+            rsi_series = calculate_rsi(hlcc4, 14)
+            avg_rsi = float(rsi_series.mean())
+            current_rsi = float(rsi_series.iloc[-1])
+            max_rsi = float(rsi_series.max())
+            min_rsi = float(rsi_series.min())
+            
+            # MFI statistics
+            mfi_series = calculate_mfi(df, 14)
+            avg_mfi = float(mfi_series.mean())
+            current_mfi = float(mfi_series.iloc[-1])
+            
+            # Trend analysis
+            first_close = float(df['close'].iloc[0])
+            last_close = float(df['close'].iloc[-1])
+            trend_pct = ((last_close - first_close) / first_close) * 100
+            trend_direction = "tăng" if trend_pct > 2 else ("giảm" if trend_pct < -2 else "sideway")
+            
+            # Volatility (price changes)
+            price_changes = df['close'].pct_change().dropna()
+            volatility = float(price_changes.std() * 100)  # as percentage
+            
+            # Bullish/Bearish candles count
+            bullish_candles = (df['close'] > df['open']).sum()
+            bearish_candles = (df['close'] < df['open']).sum()
+            total_candles = len(df)
+            bullish_ratio = (bullish_candles / total_candles) * 100
+            
+            stats = {
+                'period': period_name,
+                'candles_count': total_candles,
+                'price_range': {
+                    'high': high_price,
+                    'low': low_price,
+                    'current': current_price,
+                    'average': avg_price,
+                    'range_pct': round(price_range_pct, 2),
+                    'position_in_range_pct': round(position_in_range, 2)
+                },
+                'volume': {
+                    'average': avg_volume,
+                    'current': current_volume,
+                    'max': max_volume,
+                    'trend': volume_trend,
+                    'current_vs_avg_ratio': round(current_volume / avg_volume, 2) if avg_volume > 0 else 0
+                },
+                'rsi_stats': {
+                    'average': round(avg_rsi, 2),
+                    'current': round(current_rsi, 2),
+                    'max': round(max_rsi, 2),
+                    'min': round(min_rsi, 2)
+                },
+                'mfi_stats': {
+                    'average': round(avg_mfi, 2),
+                    'current': round(current_mfi, 2)
+                },
+                'trend': {
+                    'direction': trend_direction,
+                    'change_pct': round(trend_pct, 2),
+                    'volatility_pct': round(volatility, 2)
+                },
+                'candle_pattern': {
+                    'bullish_candles': int(bullish_candles),
+                    'bearish_candles': int(bearish_candles),
+                    'bullish_ratio_pct': round(bullish_ratio, 2)
+                }
+            }
+            
+            logger.info(f"✅ Analyzed {period_name}: {total_candles} candles, trend={trend_direction}, volatility={volatility:.2f}%")
+            return stats
+            
+        except Exception as e:
+            logger.error(f"Error analyzing historical period {period_name}: {e}")
+            return {}
     
     def _get_historical_comparison(self, symbol: str, klines_dict: Dict) -> Dict:
         """
@@ -599,6 +751,149 @@ H4 Previous Candle Analysis:
   Volume: {candle['volume']:,.0f}
 """
         
+        # Format extended historical klines context
+        historical_klines = data.get('historical_klines', {})
+        hist_klines_text = ""
+        if historical_klines:
+            hist_klines_text = "\n═══════════════════════════════════════════\n📊 DỮ LIỆU LỊCH SỬ MỞ RỘNG (HISTORICAL KLINES CONTEXT)\n═══════════════════════════════════════════\n\n"
+            
+            # 1H context (7 days)
+            if '1h' in historical_klines:
+                h1 = historical_klines['1h']
+                if h1:
+                    pr = h1['price_range']
+                    vol = h1['volume']
+                    rsi = h1['rsi_stats']
+                    trend = h1['trend']
+                    pattern = h1['candle_pattern']
+                    
+                    hist_klines_text += f"""⏰ KHUNG 1H (7 NGÀY QUA - {h1['candles_count']} nến):
+  
+  📈 Giá:
+    - Vùng: ${pr['low']:,.4f} - ${pr['high']:,.4f} (Range: {pr['range_pct']:.2f}%)
+    - Hiện tại: ${pr['current']:,.4f} (Vị trí: {pr['position_in_range_pct']:.1f}% của range)
+    - Trung bình: ${pr['average']:,.4f}
+  
+  📊 Volume:
+    - Trung bình: {vol['average']:,.0f}
+    - Hiện tại: {vol['current']:,.0f} (Tỷ lệ: {vol['current_vs_avg_ratio']:.2f}x)
+    - Xu hướng: {vol['trend']}
+  
+  🎯 RSI:
+    - Trung bình: {rsi['average']:.1f}
+    - Hiện tại: {rsi['current']:.1f}
+    - Dao động: {rsi['min']:.1f} - {rsi['max']:.1f}
+  
+  📉 Xu hướng 7 ngày:
+    - Hướng: {trend['direction']} ({trend['change_pct']:+.2f}%)
+    - Độ biến động: {trend['volatility_pct']:.2f}%
+    - Tỷ lệ nến tăng: {pattern['bullish_ratio_pct']:.1f}% ({pattern['bullish_candles']}/{h1['candles_count']} nến)
+
+"""
+            
+            # 4H context (30 days)
+            if '4h' in historical_klines:
+                h4 = historical_klines['4h']
+                if h4:
+                    pr = h4['price_range']
+                    vol = h4['volume']
+                    rsi = h4['rsi_stats']
+                    trend = h4['trend']
+                    pattern = h4['candle_pattern']
+                    
+                    hist_klines_text += f"""⏰ KHUNG 4H (30 NGÀY QUA - {h4['candles_count']} nến):
+  
+  📈 Giá:
+    - Vùng: ${pr['low']:,.4f} - ${pr['high']:,.4f} (Range: {pr['range_pct']:.2f}%)
+    - Hiện tại: ${pr['current']:,.4f} (Vị trí: {pr['position_in_range_pct']:.1f}% của range)
+    - Trung bình: ${pr['average']:,.4f}
+  
+  📊 Volume:
+    - Trung bình: {vol['average']:,.0f}
+    - Hiện tại: {vol['current']:,.0f} (Tỷ lệ: {vol['current_vs_avg_ratio']:.2f}x)
+    - Xu hướng: {vol['trend']}
+  
+  🎯 RSI:
+    - Trung bình: {rsi['average']:.1f}
+    - Hiện tại: {rsi['current']:.1f}
+    - Dao động: {rsi['min']:.1f} - {rsi['max']:.1f}
+  
+  📉 Xu hướng 30 ngày:
+    - Hướng: {trend['direction']} ({trend['change_pct']:+.2f}%)
+    - Độ biến động: {trend['volatility_pct']:.2f}%
+    - Tỷ lệ nến tăng: {pattern['bullish_ratio_pct']:.1f}% ({pattern['bullish_candles']}/{h4['candles_count']} nến)
+
+"""
+            
+            # 1D context (90 days)
+            if '1d' in historical_klines:
+                d1 = historical_klines['1d']
+                if d1:
+                    pr = d1['price_range']
+                    vol = d1['volume']
+                    rsi = d1['rsi_stats']
+                    mfi = d1['mfi_stats']
+                    trend = d1['trend']
+                    pattern = d1['candle_pattern']
+                    
+                    hist_klines_text += f"""⏰ KHUNG 1D (90 NGÀY QUA - {d1['candles_count']} nến):
+  
+  📈 Giá:
+    - Vùng: ${pr['low']:,.4f} - ${pr['high']:,.4f} (Range: {pr['range_pct']:.2f}%)
+    - Hiện tại: ${pr['current']:,.4f} (Vị trí: {pr['position_in_range_pct']:.1f}% của range)
+    - Trung bình: ${pr['average']:,.4f}
+  
+  📊 Volume:
+    - Trung bình: {vol['average']:,.0f}
+    - Hiện tại: {vol['current']:,.0f} (Tỷ lệ: {vol['current_vs_avg_ratio']:.2f}x)
+    - Xu hướng: {vol['trend']}
+  
+  🎯 RSI & MFI:
+    - RSI trung bình: {rsi['average']:.1f} | Hiện tại: {rsi['current']:.1f}
+    - RSI dao động: {rsi['min']:.1f} - {rsi['max']:.1f}
+    - MFI trung bình: {mfi['average']:.1f} | Hiện tại: {mfi['current']:.1f}
+  
+  📉 Xu hướng 90 ngày:
+    - Hướng: {trend['direction']} ({trend['change_pct']:+.2f}%)
+    - Độ biến động: {trend['volatility_pct']:.2f}%
+    - Tỷ lệ nến tăng: {pattern['bullish_ratio_pct']:.1f}% ({pattern['bullish_candles']}/{d1['candles_count']} nến)
+
+"""
+            
+            hist_klines_text += """HƯỚNG DẪN PHÂN TÍCH DỮ LIỆU LỊCH SỬ:
+1. VỊ TRÍ TRONG RANGE: 
+   - <30%: Gần đáy range → Cơ hội mua nếu trend tăng
+   - 30-70%: Giữa range → Chờ xác nhận
+   - >70%: Gần đỉnh range → Cẩn trọng nếu đang long
+
+2. VOLUME RATIO:
+   - >1.5x: Volume tăng mạnh → Quan tâm đột biến
+   - 0.8-1.2x: Volume bình thường
+   - <0.8x: Volume yếu → Thiếu conviction
+
+3. RSI CONTEXT:
+   - RSI hiện tại vs trung bình: Đánh giá momentum
+   - RSI dao động: Range hẹp (<20) = sideway, Range rộng (>40) = trending
+   - So sánh RSI các timeframe: Xác định trend đa khung
+
+4. TREND CONSISTENCY:
+   - Tỷ lệ nến tăng >60%: Uptrend rõ ràng
+   - Tỷ lệ nến tăng 40-60%: Sideway/Consolidation
+   - Tỷ lệ nến tăng <40%: Downtrend
+
+5. VOLATILITY:
+   - >3%: Biến động cao → Rủi ro cao, cơ hội cao
+   - 1-3%: Biến động trung bình
+   - <1%: Biến động thấp → Sideway
+
+SỬ DỤNG DỮ LIỆU NÀY ĐỂ:
+- Xác định vùng giá quan trọng (support/resistance lịch sử)
+- Đánh giá độ mạnh của trend hiện tại
+- So sánh volume hiện tại với lịch sử
+- Nhận biết pattern đảo chiều sớm
+- Tính toán risk/reward dựa trên range lịch sử
+"""
+        
         # Format institutional indicators as JSON
         institutional_json = self._format_institutional_indicators_json(data, market)
         
@@ -657,7 +952,7 @@ KEY INTERPRETATIONS:
 📈 HISTORICAL COMPARISON (vs Last Week)
 ═══════════════════════════════════════════
 {hist_text}
-
+{hist_klines_text}
 ═══════════════════════════════════════════
 📉 24H MARKET DATA
 ═══════════════════════════════════════════
