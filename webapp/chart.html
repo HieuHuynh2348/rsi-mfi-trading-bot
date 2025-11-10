@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Live Chart</title>
     
     <!-- Telegram WebApp SDK -->
@@ -2140,28 +2140,229 @@
             console.log('=== Starting data load ===');
             loadChartData(currentTimeframe);
             
-            // Real-time updates using requestAnimationFrame (Best practice from TradingView)
-            // Update every 15 seconds (optimal balance between freshness and performance)
-            let updateIntervalId = null;
-            let lastUpdateTime = 0;
-            const UPDATE_INTERVAL = 15000; // 15 seconds
+            // ============================================================
+            // BINANCE WEBSOCKET REAL-TIME UPDATES (Phase 7: WebSocket)
+            // ============================================================
+            let ws = null;
+            let wsReconnectTimeout = null;
+            let wsReconnectAttempts = 0;
+            const MAX_RECONNECT_ATTEMPTS = 5;
+            const RECONNECT_DELAY = 3000; // 3 seconds
             
-            function scheduleUpdate() {
-                const now = Date.now();
-                if (now - lastUpdateTime >= UPDATE_INTERVAL) {
-                    lastUpdateTime = now;
-                    updateRealtimeData();
+            // WebSocket connection function
+            function connectWebSocket() {
+                try {
+                    // Close existing connection
+                    if (ws) {
+                        ws.close();
+                        ws = null;
+                    }
+                    
+                    // Map timeframe to Binance WebSocket interval
+                    const intervalMap = {
+                        '5m': '5m',
+                        '15m': '15m',
+                        '1h': '1h',
+                        '4h': '4h',
+                        '1d': '1d'
+                    };
+                    const wsInterval = intervalMap[currentTimeframe] || '1h';
+                    
+                    // Binance WebSocket endpoint for klines
+                    const wsUrl = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${wsInterval}`;
+                    
+                    console.log(`🔌 Connecting to Binance WebSocket: ${wsUrl}`);
+                    
+                    ws = new WebSocket(wsUrl);
+                    
+                    ws.onopen = () => {
+                        console.log('✅ WebSocket connected');
+                        wsReconnectAttempts = 0;
+                        hapticFeedback('success');
+                        
+                        // Show connection indicator (optional)
+                        const symbolEl = document.getElementById('symbol');
+                        if (symbolEl) {
+                            symbolEl.textContent = `${symbol} 🟢 Live`;
+                        }
+                    };
+                    
+                    ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            
+                            // Binance kline format
+                            if (data.e === 'kline' && data.k) {
+                                const kline = data.k;
+                                
+                                // Convert to chart format
+                                const time = Math.floor(kline.t / 1000); // Convert ms to seconds
+                                const open = parseFloat(kline.o);
+                                const high = parseFloat(kline.h);
+                                const low = parseFloat(kline.l);
+                                const close = parseFloat(kline.c);
+                                const volume = parseFloat(kline.v);
+                                const isClosed = kline.x; // Is candle closed?
+                                
+                                // Validate OHLC
+                                const validHigh = Math.max(open, high, low, close);
+                                const validLow = Math.min(open, high, low, close);
+                                
+                                const candleData = {
+                                    time: time,
+                                    open: open,
+                                    high: validHigh,
+                                    low: validLow,
+                                    close: close
+                                };
+                                
+                                const volumeData = {
+                                    time: time,
+                                    value: volume,
+                                    color: close >= open ? '#26a69a80' : '#ef535080'
+                                };
+                                
+                                // Update chart (use update() for real-time updates)
+                                if (candlestickSeries && volumeSeries && isChartReady) {
+                                    candlestickSeries.update(candleData);
+                                    volumeSeries.update(volumeData);
+                                    
+                                    // Update price display
+                                    const prevClose = latestData.candles.length > 0 
+                                        ? latestData.candles[latestData.candles.length - 1].close 
+                                        : close;
+                                    const priceChange = ((close - prevClose) / prevClose) * 100;
+                                    updatePrice(close, priceChange);
+                                    updatePriceChange(candleData);
+                                    
+                                    // Store latest candle
+                                    latestData.candles.push(candleData);
+                                    if (latestData.candles.length > 500) {
+                                        latestData.candles.shift(); // Keep last 500
+                                    }
+                                    
+                                    // Recalculate indicators on closed candles
+                                    if (isClosed) {
+                                        const closes = latestData.candles.map(c => c.close);
+                                        const rsi = calculateSimpleRSI(closes, 14);
+                                        
+                                        latestData.rsi = rsi;
+                                        latestData.mfi = 50; // Placeholder
+                                        
+                                        updateIndicatorDisplay(rsi, latestData.mfi);
+                                        updateSignalBadge(rsi, latestData.mfi);
+                                        
+                                        console.log(`📊 Candle closed: ${close}, RSI: ${rsi.toFixed(2)}`);
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('WebSocket message parse error:', error);
+                        }
+                    };
+                    
+                    ws.onerror = (error) => {
+                        console.error('❌ WebSocket error:', error);
+                        
+                        // Update connection indicator
+                        const symbolEl = document.getElementById('symbol');
+                        if (symbolEl) {
+                            symbolEl.textContent = `${symbol} 🔴 Reconnecting...`;
+                        }
+                    };
+                    
+                    ws.onclose = () => {
+                        console.log('🔌 WebSocket closed');
+                        
+                        // Update connection indicator
+                        const symbolEl = document.getElementById('symbol');
+                        if (symbolEl) {
+                            symbolEl.textContent = `${symbol} 🟡 Reconnecting...`;
+                        }
+                        
+                        // Attempt reconnection with exponential backoff
+                        if (wsReconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                            wsReconnectAttempts++;
+                            const delay = RECONNECT_DELAY * Math.pow(2, wsReconnectAttempts - 1);
+                            console.log(`🔄 Reconnecting in ${delay}ms (attempt ${wsReconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`);
+                            
+                            wsReconnectTimeout = setTimeout(() => {
+                                connectWebSocket();
+                            }, delay);
+                        } else {
+                            console.error('❌ Max reconnection attempts reached');
+                            const symbolEl = document.getElementById('symbol');
+                            if (symbolEl) {
+                                symbolEl.textContent = `${symbol} ⚠️ Disconnected`;
+                            }
+                            hapticFeedback('error');
+                        }
+                    };
+                    
+                } catch (error) {
+                    console.error('WebSocket connection error:', error);
                 }
-                updateIntervalId = requestAnimationFrame(scheduleUpdate);
             }
             
-            // Start update loop
-            scheduleUpdate();
+            // Start WebSocket connection after initial data load
+            setTimeout(() => {
+                connectWebSocket();
+            }, 2000); // Wait 2s for initial data to load
             
-            // Cleanup on page unload
+            // Reconnect WebSocket when timeframe changes
+            const originalTimeframeBtns = document.querySelectorAll('.tf-btn');
+            originalTimeframeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Close existing WebSocket
+                    if (ws) {
+                        ws.close();
+                        ws = null;
+                    }
+                    
+                    // Clear reconnect timeout
+                    if (wsReconnectTimeout) {
+                        clearTimeout(wsReconnectTimeout);
+                        wsReconnectTimeout = null;
+                    }
+                    
+                    // Reset reconnect attempts
+                    wsReconnectAttempts = 0;
+                    
+                    // Reconnect with new timeframe after chart data loads
+                    setTimeout(() => {
+                        connectWebSocket();
+                    }, 1500);
+                });
+            });
+            
+            // Cleanup WebSocket on page unload
             window.addEventListener('beforeunload', () => {
-                if (updateIntervalId) {
-                    cancelAnimationFrame(updateIntervalId);
+                if (ws) {
+                    ws.close();
+                }
+                if (wsReconnectTimeout) {
+                    clearTimeout(wsReconnectTimeout);
+                }
+            });
+            
+            // Fallback: HTTP polling for redundancy (every 30 seconds)
+            let fallbackUpdateId = null;
+            function startFallbackPolling() {
+                fallbackUpdateId = setInterval(() => {
+                    // Only poll if WebSocket is disconnected
+                    if (!ws || ws.readyState !== WebSocket.OPEN) {
+                        console.log('📡 Fallback polling update...');
+                        updateRealtimeData();
+                    }
+                }, 30000); // 30 seconds
+            }
+            
+            startFallbackPolling();
+            
+            // Cleanup fallback polling
+            window.addEventListener('beforeunload', () => {
+                if (fallbackUpdateId) {
+                    clearInterval(fallbackUpdateId);
                 }
             });
             
