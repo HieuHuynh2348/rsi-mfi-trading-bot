@@ -38,10 +38,27 @@ def index():
 def serve_webapp(filename):
     """Serve webapp files"""
     try:
+        file_path = os.path.join('webapp', filename)
+        logger.info(f"📂 Serving file: {filename} from {file_path}")
+        
+        if not os.path.exists(file_path):
+            logger.error(f"❌ File not found: {file_path}")
+            return jsonify({'error': f'File not found: {filename}'}), 404
+            
         return send_from_directory('webapp', filename)
     except Exception as e:
-        logger.error(f"Error serving {filename}: {e}")
-        return jsonify({'error': 'File not found'}), 404
+        logger.error(f"❌ Error serving {filename}: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/chart.html')
+def serve_chart_direct():
+    """Direct access to chart - redirects to /webapp/chart.html"""
+    logger.info("📊 Direct chart access - serving from webapp/")
+    try:
+        return send_from_directory('webapp', 'chart.html')
+    except Exception as e:
+        logger.error(f"❌ Error serving chart.html: {e}")
+        return jsonify({'error': str(e)}), 500
 
 def start_telegram_bot():
     """Run Telegram bot in background thread"""

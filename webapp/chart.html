@@ -8,8 +8,25 @@
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- Lightweight Charts Library v5.0 -->
-    <script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Lightweight Charts Library v5.0 with fallback CDN -->
+    <script 
+        src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"
+        onerror="loadFallbackChart()"
+        id="primary-chart-script">
+    </script>
+    <script>
+        // Fallback CDN for LightweightCharts if unpkg fails
+        function loadFallbackChart() {
+            console.warn('⚠️ Primary CDN failed, loading fallback...');
+            const fallbackScript = document.createElement('script');
+            fallbackScript.src = 'https://cdn.jsdelivr.net/npm/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js';
+            fallbackScript.onerror = function() {
+                console.error('❌ All CDNs failed to load LightweightCharts');
+                showError('Unable to load chart library. Please check your internet connection.');
+            };
+            document.head.appendChild(fallbackScript);
+        }
+    </script>
     
     <style>
         * {
@@ -1374,7 +1391,7 @@
             try {
                 showLoading();
                 
-                console.log(`Fetching data directly from Binance: ${symbol} ${tf}`);
+                console.log(`📊 Fetching data directly from Binance: ${symbol} ${tf}`);
                 
                 // Map timeframe to Binance interval
                 const intervalMap = {
@@ -1386,45 +1403,68 @@
                 };
                 const interval = intervalMap[tf] || '1h';
                 
-                // Fetch klines directly from Binance API with retry logic
-                let klines = null;
-                let retries = 3;
+                // Try multiple Binance endpoints (with fallback to api1, api2, api3)
+                const binanceEndpoints = [
+                    'https://api.binance.com',
+                    'https://api1.binance.com',
+                    'https://api2.binance.com',
+                    'https://api3.binance.com'
+                ];
                 
-                while (retries > 0 && !klines) {
-                    try {
-                        const binanceUrl = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`;
-                        console.log('Fetching from:', binanceUrl);
-                        
-                        const response = await fetch(binanceUrl, {
-                            method: 'GET',
-                            headers: {
-                                'Accept': 'application/json'
+                let klines = null;
+                let lastError = null;
+                
+                // Try each endpoint with exponential backoff
+                for (let endpointIndex = 0; endpointIndex < binanceEndpoints.length && !klines; endpointIndex++) {
+                    const baseUrl = binanceEndpoints[endpointIndex];
+                    const binanceUrl = `${baseUrl}/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=500`;
+                    
+                    console.log(`🔄 Attempt ${endpointIndex + 1}/${binanceEndpoints.length}: ${baseUrl}`);
+                    
+                    // Retry with exponential backoff for each endpoint
+                    let retries = 2;
+                    for (let attempt = 0; attempt < retries && !klines; attempt++) {
+                        try {
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+                            
+                            const response = await fetch(binanceUrl, {
+                                method: 'GET',
+                                headers: {
+                                    'Accept': 'application/json'
+                                },
+                                signal: controller.signal
+                            });
+                            
+                            clearTimeout(timeoutId);
+                            
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                             }
-                        });
-                        
-                        console.log('Response status:', response.status);
-                        
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        
-                        klines = await response.json();
-                        console.log('Received klines:', klines.length);
-                        
-                    } catch (fetchError) {
-                        retries--;
-                        console.error(`Fetch attempt failed (${3 - retries}/3):`, fetchError);
-                        if (retries > 0) {
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        } else {
-                            throw fetchError;
+                            
+                            klines = await response.json();
+                            console.log(`✅ Success! Received ${klines.length} candles from ${baseUrl}`);
+                            
+                        } catch (fetchError) {
+                            lastError = fetchError;
+                            console.warn(`⚠️ Fetch failed (attempt ${attempt + 1}/${retries}):`, fetchError.message);
+                            
+                            // Exponential backoff: 500ms, 1000ms, 2000ms
+                            if (attempt < retries - 1) {
+                                const delay = 500 * Math.pow(2, attempt);
+                                console.log(`⏱️ Retrying in ${delay}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, delay));
+                            }
                         }
                     }
                 }
                 
                 // Validate data
                 if (!klines || klines.length === 0) {
-                    throw new Error('No candle data received from Binance');
+                    throw new Error(lastError ? 
+                        `Failed to fetch data: ${lastError.message}` : 
+                        'No candle data received from Binance'
+                    );
                 }
                 
                 // Convert Binance klines format to our format
