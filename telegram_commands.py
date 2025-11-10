@@ -1188,7 +1188,9 @@ class TelegramCommandHandler:
                             webapp_url = self.bot._get_webapp_url()
                             if webapp_url:
                                 # Create WebApp button (works in private chat!)
-                                chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                                cache_buster = int(time.time())
+                                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h&_t={cache_buster}"
+                                logger.info(f"🔗 [commands] WebApp URL: {chart_webapp_url}")
                                 keyboard = types.InlineKeyboardMarkup()
                                 keyboard.row(
                                     types.InlineKeyboardButton(
