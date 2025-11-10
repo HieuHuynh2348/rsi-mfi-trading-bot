@@ -1924,13 +1924,16 @@ IMPORTANT GUIDELINES:
                     
                     market_snapshot = {
                         'price': float(data['market_data']['price']),
-                        'rsi_mfi': make_serializable(data.get('rsi_mfi', {})),
-                        'stoch_rsi': make_serializable(data.get('stoch_rsi', {})),
-                        'volume_profile': make_serializable(data.get('volume_profile', {})),
-                        'order_blocks': make_serializable(data.get('order_blocks', {})),
-                        'smart_money': make_serializable(data.get('smart_money', {})),
+                        'rsi_mfi': data.get('rsi_mfi', {}),
+                        'stoch_rsi': data.get('stoch_rsi', {}),
+                        'volume_profile': data.get('volume_profile', {}),
+                        'order_blocks': data.get('order_blocks', {}),
+                        'smart_money': data.get('smart_money', {}),
                         'timestamp': datetime.now().isoformat()
                     }
+                    
+                    # Convert entire market_snapshot (handles nested Timestamp keys)
+                    market_snapshot = make_serializable(market_snapshot)
                     
                     # Get timeframe from trading style
                     timeframe = '5m' if trading_style == 'scalping' else '1h'

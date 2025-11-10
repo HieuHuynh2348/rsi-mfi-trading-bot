@@ -199,8 +199,18 @@ class MarketRegimeDetector:
             if klines is None or (hasattr(klines, '__len__') and len(klines) == 0):
                 return self._default_regime()
             
-            closes = [float(k[4]) for k in klines]
-            volumes = [float(k[5]) for k in klines]
+            # Handle different klines formats (list, DataFrame, etc)
+            try:
+                # Try to extract close and volume prices
+                if hasattr(klines, 'iloc'):  # DataFrame
+                    closes = [float(klines.iloc[i]['close']) for i in range(len(klines))]
+                    volumes = [float(klines.iloc[i]['volume']) for i in range(len(klines))]
+                else:  # List of lists/tuples
+                    closes = [float(k[4]) for k in klines]
+                    volumes = [float(k[5]) for k in klines]
+            except (IndexError, KeyError, TypeError) as e:
+                logger.error(f"Error parsing klines data: {e}")
+                return self._default_regime()
             
             # 1. EMA Trend (20, 50, 200)
             ema_20 = self._calculate_ema(closes, 20)
