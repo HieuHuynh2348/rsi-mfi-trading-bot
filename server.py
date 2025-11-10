@@ -86,14 +86,15 @@ def trigger_ai_analysis():
             
             # Send processing message first
             try:
-                processing_msg = bot.telegram.send_message(
-                    f"🤖 <b>GEMINI AI ĐANG PHÂN TÍCH</b>\n\n"
-                    f"💎 <b>Symbol:</b> {symbol}\n"
-                    f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
-                    f"🧠 Đang gọi Gemini 2.0 Flash API...\n"
-                    f"🔮 Đang phân tích và dự đoán...\n\n"
-                    f"⏳ <b>Vui lòng chờ 10-20 giây...</b>",
-                    target_user_id=user_id
+                bot.telegram.telegram_bot.send_message(
+                    chat_id=user_id,
+                    text=f"🤖 <b>GEMINI AI ĐANG PHÂN TÍCH</b>\n\n"
+                         f"💎 <b>Symbol:</b> {symbol}\n"
+                         f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
+                         f"🧠 Đang gọi Gemini 2.0 Flash API...\n"
+                         f"🔮 Đang phân tích và dự đoán...\n\n"
+                         f"⏳ <b>Vui lòng chờ 10-20 giây...</b>",
+                    parse_mode='HTML'
                 )
             except Exception as e:
                 logger.warning(f"⚠️ Could not send processing message: {e}")
@@ -108,15 +109,17 @@ def trigger_ai_analysis():
                 )
                 
                 if result:
-                    # Format and send results (3 messages)
-                    messages = bot.telegram.format_analysis(result, symbol)
+                    # Format response using gemini_analyzer's format_response method
+                    msg1, msg2, msg3 = bot.command_handler.gemini_analyzer.format_response(result)
                     
-                    for msg in messages:
-                        bot.telegram.telegram_bot.send_message(
-                            chat_id=user_id,
-                            text=msg,
-                            parse_mode='HTML'
-                        )
+                    # Send all 3 messages
+                    for msg in [msg1, msg2, msg3]:
+                        if msg:  # Only send non-empty messages
+                            bot.telegram.telegram_bot.send_message(
+                                chat_id=user_id,
+                                text=msg,
+                                parse_mode='HTML'
+                            )
                     
                     logger.info(f"✅ AI Analysis sent to user {user_id} for {symbol}")
                     return jsonify({'success': True, 'message': 'Analysis sent to Telegram'})
