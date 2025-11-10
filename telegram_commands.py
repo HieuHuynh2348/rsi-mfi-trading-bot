@@ -47,6 +47,10 @@ class TelegramCommandHandler:
         # {user_id: {'username': str, 'first_name': str, 'group_id': str, 'last_seen': datetime}}
         self.group_users = {}
         
+        # Track private chat users - store their chat_id for direct messaging
+        # {user_id: {'chat_id': int, 'username': str, 'first_name': str, 'last_seen': datetime}}
+        self.private_chat_users = {}
+        
         # Initialize watchlist manager
         self.watchlist = WatchlistManager()
         
@@ -1321,6 +1325,17 @@ class TelegramCommandHandler:
             # Use different keyboards based on chat type
             chat_type = message.chat.type
             if chat_type == 'private':
+                # Track private chat user for direct messaging
+                user_id = message.from_user.id if message.from_user else None
+                if user_id:
+                    self.private_chat_users[user_id] = {
+                        'chat_id': message.chat.id,
+                        'username': message.from_user.username if message.from_user.username else "N/A",
+                        'first_name': message.from_user.first_name if message.from_user.first_name else "N/A",
+                        'last_seen': datetime.now()
+                    }
+                    logger.info(f"💬 Private chat user tracked: {user_id} (@{self.private_chat_users[user_id]['username']}) - Chat ID: {message.chat.id}")
+                
                 # Private chat: Send welcome message with usage instructions
                 welcome_msg = """
 👋 <b>Chào mừng đến với RSI+MFI Trading Bot!</b>
@@ -1331,7 +1346,7 @@ class TelegramCommandHandler:
 
 <code>/BTC</code> - Phân tích Bitcoin
 <code>/ETH</code> - Phân tích Ethereum
-<code>/C98</code> - Phân tích Coin98
+<code>/DOGE</code> - Phân tích Dogecoin
 <code>/SOL</code> - Phân tích Solana
 
 💡 <b>Lưu ý:</b> Hệ thống tự động thêm "USDT" vào cuối symbol.
@@ -2961,7 +2976,27 @@ class TelegramCommandHandler:
             if not check_authorized(message):
                 return
             
+            # Initialize target_chat_id early
+            target_chat_id = None
+            
             try:
+                # Determine where to send the analysis
+                user_id = message.from_user.id if message.from_user else None
+                chat_type = message.chat.type
+                
+                # Check if user is in private chat and has been tracked
+                if chat_type == 'private' and user_id and user_id in self.private_chat_users:
+                    target_chat_id = self.private_chat_users[user_id]['chat_id']
+                    logger.info(f"📤 Sending analysis to private chat: User {user_id} -> Chat {target_chat_id}")
+                elif chat_type == 'private':
+                    # User sent command but wasn't tracked yet (shouldn't happen after /start)
+                    target_chat_id = message.chat.id
+                    logger.info(f"📤 Sending analysis to untracked private chat: {target_chat_id}")
+                else:
+                    # Group chat - send to group
+                    target_chat_id = None  # Will use default self.chat_id
+                    logger.info(f"📤 Sending analysis to group chat (default)")
+                
                 # Extract symbol from command
                 symbol_raw = message.text[1:].upper().strip()
                 
@@ -2977,7 +3012,8 @@ class TelegramCommandHandler:
                 self.bot.send_message(
                     f"🔍 <b>COMPREHENSIVE ANALYSIS - {symbol}</b>\n\n"
                     f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
-                    f"⏳ Vui lòng chờ 15-20 giây..."
+                    f"⏳ Vui lòng chờ 15-20 giây...",
+                    chat_id=target_chat_id
                 )
                 
                 # === 1. PUMP/DUMP ANALYSIS ===
@@ -2990,7 +3026,8 @@ class TelegramCommandHandler:
                 if not klines_dict:
                     self.bot.send_message(
                         f"❌ <b>Không thể lấy dữ liệu cho {symbol}</b>\n\n"
-                        "Symbol có thể không tồn tại hoặc không có đủ lịch sử giao dịch."
+                        "Symbol có thể không tồn tại hoặc không có đủ lịch sử giao dịch.",
+                        chat_id=target_chat_id
                     )
                     return
                 
@@ -3005,7 +3042,7 @@ class TelegramCommandHandler:
                 klines_dict = {k: v for k, v in klines_dict.items() if v is not None}
                 
                 if not klines_dict:
-                    self.bot.send_message(f"❌ Invalid data for {symbol}. Cannot analyze.")
+                    self.bot.send_message(f"❌ Invalid data for {symbol}. Cannot analyze.", chat_id=target_chat_id)
                     return
                 
                 rsi_mfi_result = self._analyze_multi_timeframe(
@@ -3323,13 +3360,13 @@ class TelegramCommandHandler:
                 )
                 
                 # Send comprehensive analysis
-                self.bot.send_message(msg, reply_markup=analysis_keyboard)
+                self.bot.send_message(msg, reply_markup=analysis_keyboard, chat_id=target_chat_id)
                 
                 logger.info(f"✅ Sent comprehensive analysis for {symbol}")
                 
             except Exception as e:
                 logger.error(f"Error analyzing symbol: {e}", exc_info=True)
-                self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
+                self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}", chat_id=target_chat_id)
         
         # WebApp data handler - receives data from chart webapp
         @self.telegram_bot.message_handler(content_types=['web_app_data'])

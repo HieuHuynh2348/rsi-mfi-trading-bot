@@ -25,7 +25,7 @@ class TelegramBot:
         self.chat_id = chat_id
         logger.info("Telegram bot initialized")
     
-    def send_message(self, message, parse_mode='HTML', reply_markup=None):
+    def send_message(self, message, parse_mode='HTML', reply_markup=None, chat_id=None):
         """
         Send a text message
         
@@ -33,7 +33,11 @@ class TelegramBot:
             message: Message text
             parse_mode: 'HTML' or 'Markdown'
             reply_markup: Optional keyboard markup
+            chat_id: Optional chat ID to send to (defaults to self.chat_id)
         """
+        # Use provided chat_id or default to group chat
+        target_chat_id = chat_id if chat_id is not None else self.chat_id
+        
         try:
             # Telegram limit is 4096 characters
             MAX_LENGTH = 4096
@@ -62,7 +66,7 @@ class TelegramBot:
                     while not sent and retries < 3:
                         try:
                             self.bot.send_message(
-                                chat_id=self.chat_id,
+                                chat_id=target_chat_id,
                                 text=chunk,
                                 parse_mode=parse_mode,
                                 reply_markup=reply_markup if i == len(chunks) - 1 else None
@@ -91,12 +95,12 @@ class TelegramBot:
                 while not sent and retries < 3:
                     try:
                         self.bot.send_message(
-                            chat_id=self.chat_id,
+                            chat_id=target_chat_id,
                             text=message,
                             parse_mode=parse_mode,
                             reply_markup=reply_markup
                         )
-                        logger.info(f"Message sent successfully ({len(message)} chars)")
+                        logger.info(f"Message sent successfully to chat {target_chat_id} ({len(message)} chars)")
                         sent = True
                     except Exception as e:
                         err = str(e)
@@ -232,29 +236,35 @@ class TelegramBot:
     def create_private_chat_keyboard(self):
         """
         Create simplified keyboard for private chat users
-        Only shows basic commands without complex monitoring features
+        Only shows popular symbol shortcuts - users can also use /SYMBOL commands
         """
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
-        # Row 1: Quick Analysis
-        keyboard.row(
-            types.InlineKeyboardButton("📊 Quét Thị Trường", callback_data="cmd_scan"),
-            types.InlineKeyboardButton("🔍 Phân Tích Nhanh", callback_data="cmd_quickanalysis")
-        )
-        
-        # Row 2: Popular Symbols - Direct analysis
+        # Row 1: Popular Symbols - Direct analysis
         keyboard.row(
             types.InlineKeyboardButton("₿ Bitcoin", callback_data="cmd_BTC"),
-            types.InlineKeyboardButton("📈 Ethereum", callback_data="cmd_ETH")
+            types.InlineKeyboardButton("� Ethereum", callback_data="cmd_ETH")
         )
         
-        # Row 3: More Symbols
+        # Row 2: More Popular Symbols
         keyboard.row(
             types.InlineKeyboardButton("💎 BNB", callback_data="cmd_BNB"),
             types.InlineKeyboardButton("🔷 XRP", callback_data="cmd_XRP")
         )
         
-        # Row 4: Help
+        # Row 3: Additional Symbols
+        keyboard.row(
+            types.InlineKeyboardButton("☀️ SOL", callback_data="cmd_SOL"),
+            types.InlineKeyboardButton("� ADA", callback_data="cmd_ADA")
+        )
+        
+        # Row 4: More Symbols
+        keyboard.row(
+            types.InlineKeyboardButton("� DOGE", callback_data="cmd_DOGE"),
+            types.InlineKeyboardButton("� MATIC", callback_data="cmd_MATIC")
+        )
+        
+        # Row 5: Help
         keyboard.row(
             types.InlineKeyboardButton("ℹ️ Trợ Giúp", callback_data="cmd_help")
         )
