@@ -249,10 +249,10 @@ class TelegramBot:
         
         # Row 2: Live Chart - Different behavior based on chat type
         webapp_url = self._get_webapp_url()
-        logger.info(f"?? [DEBUG] Base webapp_url: {webapp_url}")`r`n        if webapp_url:
+        if webapp_url:
             if chat_type == 'private':
                 # In private chat: Use WebApp (opens IN Telegram)
-                logger.info(f"?? [DEBUG] Creating button with URL: {chart_webapp_url}")`r`n                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
+                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
                 keyboard.row(
                     types.InlineKeyboardButton(
                         "📊 Live Chart (in Telegram)", 
@@ -310,10 +310,10 @@ class TelegramBot:
         
         # Row 2: Live Chart - Different behavior based on chat type
         webapp_url = self._get_webapp_url()
-        logger.info(f"?? [DEBUG] Base webapp_url: {webapp_url}")`r`n        if webapp_url:
+        if webapp_url:
             if chat_type == 'private':
                 # In private chat: Use WebApp (opens IN Telegram)
-                logger.info(f"?? [DEBUG] Creating button with URL: {chart_webapp_url}")`r`n                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
+                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
                 keyboard.row(
                     types.InlineKeyboardButton(
                         "📊 Live Chart (in Telegram)", 
@@ -356,7 +356,7 @@ class TelegramBot:
         if railway_domain:
             webapp_url = f"https://{railway_domain}"
             logger.info(f"✅ Using Railway domain for WebApp: {webapp_url}")
-            logger.info(f"🔗 [DEBUG] Full path will be: {webapp_url}/webapp/chart.html")
+            logger.info(f"🔗 Buttons will use: {webapp_url}/webapp/chart.html")
             return webapp_url
         
         # Fallback to manual WEBAPP_URL
@@ -365,7 +365,7 @@ class TelegramBot:
         # Validate URL - must be real, not placeholder
         if webapp_url and not any(placeholder in webapp_url for placeholder in ['your-app', 'example', 'placeholder']):
             logger.info(f"✅ Using manual WEBAPP_URL: {webapp_url}")
-            logger.info(f"🔗 [DEBUG] Full path will be: {webapp_url}/webapp/chart.html")
+            logger.info(f"🔗 Buttons will use: {webapp_url}/webapp/chart.html")
             return webapp_url
         elif webapp_url:
             logger.warning(f"⚠️ WEBAPP_URL is set but appears to be a placeholder: {webapp_url}")
@@ -398,7 +398,7 @@ class TelegramBot:
         
         # WebApp Live Chart button (opens in Telegram)
         if webapp_url:
-            logger.info(f"?? [DEBUG] Creating button with URL: {chart_webapp_url}")`r`n                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
+            chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
             keyboard.row(
                 types.InlineKeyboardButton(
                     "📊 Live Chart (in Telegram)", 
@@ -1253,4 +1253,3 @@ class TelegramBot:
         except Exception as e:
             logger.error(f"Telegram bot connection failed: {e}")
             return False
-
