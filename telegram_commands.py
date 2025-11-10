@@ -1321,13 +1321,38 @@ class TelegramCommandHandler:
             # Use different keyboards based on chat type
             chat_type = message.chat.type
             if chat_type == 'private':
-                # Simple keyboard for private chat
-                keyboard = self.bot.create_private_chat_keyboard()
+                # Private chat: Send welcome message with usage instructions
+                welcome_msg = """
+👋 <b>Chào mừng đến với RSI+MFI Trading Bot!</b>
+
+🤖 <b>Cách sử dụng:</b>
+
+Để phân tích crypto, chỉ cần gửi lệnh:
+
+<code>/BTC</code> - Phân tích Bitcoin
+<code>/ETH</code> - Phân tích Ethereum
+<code>/C98</code> - Phân tích Coin98
+<code>/SOL</code> - Phân tích Solana
+
+💡 <b>Lưu ý:</b> Hệ thống tự động thêm "USDT" vào cuối symbol.
+
+📊 Bot sẽ phân tích:
+• RSI + MFI trên 4 khung thời gian
+• Volume, Order Blocks
+• Mức hỗ trợ/kháng cự
+• Khuyến nghị BUY/SELL/HOLD
+
+<i>Gửi bất kỳ symbol nào để bắt đầu phân tích!</i>
+"""
+                self.telegram_bot.send_message(
+                    chat_id=message.chat.id,
+                    text=welcome_msg,
+                    parse_mode='HTML'
+                )
             else:
                 # Full menu for groups
                 keyboard = self.bot.create_main_menu_keyboard()
-            
-            self.bot.send_message(HELP_MESSAGE, reply_markup=keyboard)
+                self.bot.send_message(HELP_MESSAGE, reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['menu'])
         def handle_menu(message):
