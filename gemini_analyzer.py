@@ -1854,30 +1854,62 @@ IMPORTANT GUIDELINES:
                 
                 # Try to fix common JSON issues
                 try:
-                    # Remove any trailing incomplete text
-                    if response_text.count('{') > response_text.count('}'):
-                        # Add missing closing braces
-                        response_text += '}' * (response_text.count('{') - response_text.count('}'))
+                    # Strategy 1: Find matching braces and truncate after last complete object
+                    brace_count = 0
+                    last_valid_pos = -1
                     
-                    # Try parsing again
-                    analysis = json.loads(response_text)
-                    logger.info(f"✅ Fixed JSON and parsed successfully for {symbol}")
-                except:
-                    # If still fails, try to extract JSON object
+                    for i, char in enumerate(response_text):
+                        if char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
+                            if brace_count == 0:
+                                last_valid_pos = i + 1
+                                break
+                    
+                    if last_valid_pos > 0:
+                        fixed_json = response_text[:last_valid_pos]
+                        analysis = json.loads(fixed_json)
+                        logger.info(f"✅ Fixed JSON by truncating at position {last_valid_pos}")
+                    else:
+                        raise ValueError("Could not find complete JSON object")
+                        
+                except Exception as fix_err:
+                    logger.warning(f"JSON auto-fix failed: {fix_err}")
+                    
+                    # Strategy 2: Extract minimal required fields manually
                     try:
                         import re
-                        # Find first complete JSON object
-                        match = re.search(r'\{.*?"recommendation".*?"confidence".*?\}', response_text, re.DOTALL)
-                        if match:
-                            json_str = match.group(0)
-                            # Ensure all quotes are properly closed
-                            analysis = json.loads(json_str)
-                            logger.info(f"✅ Extracted partial JSON for {symbol}")
+                        
+                        # Extract required fields with regex
+                        rec_match = re.search(r'"recommendation"\s*:\s*"([^"]+)"', response_text)
+                        conf_match = re.search(r'"confidence"\s*:\s*(\d+)', response_text)
+                        entry_match = re.search(r'"entry_point"\s*:\s*([\d.]+)', response_text)
+                        sl_match = re.search(r'"stop_loss"\s*:\s*([\d.]+)', response_text)
+                        tp_match = re.search(r'"take_profit"\s*:\s*\[([\d.,\s]+)\]', response_text)
+                        period_match = re.search(r'"expected_holding_period"\s*:\s*"([^"]+)"', response_text)
+                        risk_match = re.search(r'"risk_level"\s*:\s*"([^"]+)"', response_text)
+                        reason_match = re.search(r'"reasoning_vietnamese"\s*:\s*"([^"]+(?:\\"[^"]*)*)"', response_text, re.DOTALL)
+                        
+                        if rec_match and conf_match:
+                            # Build minimal valid JSON
+                            analysis = {
+                                'recommendation': rec_match.group(1),
+                                'confidence': int(conf_match.group(1)),
+                                'trading_style': 'swing',
+                                'entry_point': float(entry_match.group(1)) if entry_match else 0,
+                                'stop_loss': float(sl_match.group(1)) if sl_match else 0,
+                                'take_profit': [float(x.strip()) for x in tp_match.group(1).split(',')] if tp_match else [],
+                                'expected_holding_period': period_match.group(1) if period_match else '3-7 days',
+                                'risk_level': risk_match.group(1) if risk_match else 'MEDIUM',
+                                'reasoning_vietnamese': (reason_match.group(1)[:500] + '...') if reason_match else 'Không có phân tích chi tiết.'
+                            }
+                            logger.info(f"✅ Extracted partial JSON with regex for {symbol}")
                         else:
-                            logger.error(f"❌ Cannot extract valid JSON from response")
+                            logger.error(f"❌ Cannot extract minimal required fields (recommendation, confidence)")
                             return None
                     except Exception as extract_err:
-                        logger.error(f"❌ JSON extraction also failed: {extract_err}")
+                        logger.error(f"❌ Regex extraction also failed: {extract_err}")
                         return None
             
             # Add metadata
