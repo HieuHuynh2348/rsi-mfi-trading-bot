@@ -1884,9 +1884,9 @@ IMPORTANT GUIDELINES:
             analysis['symbol'] = symbol
             analysis['analyzed_at'] = datetime.now().isoformat()
             analysis['data_used'] = {
-                'rsi_mfi_consensus': data['rsi_mfi'].get('consensus', 'N/A'),
-                'stoch_rsi_consensus': data['stoch_rsi'].get('consensus', 'N/A'),
-                'pump_score': pump_data.get('final_score', 0) if pump_data else 0,
+                'rsi_mfi_consensus': data['rsi_mfi'].get('consensus', 'N/A') if isinstance(data.get('rsi_mfi'), dict) else 'N/A',
+                'stoch_rsi_consensus': data['stoch_rsi'].get('consensus', 'N/A') if isinstance(data.get('stoch_rsi'), dict) else 'N/A',
+                'pump_score': pump_data.get('final_score', 0) if pump_data and isinstance(pump_data, dict) else 0,
                 'current_price': data['market_data']['price']
             }
             
@@ -1985,7 +1985,11 @@ IMPORTANT GUIDELINES:
             # Cache result
             self._update_cache(symbol, analysis)
             
-            logger.info(f"✅ Gemini analysis complete for {symbol}: {analysis['recommendation']} (confidence: {analysis['confidence']}%)")
+            # Safe logging (check if analysis is dict)
+            if isinstance(analysis, dict):
+                logger.info(f"✅ Gemini analysis complete for {symbol}: {analysis.get('recommendation', 'N/A')} (confidence: {analysis.get('confidence', 0)}%)")
+            else:
+                logger.info(f"✅ Gemini analysis complete for {symbol} (type: {type(analysis)})")
             
             return analysis
             
