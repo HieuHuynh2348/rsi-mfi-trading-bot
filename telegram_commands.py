@@ -403,6 +403,9 @@ class TelegramCommandHandler:
                 return
             
             try:
+                # Log callback data
+                logger.info(f"🔘 Callback received: {call.data} from user {call.from_user.id}")
+                
                 # Answer callback to remove loading state
                 self.telegram_bot.answer_callback_query(call.id)
                 
@@ -855,9 +858,10 @@ class TelegramCommandHandler:
                 # AI Analysis callbacks
                 elif data.startswith("ai_analyze_"):
                     symbol = data.replace("ai_analyze_", "")
+                    logger.info(f"🤖 AI Analysis callback triggered for {symbol}")
                     
                     # Send processing message
-                    self.telegram_bot.send_message(
+                    processing_msg = self.telegram_bot.send_message(
                         chat_id=call.message.chat.id,
                         text=f"═══════════════════════════════════\n"
                              f"🤖 <b>GEMINI AI ĐANG PHÂN TÍCH</b>\n"
@@ -870,6 +874,7 @@ class TelegramCommandHandler:
                              f"═══════════════════════════════════",
                         parse_mode='HTML'
                     )
+                    logger.info(f"✅ Sent processing message for {symbol}")
                     
                     # Check if we have pump data for this symbol
                     pump_data = None
