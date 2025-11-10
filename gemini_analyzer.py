@@ -616,10 +616,10 @@ class GeminiAnalyzer:
                 next2 = df.iloc[i+2] if i+2 < len(df) else None
                 
                 # Bullish OB: Large down candle followed by strong bullish move
-                if curr['close'] < curr['open']:  # Down candle
-                    if next1['close'] > next1['open'] and next2 and next2['close'] > next2['open']:
+                if float(curr['close']) < float(curr['open']):  # Down candle
+                    if float(next1['close']) > float(next1['open']) and next2 is not None and float(next2['close']) > float(next2['open']):
                         # Strong 2-candle bullish move after down candle
-                        move_pct = ((next2['close'] - curr['close']) / curr['close']) * 100
+                        move_pct = ((float(next2['close']) - float(curr['close'])) / float(curr['close'])) * 100
                         if move_pct > 2:  # Significant move
                             ob_high = float(curr['high'])
                             ob_low = float(curr['low'])
@@ -635,9 +635,9 @@ class GeminiAnalyzer:
                                 })
                 
                 # Bearish OB: Large up candle followed by strong bearish move
-                if curr['close'] > curr['open']:  # Up candle
-                    if next1['close'] < next1['open'] and next2 and next2['close'] < next2['open']:
-                        move_pct = ((curr['close'] - next2['close']) / curr['close']) * 100
+                if float(curr['close']) > float(curr['open']):  # Up candle
+                    if float(next1['close']) < float(next1['open']) and next2 is not None and float(next2['close']) < float(next2['open']):
+                        move_pct = ((float(curr['close']) - float(next2['close'])) / float(curr['close'])) * 100
                         if move_pct > 2:
                             ob_high = float(curr['high'])
                             ob_low = float(curr['low'])

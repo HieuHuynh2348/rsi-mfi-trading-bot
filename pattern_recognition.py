@@ -199,12 +199,23 @@ class MarketRegimeDetector:
             if klines is None or (hasattr(klines, '__len__') and len(klines) == 0):
                 return self._default_regime()
             
+            # Store original klines for ATR calculation
+            original_klines = klines
+            
             # Handle different klines formats (list, DataFrame, etc)
             try:
                 # Try to extract close and volume prices
                 if hasattr(klines, 'iloc'):  # DataFrame
                     closes = [float(klines.iloc[i]['close']) for i in range(len(klines))]
                     volumes = [float(klines.iloc[i]['volume']) for i in range(len(klines))]
+                    # Convert DataFrame to list of lists for ATR calculation
+                    original_klines = []
+                    for i in range(len(klines)):
+                        row = klines.iloc[i]
+                        original_klines.append([
+                            row['timestamp'], row['open'], row['high'], 
+                            row['low'], row['close'], row['volume']
+                        ])
                 else:  # List of lists/tuples
                     closes = [float(k[4]) for k in klines]
                     volumes = [float(k[5]) for k in klines]
@@ -241,8 +252,8 @@ class MarketRegimeDetector:
                     ema_trend = 'FLAT'
                     trend_score = 0.5
             
-            # 2. Volatility (ATR-based)
-            atr = self._calculate_atr(klines, 14)
+            # 2. Volatility (ATR-based) - use original klines
+            atr = self._calculate_atr(original_klines, 14)
             avg_price = sum(closes[-20:]) / 20
             volatility_pct = (atr / avg_price) * 100
             
