@@ -105,7 +105,8 @@ def trigger_ai_analysis():
                     symbol=symbol,
                     pump_data=None,
                     trading_style='swing',
-                    use_cache=True
+                    use_cache=True,
+                    user_id=user_id  # Pass user_id for history
                 )
                 
                 if result:
@@ -182,6 +183,62 @@ def trigger_ai_analysis():
         else:
             logger.error("❌ TradingBot instance not found")
             return jsonify({'success': False, 'error': 'Bot not ready'}), 503
+            
+    except Exception as e:
+        logger.error(f"❌ API error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/analysis-history', methods=['GET'])
+def get_analysis_history():
+    """
+    API endpoint to get analysis history
+    Query params: user_id (required), symbol (optional), days (optional, default=7)
+    """
+    from flask import request
+    
+    try:
+        user_id = request.args.get('user_id', type=int)
+        symbol = request.args.get('symbol', default=None)
+        days = request.args.get('days', default=7, type=int)
+        
+        logger.info(f"📊 History API called: user={user_id}, symbol={symbol}, days={days}")
+        
+        if not user_id:
+            return jsonify({'success': False, 'error': 'Missing user_id parameter'}), 400
+        
+        # Get database instance
+        try:
+            from database import get_db
+            db = get_db()
+            
+            if not db:
+                return jsonify({'success': False, 'error': 'Database not available'}), 503
+            
+            # Get history
+            if symbol:
+                # Get history for specific symbol
+                history = db.get_symbol_history(symbol, user_id, days=days)
+                stats = db.calculate_accuracy_stats(symbol, user_id, days=days)
+            else:
+                # Get all history for user (new method needed)
+                history = db.get_all_history(user_id, days=days)
+                stats = None
+            
+            logger.info(f"✅ Found {len(history) if history else 0} analyses for user {user_id}")
+            
+            return jsonify({
+                'success': True,
+                'user_id': user_id,
+                'symbol': symbol,
+                'days': days,
+                'count': len(history) if history else 0,
+                'history': history,
+                'stats': stats
+            })
+            
+        except Exception as db_error:
+            logger.error(f"❌ Database error: {db_error}", exc_info=True)
+            return jsonify({'success': False, 'error': f'Database error: {str(db_error)}'}), 500
             
     except Exception as e:
         logger.error(f"❌ API error: {e}", exc_info=True)

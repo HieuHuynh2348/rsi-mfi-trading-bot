@@ -253,6 +253,54 @@ class AnalysisDatabase:
         self,
         user_id: int,
         days: int = 7,
+        limit: int = 50
+    ) -> List[Dict]:
+        """
+        Get ALL analysis history for user (all symbols)
+        
+        Args:
+            user_id: User ID
+            days: Look back days
+            limit: Max results
+        
+        Returns:
+            List of analysis records (most recent first)
+        """
+        conn = self.pool.getconn()
+        try:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT 
+                        analysis_id,
+                        symbol,
+                        timeframe,
+                        created_at,
+                        ai_full_response,
+                        market_snapshot,
+                        tracking_result,
+                        status
+                    FROM analysis_history
+                    WHERE user_id = %s
+                      AND created_at >= NOW() - INTERVAL '%s days'
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                """, (user_id, days, limit))
+                
+                results = cur.fetchall()
+                
+                # Convert to list of dicts
+                return [dict(row) for row in results]
+                
+        except Exception as e:
+            print(f"❌ Error fetching all history: {e}")
+            return []
+        finally:
+            self.pool.putconn(conn)
+    
+    def get_all_history(
+        self,
+        user_id: int,
+        days: int = 7,
         symbol_filter: Optional[str] = None,
         timeframe_filter: Optional[str] = None,
         result_filter: Optional[str] = None
