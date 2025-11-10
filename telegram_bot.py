@@ -283,10 +283,13 @@ class TelegramBot:
         """
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
-        # Row 1: AI Analysis and Chart buttons
+        # Row 1: AI Analysis and TradingView buttons
+        from chart_generator import get_tradingview_chart_url
+        tradingview_url = get_tradingview_chart_url(symbol, interval='60')  # 1 hour chart
+        
         keyboard.row(
             types.InlineKeyboardButton(f"🤖 AI Phân Tích", callback_data=f"ai_analyze_{symbol}"),
-            types.InlineKeyboardButton(f"📊 Chart", callback_data=f"chart_{symbol}")
+            types.InlineKeyboardButton(f"📊 TradingView", url=tradingview_url)
         )
         
         # Row 2: Live Chart - Different behavior based on chat type
@@ -347,10 +350,13 @@ class TelegramBot:
         """
         keyboard = types.InlineKeyboardMarkup(row_width=2)
         
-        # Row 1: AI and Chart buttons
+        # Row 1: AI Analysis and TradingView buttons
+        from chart_generator import get_tradingview_chart_url
+        tradingview_url = get_tradingview_chart_url(symbol, interval='60')  # 1 hour chart
+        
         keyboard.row(
             types.InlineKeyboardButton(f"🤖 AI Phân Tích", callback_data=f"ai_analyze_{symbol}"),
-            types.InlineKeyboardButton(f"📊 Chart", callback_data=f"chart_{symbol}")
+            types.InlineKeyboardButton(f"📊 TradingView", url=tradingview_url)
         )
         
         # Row 2: Live Chart - Different behavior based on chat type
