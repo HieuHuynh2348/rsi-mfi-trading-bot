@@ -1113,6 +1113,36 @@ H4 Previous Candle Analysis:
     - Tỷ lệ nến tăng: {pattern['bullish_ratio_pct']:.1f}% ({pattern['bullish_candles']}/{h1['candles_count']} nến)
 
 """
+                    # Add institutional indicators for 1H
+                    inst = h1.get('institutional_indicators', {})
+                    if inst:
+                        hist_klines_text += "  🏛️ Institutional Indicators (1H - 7 ngày):\n"
+                        
+                        vp = inst.get('volume_profile', {})
+                        if vp:
+                            hist_klines_text += f"    • Volume Profile: POC=${vp.get('poc', 0):,.4f}, VAH=${vp.get('vah', 0):,.4f}, VAL=${vp.get('val', 0):,.4f}\n"
+                            hist_klines_text += f"      Position: {vp.get('current_position', 'N/A')}, Distance from POC: {vp.get('distance_from_poc_pct', 0):+.2f}%\n"
+                        
+                        fvg = inst.get('fair_value_gaps', {})
+                        if fvg:
+                            hist_klines_text += f"    • Fair Value Gaps: {fvg.get('total_bullish_gaps', 0)} bullish, {fvg.get('total_bearish_gaps', 0)} bearish\n"
+                            hist_klines_text += f"      Unfilled: {fvg.get('unfilled_bullish_count', 0)} bullish, {fvg.get('unfilled_bearish_count', 0)} bearish\n"
+                            hist_klines_text += f"      Gap Density: {fvg.get('gap_density_pct', 0):.2f}%\n"
+                        
+                        ob = inst.get('order_blocks', {})
+                        if ob:
+                            hist_klines_text += f"    • Order Blocks: {ob.get('total_bullish_ob', 0)} bullish, {ob.get('total_bearish_ob', 0)} bearish\n"
+                            hist_klines_text += f"      Active: {ob.get('active_bullish_count', 0)} bullish, {ob.get('active_bearish_count', 0)} bearish\n"
+                            hist_klines_text += f"      OB Density: {ob.get('ob_density_pct', 0):.2f}%\n"
+                        
+                        smc = inst.get('smart_money', {})
+                        if smc:
+                            hist_klines_text += f"    • Smart Money Concepts: Structure Bias={smc.get('structure_bias', 'N/A')} ({smc.get('bullish_bias_pct', 0):.1f}% bullish)\n"
+                            hist_klines_text += f"      BOS: {smc.get('bos_bullish', 0)} bullish / {smc.get('bos_bearish', 0)} bearish\n"
+                            hist_klines_text += f"      CHoCH: {smc.get('choch_bullish', 0)} bullish / {smc.get('choch_bearish', 0)} bearish\n"
+                        
+                        hist_klines_text += "\n"
+
             
             # 4H context (30 days)
             if '4h' in historical_klines:
@@ -1147,6 +1177,36 @@ H4 Previous Candle Analysis:
     - Tỷ lệ nến tăng: {pattern['bullish_ratio_pct']:.1f}% ({pattern['bullish_candles']}/{h4['candles_count']} nến)
 
 """
+                    # Add institutional indicators for 4H
+                    inst = h4.get('institutional_indicators', {})
+                    if inst:
+                        hist_klines_text += "  🏛️ Institutional Indicators (4H - 30 ngày):\n"
+                        
+                        vp = inst.get('volume_profile', {})
+                        if vp:
+                            hist_klines_text += f"    • Volume Profile: POC=${vp.get('poc', 0):,.4f}, VAH=${vp.get('vah', 0):,.4f}, VAL=${vp.get('val', 0):,.4f}\n"
+                            hist_klines_text += f"      Position: {vp.get('current_position', 'N/A')}, Distance from POC: {vp.get('distance_from_poc_pct', 0):+.2f}%\n"
+                        
+                        fvg = inst.get('fair_value_gaps', {})
+                        if fvg:
+                            hist_klines_text += f"    • Fair Value Gaps: {fvg.get('total_bullish_gaps', 0)} bullish, {fvg.get('total_bearish_gaps', 0)} bearish\n"
+                            hist_klines_text += f"      Unfilled: {fvg.get('unfilled_bullish_count', 0)} bullish, {fvg.get('unfilled_bearish_count', 0)} bearish\n"
+                            hist_klines_text += f"      Gap Density: {fvg.get('gap_density_pct', 0):.2f}%\n"
+                        
+                        ob = inst.get('order_blocks', {})
+                        if ob:
+                            hist_klines_text += f"    • Order Blocks: {ob.get('total_bullish_ob', 0)} bullish, {ob.get('total_bearish_ob', 0)} bearish\n"
+                            hist_klines_text += f"      Active: {ob.get('active_bullish_count', 0)} bullish, {ob.get('active_bearish_count', 0)} bearish\n"
+                            hist_klines_text += f"      OB Density: {ob.get('ob_density_pct', 0):.2f}%\n"
+                        
+                        smc = inst.get('smart_money', {})
+                        if smc:
+                            hist_klines_text += f"    • Smart Money Concepts: Structure Bias={smc.get('structure_bias', 'N/A')} ({smc.get('bullish_bias_pct', 0):.1f}% bullish)\n"
+                            hist_klines_text += f"      BOS: {smc.get('bos_bullish', 0)} bullish / {smc.get('bos_bearish', 0)} bearish\n"
+                            hist_klines_text += f"      CHoCH: {smc.get('choch_bullish', 0)} bullish / {smc.get('choch_bearish', 0)} bearish\n"
+                        
+                        hist_klines_text += "\n"
+
             
             # 1D context (90 days)
             if '1d' in historical_klines:
@@ -1182,6 +1242,37 @@ H4 Previous Candle Analysis:
     - Tỷ lệ nến tăng: {pattern['bullish_ratio_pct']:.1f}% ({pattern['bullish_candles']}/{d1['candles_count']} nến)
 
 """
+                    # Add institutional indicators for 1D
+                    inst = d1.get('institutional_indicators', {})
+                    if inst:
+                        hist_klines_text += "  🏛️ Institutional Indicators (1D - 90 ngày):\n"
+                        
+                        vp = inst.get('volume_profile', {})
+                        if vp:
+                            hist_klines_text += f"    • Volume Profile: POC=${vp.get('poc', 0):,.4f}, VAH=${vp.get('vah', 0):,.4f}, VAL=${vp.get('val', 0):,.4f}\n"
+                            hist_klines_text += f"      Position: {vp.get('current_position', 'N/A')}, Distance from POC: {vp.get('distance_from_poc_pct', 0):+.2f}%\n"
+                        
+                        fvg = inst.get('fair_value_gaps', {})
+                        if fvg:
+                            hist_klines_text += f"    • Fair Value Gaps: {fvg.get('total_bullish_gaps', 0)} bullish, {fvg.get('total_bearish_gaps', 0)} bearish\n"
+                            hist_klines_text += f"      Unfilled: {fvg.get('unfilled_bullish_count', 0)} bullish, {fvg.get('unfilled_bearish_count', 0)} bearish\n"
+                            hist_klines_text += f"      Gap Density: {fvg.get('gap_density_pct', 0):.2f}%\n"
+                        
+                        ob = inst.get('order_blocks', {})
+                        if ob:
+                            hist_klines_text += f"    • Order Blocks: {ob.get('total_bullish_ob', 0)} bullish, {ob.get('total_bearish_ob', 0)} bearish\n"
+                            hist_klines_text += f"      Active: {ob.get('active_bullish_count', 0)} bullish, {ob.get('active_bearish_count', 0)} bearish\n"
+                            hist_klines_text += f"      OB Density: {ob.get('ob_density_pct', 0):.2f}%\n"
+                        
+                        smc = inst.get('smart_money', {})
+                        if smc:
+                            hist_klines_text += f"    • Smart Money Concepts: Structure Bias={smc.get('structure_bias', 'N/A')} ({smc.get('bullish_bias_pct', 0):.1f}% bullish)\n"
+                            hist_klines_text += f"      BOS: {smc.get('bos_bullish', 0)} bullish / {smc.get('bos_bearish', 0)} bearish\n"
+                            hist_klines_text += f"      CHoCH: {smc.get('choch_bullish', 0)} bullish / {smc.get('choch_bearish', 0)} bearish\n"
+                            hist_klines_text += f"      Swing Highs/Lows: {smc.get('swing_highs_count', 0)} / {smc.get('swing_lows_count', 0)}\n"
+                        
+                        hist_klines_text += "\n"
+
             
             hist_klines_text += """HƯỚNG DẪN PHÂN TÍCH DỮ LIỆU LỊCH SỬ:
 1. VỊ TRÍ TRONG RANGE: 
@@ -1209,12 +1300,34 @@ H4 Previous Candle Analysis:
    - 1-3%: Biến động trung bình
    - <1%: Biến động thấp → Sideway
 
+6. INSTITUTIONAL INDICATORS (HISTORICAL):
+   - Volume Profile Position: 
+     * PREMIUM (>VAH): Giá cao, có thể điều chỉnh xuống POC
+     * VALUE_AREA: Giá fair, cân bằng
+     * DISCOUNT (<VAL): Giá rẻ, có thể bật lên POC
+   - Fair Value Gaps:
+     * Unfilled gaps = magnets (giá có xu hướng fill gaps)
+     * High gap density (>10%) = nhiều vùng trống, biến động mạnh
+     * Nearest unfilled gap = S/R tiềm năng
+   - Order Blocks:
+     * Active OB = vùng institutional footprint, S/R mạnh
+     * High OB density (>5%) = smart money tích cực
+     * Strongest OB (strength >5) = vùng quan trọng
+   - Smart Money Concepts:
+     * Structure Bias: BULLISH/BEARISH/NEUTRAL
+     * BOS (Break of Structure) = continuation signal
+     * CHoCH (Change of Character) = reversal signal
+     * High swing count = nhiều cấu trúc, trending market
+
 SỬ DỤNG DỮ LIỆU NÀY ĐỂ:
 - Xác định vùng giá quan trọng (support/resistance lịch sử)
 - Đánh giá độ mạnh của trend hiện tại
 - So sánh volume hiện tại với lịch sử
 - Nhận biết pattern đảo chiều sớm
 - Tính toán risk/reward dựa trên range lịch sử
+- Phát hiện institutional accumulation/distribution zones
+- Dự đoán price targets dựa trên POC và gaps
+- Xác định trend consistency qua SMC structure
 """
         
         # Format institutional indicators as JSON
@@ -1310,18 +1423,22 @@ Provide a comprehensive trading analysis in JSON format with the following struc
     "h1_context": {{
       "rsi_interpretation": "RSI avg vs current, oversold/overbought zones",
       "volume_trend": "Increasing/Decreasing và ý nghĩa",
-      "price_position": "Vị trí trong range và trend 7 ngày"
+      "price_position": "Vị trí trong range và trend 7 ngày",
+      "institutional_insights": "Phân tích Volume Profile, FVG, OB, SMC trên khung 1H (7 ngày)"
     }},
     "h4_context": {{
       "rsi_interpretation": "RSI context 30 ngày",
       "volume_trend": "Volume pattern analysis",
-      "price_position": "Vị trí trong range và xu hướng"
+      "price_position": "Vị trí trong range và xu hướng",
+      "institutional_insights": "Phân tích Volume Profile, FVG, OB, SMC trên khung 4H (30 ngày)"
     }},
     "d1_context": {{
       "rsi_mfi_correlation": "RSI & MFI alignment analysis",
       "long_term_trend": "Xu hướng 90 ngày và momentum",
-      "volatility_assessment": "Đánh giá độ biến động"
+      "volatility_assessment": "Đánh giá độ biến động",
+      "institutional_insights": "Phân tích Volume Profile, FVG, OB, SMC trên khung 1D (90 ngày)"
     }}
+  }}
   }}
 }}
 
@@ -1720,6 +1837,8 @@ Return ONLY valid JSON, no markdown formatting.
                         tech += f"   • Volume: {h1['volume_trend']}\n"
                     if h1.get('price_position'):
                         tech += f"   • Vị trí: {h1['price_position']}\n"
+                    if h1.get('institutional_insights'):
+                        tech += f"   • Institutional: {h1['institutional_insights']}\n"
                     tech += "\n"
                 
                 # 4H Context
@@ -1732,6 +1851,8 @@ Return ONLY valid JSON, no markdown formatting.
                         tech += f"   • Volume: {h4['volume_trend']}\n"
                     if h4.get('price_position'):
                         tech += f"   • Vị trí: {h4['price_position']}\n"
+                    if h4.get('institutional_insights'):
+                        tech += f"   • Institutional: {h4['institutional_insights']}\n"
                     tech += "\n"
                 
                 # 1D Context
@@ -1744,6 +1865,8 @@ Return ONLY valid JSON, no markdown formatting.
                         tech += f"   • Xu hướng: {d1['long_term_trend']}\n"
                     if d1.get('volatility_assessment'):
                         tech += f"   • Biến động: {d1['volatility_assessment']}\n"
+                    if d1.get('institutional_insights'):
+                        tech += f"   • Institutional: {d1['institutional_insights']}\n"
             
             tech += "\n═══════════════════════════════════"
             
