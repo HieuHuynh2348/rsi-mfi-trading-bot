@@ -11,6 +11,10 @@
     <!-- AI Analysis API Integration -->
     <script src="ai-analysis-api.js"></script>
     
+    <!-- History Module -->
+    <link rel="stylesheet" href="history.css">
+    <script src="history.js"></script>
+    
     <!-- Lightweight Charts Library v5.0 with fallback CDN -->
     <script 
         src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"
@@ -611,6 +615,7 @@
         <button class="tab-btn active" data-tab="chart">Chart</button>
         <button class="tab-btn" data-tab="indicators">Indicators</button>
         <button class="tab-btn" data-tab="ai">AI Analysis</button>
+        <button class="tab-btn" data-tab="history">📊 History</button>
     </div>
     
     <div id="timeframes">
@@ -708,6 +713,11 @@
         <div id="ai-content"></div>
     </div>
     
+    <!-- History Panel -->
+    <div id="history-panel" style="display: none; padding: 15px; overflow-y: auto; height: calc(100vh - 180px);">
+        <div id="history-container"></div>
+    </div>
+    
     <div id="chartContainer"></div>
     
     <script>
@@ -751,7 +761,9 @@
         const tabBtns = document.querySelectorAll('.tab-btn');
         const indicatorsPanel = document.getElementById('indicators');
         const aiAnalysisPanel = document.getElementById('ai-analysis');
+        const historyPanel = document.getElementById('history-panel');
         const chartContainer = document.getElementById('chartContainer');
+        let historyModule;
         
         tabBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -764,12 +776,21 @@
                 // Show/hide content based on tab
                 indicatorsPanel.classList.remove('active');
                 aiAnalysisPanel.classList.remove('active');
+                historyPanel.style.display = 'none';
                 chartContainer.style.display = 'none';
                 
                 if (tab === 'indicators') {
                     indicatorsPanel.classList.add('active');
                 } else if (tab === 'ai') {
                     aiAnalysisPanel.classList.add('active');
+                } else if (tab === 'history') {
+                    historyPanel.style.display = 'block';
+                    // Initialize history module if not already created
+                    if (!historyModule) {
+                        const userId = tg.initDataUnsafe.user?.id || 6228875204;
+                        historyModule = new AnalysisHistory(userId);
+                        historyModule.loadHistory(null, 7); // Load last 7 days, all symbols
+                    }
                 } else {
                     chartContainer.style.display = 'block';
                 }
