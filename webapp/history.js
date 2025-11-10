@@ -94,6 +94,9 @@ class AnalysisHistory {
             container.appendChild(this.renderStats());
         }
         
+        // Add Analytics Toggle Button
+        container.appendChild(this.renderAnalyticsButton());
+        
         // Render filters
         container.appendChild(this.renderFilters());
         
@@ -102,6 +105,47 @@ class AnalysisHistory {
             container.appendChild(this.renderEmpty());
         } else {
             container.appendChild(this.renderList());
+        }
+    }
+
+    /**
+     * Render Analytics Toggle Button
+     */
+    renderAnalyticsButton() {
+        const div = document.createElement('div');
+        div.innerHTML = `
+            <button class="analytics-toggle" onclick="historyModule.toggleAnalytics()">
+                📊 Advanced Analytics
+            </button>
+            <div id="analytics-container" style="display: none;"></div>
+        `;
+        return div;
+    }
+
+    /**
+     * Toggle Analytics View
+     */
+    toggleAnalytics() {
+        const analyticsContainer = document.getElementById('analytics-container');
+        const button = document.querySelector('.analytics-toggle');
+        
+        if (analyticsContainer.style.display === 'none') {
+            // Show analytics
+            analyticsContainer.style.display = 'block';
+            button.textContent = '📋 Back to History';
+            
+            // Initialize analytics module
+            if (!this.analyticsModule) {
+                this.analyticsModule = new AnalyticsModule(this.history);
+            } else {
+                this.analyticsModule.updateHistory(this.history);
+            }
+            
+            this.analyticsModule.renderAll('analytics-container');
+        } else {
+            // Hide analytics
+            analyticsContainer.style.display = 'none';
+            button.textContent = '📊 Advanced Analytics';
         }
     }
 
