@@ -1894,19 +1894,31 @@ IMPORTANT GUIDELINES:
             if self.db and user_id:
                 try:
                     # Prepare market snapshot (current indicators)
-                    # Convert all data to JSON-serializable format (no pandas Series)
+                    # Convert all data to JSON-serializable format (no pandas Series/Timestamp)
                     def make_serializable(obj):
-                        """Convert pandas Series and other non-serializable objects to JSON-safe format"""
-                        if hasattr(obj, 'to_dict'):
+                        """Convert pandas Series/Timestamp and other non-serializable objects to JSON-safe format"""
+                        # Handle pandas Timestamp
+                        if hasattr(obj, 'isoformat'):
+                            return obj.isoformat()
+                        # Handle pandas Series/DataFrame
+                        elif hasattr(obj, 'to_dict'):
                             return obj.to_dict()
                         elif hasattr(obj, 'tolist'):
                             return obj.tolist()
+                        # Handle dict with potential Timestamp keys
                         elif isinstance(obj, dict):
-                            return {k: make_serializable(v) for k, v in obj.items()}
+                            return {
+                                (k.isoformat() if hasattr(k, 'isoformat') else str(k) if not isinstance(k, (str, int, float, bool, type(None))) else k): 
+                                make_serializable(v) 
+                                for k, v in obj.items()
+                            }
+                        # Handle list/tuple
                         elif isinstance(obj, (list, tuple)):
                             return [make_serializable(item) for item in obj]
+                        # Handle primitives
                         elif isinstance(obj, (int, float, str, bool, type(None))):
                             return obj
+                        # Fallback: convert to string
                         else:
                             return str(obj)
                     
