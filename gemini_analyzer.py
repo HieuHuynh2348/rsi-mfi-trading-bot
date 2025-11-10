@@ -1895,8 +1895,6 @@ IMPORTANT GUIDELINES:
                 try:
                     # Prepare market snapshot (current indicators)
                     # Convert all data to JSON-serializable format (no pandas Series)
-                    import json
-                    
                     def make_serializable(obj):
                         """Convert pandas Series and other non-serializable objects to JSON-safe format"""
                         if hasattr(obj, 'to_dict'):

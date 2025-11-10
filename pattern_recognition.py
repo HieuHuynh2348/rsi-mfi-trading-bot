@@ -46,8 +46,8 @@ class PatternRecognizer:
             if not self.db:
                 return {'universal_patterns': []}
             
-            # Get all history for user
-            history = self.db.get_all_history(user_id, days=days, limit=500)
+            # Get all history for user (limit is removed, function doesn't support it)
+            history = self.db.get_all_history(user_id, days=days)
             
             if len(history) < 10:
                 logger.info(f"Insufficient data for pattern detection: {len(history)} analyses")
@@ -196,7 +196,7 @@ class MarketRegimeDetector:
         try:
             # Get klines (last 100 candles)
             klines = self.binance.get_klines(symbol, timeframe, limit=100)
-            if not klines:
+            if klines is None or (hasattr(klines, '__len__') and len(klines) == 0):
                 return self._default_regime()
             
             closes = [float(k[4]) for k in klines]
