@@ -60,6 +60,89 @@ def serve_chart_direct():
         logger.error(f"❌ Error serving chart.html: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/ai-analysis', methods=['POST'])
+def trigger_ai_analysis():
+    """
+    API endpoint to trigger AI analysis from WebApp
+    Receives: {user_id, symbol, timeframe}
+    """
+    from flask import request
+    
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        symbol = data.get('symbol')
+        timeframe = data.get('timeframe', '1h')
+        
+        logger.info(f"🤖 AI Analysis API called: user={user_id}, symbol={symbol}, tf={timeframe}")
+        
+        if not user_id or not symbol:
+            return jsonify({'success': False, 'error': 'Missing user_id or symbol'}), 400
+        
+        # Get TradingBot instance
+        from main import TradingBot
+        if hasattr(TradingBot, '_instance') and TradingBot._instance:
+            bot = TradingBot._instance
+            
+            # Send processing message first
+            try:
+                processing_msg = bot.telegram.send_message(
+                    f"🤖 <b>GEMINI AI ĐANG PHÂN TÍCH</b>\n\n"
+                    f"💎 <b>Symbol:</b> {symbol}\n"
+                    f"📊 Đang thu thập dữ liệu từ tất cả indicators...\n"
+                    f"🧠 Đang gọi Gemini 2.0 Flash API...\n"
+                    f"🔮 Đang phân tích và dự đoán...\n\n"
+                    f"⏳ <b>Vui lòng chờ 10-20 giây...</b>",
+                    target_user_id=user_id
+                )
+            except Exception as e:
+                logger.warning(f"⚠️ Could not send processing message: {e}")
+            
+            # Perform AI analysis
+            try:
+                result = bot.command_handler.gemini_analyzer.analyze(
+                    symbol=symbol,
+                    pump_data=None,
+                    trading_style='swing',
+                    use_cache=True
+                )
+                
+                if result:
+                    # Format and send results (3 messages)
+                    messages = bot.telegram.format_analysis(result, symbol)
+                    
+                    for msg in messages:
+                        bot.telegram.telegram_bot.send_message(
+                            chat_id=user_id,
+                            text=msg,
+                            parse_mode='HTML'
+                        )
+                    
+                    logger.info(f"✅ AI Analysis sent to user {user_id} for {symbol}")
+                    return jsonify({'success': True, 'message': 'Analysis sent to Telegram'})
+                else:
+                    return jsonify({'success': False, 'error': 'Analysis returned no results'}), 500
+                    
+            except Exception as e:
+                logger.error(f"❌ Error performing AI analysis: {e}", exc_info=True)
+                # Send error message to user
+                try:
+                    bot.telegram.telegram_bot.send_message(
+                        chat_id=user_id,
+                        text=f"❌ <b>Lỗi khi phân tích {symbol}</b>\n\n{str(e)}",
+                        parse_mode='HTML'
+                    )
+                except:
+                    pass
+                return jsonify({'success': False, 'error': str(e)}), 500
+        else:
+            logger.error("❌ TradingBot instance not found")
+            return jsonify({'success': False, 'error': 'Bot not ready'}), 503
+            
+    except Exception as e:
+        logger.error(f"❌ API error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 def start_telegram_bot():
     """Run Telegram bot in background thread"""
     try:

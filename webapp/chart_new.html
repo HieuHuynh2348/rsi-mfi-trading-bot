@@ -8,9 +8,6 @@
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
-    <!-- AI Analysis API Integration -->
-    <script src="ai-analysis-api.js"></script>
-    
     <!-- Lightweight Charts Library v5.0 with fallback CDN -->
     <script 
         src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"
@@ -698,61 +695,6 @@
                     tg.HapticFeedback.impactOccurred('medium');
                 }
                 
-                // Use new API instead of sendData()
-                window.triggerAIAnalysis(symbol, currentTimeframe)
-                    .then(result => {
-                        console.log('✅ AI Analysis triggered:', result);
-                        
-                        // Show success message
-                        if (aiLoadingEl) {
-                            aiLoadingEl.innerHTML = `
-                                <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
-                                    <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-                                    <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #131722;">
-                                        Analysis Sent!
-                                    </div>
-                                    <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
-                                        Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> has been sent to your Telegram chat.
-                                        <br><br>
-                                        📱 <em>Check your chat for the results!</em>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        // Reset button
-                        setTimeout(() => {
-                            aiAnalyzeBtn.disabled = false;
-                            aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
-                            aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
-                        }, 2000);
-                    })
-                    .catch(error => {
-                        console.error('❌ AI Analysis error:', error);
-                        
-                        // Show error message
-                        if (aiLoadingEl) {
-                            aiLoadingEl.innerHTML = `
-                                <div style="text-align: center; color: #EF5350; padding: 32px 24px;">
-                                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">❌ Request Failed</div>
-                                    <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
-                                        ${error.message}<br><br>
-                                        <strong>Please try again</strong>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        // Reset button
-                        setTimeout(() => {
-                            aiAnalyzeBtn.disabled = false;
-                            aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
-                            aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
-                        }, 2000);
-                    });
-                
-                // OLD CODE using sendData() - removed
-                /*
                 try {
                     // Send data to bot via WebApp API
                     const webappData = `ai_${symbol}_${currentTimeframe}`;
@@ -805,7 +747,7 @@
                     }, 5000); // 5 second timeout - faster feedback
                     
                     // Send data to bot
-                    tg.sendData(webappData);
+                    // REPLACED: Using API instead of sendData()
                     console.log(`📤 Sent to bot: ${webappData}`);
                     
                     // Success haptic
@@ -852,7 +794,6 @@
                         tg.HapticFeedback.notificationOccurred('error');
                     }
                 }
-                */ // END OLD sendData() CODE
             });
         }
         
@@ -2047,3 +1988,4 @@
     </script>
 </body>
 </html>
+

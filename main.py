@@ -54,6 +54,9 @@ class TradingBot:
             trading_bot_instance=self  # Pass bot instance for /scan
         )
         
+        # Store instance globally for API access
+        TradingBot._instance = self
+        
         # Test connections
         if not self.test_connections():
             logger.error("Failed to initialize connections. Exiting.")
