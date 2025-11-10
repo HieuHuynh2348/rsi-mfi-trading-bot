@@ -206,16 +206,30 @@ class MarketRegimeDetector:
             try:
                 # Try to extract close and volume prices
                 if hasattr(klines, 'iloc'):  # DataFrame
-                    closes = [float(klines.iloc[i]['close']) for i in range(len(klines))]
-                    volumes = [float(klines.iloc[i]['volume']) for i in range(len(klines))]
+                    # Get column names (may vary: 'close' or 4, 'volume' or 5)
+                    if 'close' in klines.columns:
+                        closes = [float(klines.iloc[i]['close']) for i in range(len(klines))]
+                        volumes = [float(klines.iloc[i]['volume']) for i in range(len(klines))]
+                    else:
+                        # Use numeric indices
+                        closes = [float(klines.iloc[i][4]) for i in range(len(klines))]
+                        volumes = [float(klines.iloc[i][5]) for i in range(len(klines))]
+                    
                     # Convert DataFrame to list of lists for ATR calculation
                     original_klines = []
                     for i in range(len(klines)):
                         row = klines.iloc[i]
-                        original_klines.append([
-                            row['timestamp'], row['open'], row['high'], 
-                            row['low'], row['close'], row['volume']
-                        ])
+                        # Handle different column formats
+                        if 'close' in klines.columns:
+                            original_klines.append([
+                                row.get('timestamp', i), row['open'], row['high'], 
+                                row['low'], row['close'], row['volume']
+                            ])
+                        else:
+                            # Numeric indices: [timestamp, open, high, low, close, volume]
+                            original_klines.append([
+                                row[0], row[1], row[2], row[3], row[4], row[5]
+                            ])
                 else:  # List of lists/tuples
                     closes = [float(k[4]) for k in klines]
                     volumes = [float(k[5]) for k in klines]

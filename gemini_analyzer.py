@@ -1900,11 +1900,14 @@ IMPORTANT GUIDELINES:
                         # Handle pandas Timestamp
                         if hasattr(obj, 'isoformat'):
                             return obj.isoformat()
-                        # Handle pandas Series/DataFrame
+                        # Handle pandas Series/DataFrame - convert first, then serialize recursively
                         elif hasattr(obj, 'to_dict'):
-                            return obj.to_dict()
+                            result = obj.to_dict()
+                            # Recursively serialize the result (may have Timestamp keys)
+                            return make_serializable(result)
                         elif hasattr(obj, 'tolist'):
-                            return obj.tolist()
+                            result = obj.tolist()
+                            return make_serializable(result)
                         # Handle dict with potential Timestamp keys
                         elif isinstance(obj, dict):
                             return {
