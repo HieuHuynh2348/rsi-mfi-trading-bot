@@ -725,12 +725,14 @@
                                 <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
                                     <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
                                     <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #131722;">
-                                        Analysis Sent to Chat!
+                                        Request Sent!
                                     </div>
                                     <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
-                                        Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> has been sent to your Telegram chat.
+                                        Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> is being processed.
                                         <br><br>
-                                        📱 <em>Check your messages to see the complete analysis.</em>
+                                        📱 <em><strong>The analysis will be sent to your Telegram chat in 10-20 seconds.</strong></em>
+                                        <br><br>
+                                        � <em>You can close this window and check your chat for results.</em>
                                     </div>
                                 </div>
                             `;
@@ -742,7 +744,7 @@
                                 aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
                             }, 2000);
                         }
-                    }, 30000); // 30 second timeout
+                    }, 5000); // 5 second timeout - faster feedback
                     
                     // Send data to bot
                     tg.sendData(webappData);
