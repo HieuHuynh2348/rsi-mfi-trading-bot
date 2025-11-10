@@ -912,46 +912,46 @@
             
             let html = `
                 <div class="ai-section">
-                    <div class="ai-title">💎 ${symbol}</div>
-                    <div style="display: flex; align-items: center; gap: 12px; margin: 16px 0;">
-                        <div style="font-size: 32px;">${recEmoji}</div>
+                    <div class="ai-title" style="font-size: 20px; font-weight: 700;">💎 ${symbol}</div>
+                    <div style="display: flex; align-items: center; gap: 16px; margin: 20px 0;">
+                        <div style="font-size: 48px;">${recEmoji}</div>
                         <div>
-                            <div style="font-size: 24px; font-weight: 700; color: ${recColor};">${rec}</div>
-                            <div style="font-size: 14px; color: #787B86;">Confidence: ${conf}%</div>
+                            <div style="font-size: 28px; font-weight: 700; color: ${recColor};">${rec}</div>
+                            <div style="font-size: 16px; color: #787B86;">Confidence: ${conf}%</div>
                         </div>
                     </div>
                 </div>
                 
                 <div class="ai-section">
-                    <div class="ai-title">💰 Trading Plan</div>
-                    <div style="line-height: 1.8;">
-                        <div><strong>Entry Point:</strong> $${formatPrice(entry)}</div>
-                        <div><strong>Stop Loss:</strong> $${formatPrice(stop)}</div>
-                        <div><strong>Take Profit:</strong></div>
-                        <ul style="margin: 8px 0 0 20px;">
-                            ${targets.map((tp, i) => `<li>TP${i+1}: $${formatPrice(tp)}</li>`).join('')}
+                    <div class="ai-title" style="font-size: 18px; font-weight: 700;">💰 Trading Plan</div>
+                    <div style="line-height: 2; font-size: 15px;">
+                        <div style="margin: 8px 0;"><strong>Entry Point:</strong> <span style="color: #2962FF;">$${formatPrice(entry)}</span></div>
+                        <div style="margin: 8px 0;"><strong>Stop Loss:</strong> <span style="color: #EF5350;">$${formatPrice(stop)}</span></div>
+                        <div style="margin: 12px 0;"><strong>Take Profit:</strong></div>
+                        <ul style="margin: 8px 0 0 24px; font-size: 15px;">
+                            ${targets.map((tp, i) => `<li style="margin: 6px 0;">TP${i+1}: <span style="color: #26A69A;">$${formatPrice(tp)}</span></li>`).join('')}
                         </ul>
-                        <div style="margin-top: 8px;"><strong>Risk Level:</strong> ${risk}</div>
+                        <div style="margin: 12px 0;"><strong>Risk Level:</strong> <span style="color: ${risk === 'HIGH' ? '#EF5350' : risk === 'LOW' ? '#26A69A' : '#FFA726'};">${risk}</span></div>
                     </div>
                 </div>`;
             
             // Add technical analysis section if available
             if (technicalAnalysis && technicalAnalysis.length > 50) {
                 html += `
-                <div class="ai-section" style="max-height: 400px; overflow-y: auto;">
-                    <div class="ai-title">📊 Technical Analysis</div>
-                    <div style="line-height: 1.6; font-size: 13px;">${technicalAnalysis}</div>
+                <div class="ai-section" style="max-height: 450px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+                    <div class="ai-title" style="font-size: 18px; font-weight: 700;">📊 Technical Analysis</div>
+                    <div style="line-height: 1.8; font-size: 15px; padding: 4px 0;">${technicalAnalysis}</div>
                 </div>`;
             }
             
             // Add reasoning section
             html += `
-                <div class="ai-section" style="max-height: 500px; overflow-y: auto;">
-                    <div class="ai-title">🧠 AI Reasoning</div>
-                    <div style="line-height: 1.6; font-size: 13px;">${reasoning}</div>
+                <div class="ai-section" style="max-height: 550px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+                    <div class="ai-title" style="font-size: 18px; font-weight: 700;">🧠 AI Reasoning</div>
+                    <div style="line-height: 1.8; font-size: 15px; padding: 4px 0;">${reasoning}</div>
                 </div>
                 
-                <div style="text-align: center; color: #787B86; font-size: 12px; margin-top: 20px; padding: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div style="text-align: center; color: #787B86; font-size: 13px; margin-top: 20px; padding: 16px; border-top: 1px solid rgba(255,255,255,0.1); line-height: 1.6;">
                     ⚠️ This is AI analysis, not financial advice.<br>
                     Always DYOR (Do Your Own Research) before investing.
                 </div>
@@ -978,17 +978,18 @@
                     <div style="padding: 20px; animation: fadeIn 0.3s ease-in;">
                         ${formattedHtml}
                         <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
-                            <div style="color: #26A69A; font-size: 14px; margin-bottom: 8px;">
+                            <div style="color: #26A69A; font-size: 15px; margin-bottom: 12px; font-weight: 500;">
                                 ✅ Analysis also sent to your Telegram chat
                             </div>
                             <button id="close-analysis-btn" style="
                                 background: rgba(255,255,255,0.1);
                                 border: 1px solid rgba(255,255,255,0.2);
                                 color: white;
-                                padding: 10px 24px;
-                                border-radius: 8px;
+                                padding: 12px 32px;
+                                border-radius: 10px;
                                 cursor: pointer;
-                                font-size: 14px;
+                                font-size: 16px;
+                                font-weight: 600;
                                 transition: all 0.2s;
                             " onmouseover="this.style.background='rgba(255,255,255,0.2)'" 
                                onmouseout="this.style.background='rgba(255,255,255,0.1)'">
@@ -1010,8 +1011,8 @@
                     closeBtn.addEventListener('click', () => {
                         container.innerHTML = `
                             <div style="text-align: center; color: #787B86; padding: 40px 20px;">
-                                <div style="font-size: 48px; margin-bottom: 16px;">🤖</div>
-                                <div style="font-size: 16px;">Click "Analyze with Gemini AI" to get insights</div>
+                                <div style="font-size: 64px; margin-bottom: 20px;">🤖</div>
+                                <div style="font-size: 17px; line-height: 1.6;">Click "Analyze with Gemini AI" to get insights</div>
                             </div>
                         `;
                         
@@ -1031,8 +1032,8 @@
                 console.error('❌ Error displaying AI analysis:', error);
                 container.innerHTML = `
                     <div style="text-align: center; color: #EF5350; padding: 32px 24px;">
-                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">❌ Display Error</div>
-                        <div style="color: #787B86; font-size: 14px;">
+                        <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px;">❌ Display Error</div>
+                        <div style="color: #787B86; font-size: 15px; line-height: 1.6;">
                             Could not display analysis results.<br>
                             Check your Telegram chat for the full analysis.
                         </div>
