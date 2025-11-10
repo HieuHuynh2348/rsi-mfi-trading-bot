@@ -3262,14 +3262,20 @@ class TelegramCommandHandler:
                                 analysis_msg = format_gemini_analysis(symbol, result)
                                 
                                 # Create keyboard for webapp
-                                keyboard = types.InlineKeyboardMarkup()
-                                chart_webapp_url = f"https://hieuhhuynh2348.github.io/rsi-mfi-trading-bot/webapp/chart.html?symbol={symbol}&timeframe={timeframe}"
-                                keyboard.row(
-                                    types.InlineKeyboardButton(
-                                        text=f"📊 View {symbol} Chart",
-                                        web_app=types.WebAppInfo(url=chart_webapp_url)
+                                webapp_url = self.bot._get_webapp_url()
+                                if webapp_url:
+                                    cache_buster = int(time.time())
+                                    chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe={timeframe}&_t={cache_buster}"
+                                    logger.info(f"🔗 [webapp_data_handler] WebApp URL: {chart_webapp_url}")
+                                    keyboard = types.InlineKeyboardMarkup()
+                                    keyboard.row(
+                                        types.InlineKeyboardButton(
+                                            text=f"📊 View {symbol} Chart",
+                                            web_app=types.WebAppInfo(url=chart_webapp_url)
+                                        )
                                     )
-                                )
+                                else:
+                                    keyboard = None
                                 
                                 # Send analysis to chat
                                 self.bot.send_message(analysis_msg, reply_markup=keyboard)
