@@ -1709,9 +1709,51 @@ IMPORTANT GUIDELINES:
     - Entry: Near VAL, bullish FVG, bullish OB, support zones
     - Stop Loss: Below nearest support (OB/S/R zone) with 1-2 ATR buffer
     - Take Profit: At VAH, bearish FVG, resistance zones, EQH levels
-
-Return ONLY valid JSON, no markdown formatting.
 """
+
+        # === NEW: ADD PATTERN RECOGNITION CONTEXT ===
+        pattern_context = data.get('pattern_context')
+        if pattern_context:
+            regime = pattern_context.get('market_regime', {})
+            patterns = pattern_context.get('universal_patterns', [])
+            recommendations = pattern_context.get('recommendations', [])
+            
+            prompt += f"""
+
+═══════════════════════════════════════════
+🌍 CROSS-SYMBOL PATTERN RECOGNITION
+═══════════════════════════════════════════
+
+🔮 <b>MARKET REGIME: {regime.get('regime', 'UNKNOWN')}</b>
+  • Confidence: {regime.get('confidence', 0) * 100:.0f}%
+  • EMA Trend: {regime.get('metrics', {}).get('ema_trend', 'N/A')}
+  • Volatility: {regime.get('metrics', {}).get('volatility', 'N/A')}
+  • Volume: {regime.get('metrics', {}).get('volume', 'N/A')}
+
+🎯 <b>REGIME-BASED RECOMMENDATIONS:</b>
+"""
+            for rec in recommendations:
+                prompt += f"  {rec}\n"
+            
+            if patterns:
+                prompt += "\n📊 <b>UNIVERSAL PATTERNS (Work across multiple symbols):</b>\n"
+                for i, pattern in enumerate(patterns[:5], 1):  # Top 5
+                    prompt += f"""  {i}. {pattern['condition']}
+     • Win Rate: {pattern['win_rate']}% ({pattern['sample_size']} trades)
+     • Symbols: {', '.join(pattern['symbols'])}
+"""
+            else:
+                prompt += "\n⚠️ No universal patterns detected yet (insufficient data)\n"
+            
+            prompt += """
+⚠️ <b>CRITICAL: Adjust your analysis based on market regime:</b>
+  - BULL market → Favor BUY signals, tighter stops, look for dips to buy
+  - BEAR market → Favor SELL signals, avoid longs unless strong reversal
+  - SIDEWAYS → Range trading, buy support / sell resistance
+  - If universal patterns match current setup → Increase confidence
+"""
+        
+        prompt += "\nReturn ONLY valid JSON, no markdown formatting.\n"
         
         return prompt
     
@@ -1746,7 +1788,18 @@ Return ONLY valid JSON, no markdown formatting.
                 logger.error(f"Failed to collect data for {symbol}")
                 return None
             
-            # Build prompt with historical context
+            # === NEW: GET PATTERN RECOGNITION CONTEXT ===
+            if self.db and user_id:
+                try:
+                    from pattern_recognition import get_pattern_context
+                    pattern_context = get_pattern_context(self.db, self.binance, user_id, symbol)
+                    data['pattern_context'] = pattern_context
+                    logger.info(f"✅ Pattern context: {pattern_context['market_regime']['regime']} market")
+                except Exception as e:
+                    logger.warning(f"⚠️ Pattern recognition failed: {e}")
+                    data['pattern_context'] = None
+            
+            # Build prompt with historical context and patterns
             prompt = self._build_prompt(data, trading_style, user_id)
             
             # Rate limit
