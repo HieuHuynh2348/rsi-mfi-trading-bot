@@ -86,7 +86,7 @@ def trigger_ai_analysis():
             
             # Send processing message first
             try:
-                bot.telegram.telegram_bot.send_message(
+                bot.telegram.bot.send_message(
                     chat_id=user_id,
                     text=f"🤖 <b>GEMINI AI ĐANG PHÂN TÍCH</b>\n\n"
                          f"💎 <b>Symbol:</b> {symbol}\n"
@@ -115,7 +115,7 @@ def trigger_ai_analysis():
                     # Send all 3 messages
                     for msg in [msg1, msg2, msg3]:
                         if msg:  # Only send non-empty messages
-                            bot.telegram.telegram_bot.send_message(
+                            bot.telegram.bot.send_message(
                                 chat_id=user_id,
                                 text=msg,
                                 parse_mode='HTML'
@@ -130,7 +130,7 @@ def trigger_ai_analysis():
                 logger.error(f"❌ Error performing AI analysis: {e}", exc_info=True)
                 # Send error message to user
                 try:
-                    bot.telegram.telegram_bot.send_message(
+                    bot.telegram.bot.send_message(
                         chat_id=user_id,
                         text=f"❌ <b>Lỗi khi phân tích {symbol}</b>\n\n{str(e)}",
                         parse_mode='HTML'
