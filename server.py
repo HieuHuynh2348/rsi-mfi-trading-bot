@@ -207,35 +207,37 @@ def get_analysis_history():
             return jsonify({'success': False, 'error': 'Missing user_id parameter'}), 400
         
         # Get database instance
-        try:
-            from database import get_db
-            db = get_db()
+        from database import get_db
+        db = get_db()
+        
+        if not db:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        # Get history
+        if symbol:
+            # Get history for specific symbol
+            history = db.get_symbol_history(symbol, user_id, days=days)
+            stats = db.calculate_accuracy_stats(symbol, user_id, days=days)
+        else:
+            # Get all history for user
+            history = db.get_all_history(user_id, days=days)
+            stats = None
+        
+        logger.info(f"✅ Found {len(history) if history else 0} analyses for user {user_id}")
+        
+        return jsonify({
+            'success': True,
+            'user_id': user_id,
+            'symbol': symbol,
+            'days': days,
+            'count': len(history) if history else 0,
+            'history': history,
+            'stats': stats
+        })
             
-            if not db:
-                return jsonify({'success': False, 'error': 'Database not available'}), 503
-            
-            # Get history
-            if symbol:
-                # Get history for specific symbol
-                history = db.get_symbol_history(symbol, user_id, days=days)
-                stats = db.calculate_accuracy_stats(symbol, user_id, days=days)
-            else:
-                # Get all history for user (new method needed)
-                history = db.get_all_history(user_id, days=days)
-                stats = None
-            
-            logger.info(f"✅ Found {len(history) if history else 0} analyses for user {user_id}")
-            
-            return jsonify({
-                'success': True,
-                'user_id': user_id,
-                'symbol': symbol,
-                'days': days,
-                'count': len(history) if history else 0,
-                'history': history,
-                'stats': stats
-            })
-            
+    except Exception as e:
+        logger.error(f"❌ History API error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/review-analysis', methods=['POST'])
 def review_analysis():
