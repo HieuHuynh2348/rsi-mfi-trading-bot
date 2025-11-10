@@ -1952,25 +1952,30 @@ IMPORTANT GUIDELINES:
                     
                     if analysis_id:
                         logger.info(f"✅ Saved analysis to database: {analysis_id}")
-                        analysis['analysis_id'] = analysis_id
                         
-                        # Start price tracking ONLY for BUY/SELL (not WAIT/HOLD)
-                        recommendation = analysis.get('recommendation', '').upper()
-                        if (self.tracker and 
-                            recommendation in ['BUY', 'SELL'] and
-                            analysis.get('entry_point') and 
-                            analysis.get('stop_loss') and 
-                            analysis.get('take_profit')):
+                        # Check if analysis is dict before modifying
+                        if isinstance(analysis, dict):
+                            analysis['analysis_id'] = analysis_id
                             
-                            self.tracker.start_tracking(
-                                analysis_id=analysis_id,
-                                symbol=symbol,
-                                ai_response=analysis,
-                                entry_price=data['market_data']['price']
-                            )
-                            logger.info(f"✅ Started price tracking for {analysis_id}")
+                            # Start price tracking ONLY for BUY/SELL (not WAIT/HOLD)
+                            recommendation = analysis.get('recommendation', '').upper()
+                            if (self.tracker and 
+                                recommendation in ['BUY', 'SELL'] and
+                                analysis.get('entry_point') and 
+                                analysis.get('stop_loss') and 
+                                analysis.get('take_profit')):
+                                
+                                self.tracker.start_tracking(
+                                    analysis_id=analysis_id,
+                                    symbol=symbol,
+                                    ai_response=analysis,
+                                    entry_price=data['market_data']['price']
+                                )
+                                logger.info(f"✅ Started price tracking for {analysis_id}")
+                            else:
+                                logger.info(f"ℹ️ Analysis saved but not tracked (recommendation: {recommendation})")
                         else:
-                            logger.info(f"ℹ️ Analysis saved but not tracked (recommendation: {recommendation})")
+                            logger.warning(f"⚠️ Analysis is not dict (type: {type(analysis)}), cannot add analysis_id or start tracking")
                         
                         
                 except Exception as db_error:
