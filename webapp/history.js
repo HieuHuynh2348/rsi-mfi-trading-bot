@@ -100,12 +100,73 @@ class AnalysisHistory {
         // Render filters
         container.appendChild(this.renderFilters());
         
+        // Add Export CSV button
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'export-csv-btn';
+        exportBtn.innerHTML = '📥 Export CSV';
+        exportBtn.onclick = () => this.exportToCSV();
+        container.appendChild(exportBtn);
+        
         // Render history list
         if (this.filteredHistory.length === 0) {
             container.appendChild(this.renderEmpty());
         } else {
             container.appendChild(this.renderList());
         }
+    }
+
+    /**
+     * Export history to CSV
+     */
+    exportToCSV() {
+        if (this.history.length === 0) {
+            alert('No data to export');
+            return;
+        }
+        
+        // CSV headers
+        const headers = [
+            'Date', 'Symbol', 'Recommendation', 'Confidence', 
+            'Entry', 'Stop Loss', 'TP1', 'TP2', 'TP3',
+            'Result', 'PnL %', 'Exit Price', 'Exit Reason',
+            'Manual Review'
+        ];
+        
+        // CSV rows
+        const rows = this.history.map(item => {
+            const response = item.ai_full_response || {};
+            const tracking = item.tracking_result || {};
+            const tps = response.take_profit || [];
+            
+            return [
+                new Date(item.created_at).toLocaleString(),
+                item.symbol,
+                response.recommendation || 'N/A',
+                response.confidence || 0,
+                response.entry_point || 0,
+                response.stop_loss || 0,
+                tps[0] || 0,
+                tps[1] || 0,
+                tps[2] || 0,
+                tracking.result || 'PENDING',
+                tracking.pnl_percent || 0,
+                tracking.exit_price || 0,
+                tracking.exit_reason || '',
+                tracking.manual_review || ''
+            ].map(v => `"${v}"`).join(',');
+        });
+        
+        // Create CSV content
+        const csv = [headers.join(','), ...rows].join('\n');
+        
+        // Download file
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `analysis-history-${Date.now()}.csv`;
+        link.click();
+        
+        alert('✅ CSV exported successfully!');
     }
 
     /**
@@ -309,6 +370,7 @@ class AnalysisHistory {
         const pnl = tracking.pnl_percent || 0;
         const exitPrice = tracking.exit_price || 0;
         const exitReason = tracking.exit_reason || '';
+        const manualReview = tracking.manual_review || null;
         
         const createdAt = new Date(item.created_at);
         const timeStr = createdAt.toLocaleString('vi-VN');
@@ -331,6 +393,24 @@ class AnalysisHistory {
             resultBadge = `<span class="badge badge-info">🔄 Tracking...</span>`;
         } else {
             resultBadge = `<span class="badge badge-secondary">⏳ Pending</span>`;
+        }
+        
+        // Review buttons (only show if not reviewed yet)
+        let reviewButtons = '';
+        if (!manualReview) {
+            reviewButtons = `
+                <div class="review-buttons">
+                    <button class="btn-review btn-good" data-id="${item.analysis_id}" data-review="good">
+                        👍 Good
+                    </button>
+                    <button class="btn-review btn-bad" data-id="${item.analysis_id}" data-review="bad">
+                        👎 Bad
+                    </button>
+                </div>
+            `;
+        } else {
+            const reviewEmoji = manualReview === 'good' ? '👍' : '👎';
+            reviewButtons = `<div class="review-status">${reviewEmoji} Reviewed</div>`;
         }
         
         const div = document.createElement('div');
@@ -370,6 +450,7 @@ class AnalysisHistory {
             
             <div class="item-footer">
                 ${resultBadge}
+                ${reviewButtons}
                 <button class="btn-details" data-id="${item.analysis_id}">
                     📄 Chi Tiết
                 </button>
@@ -381,9 +462,49 @@ class AnalysisHistory {
             div.querySelector('.btn-details')?.addEventListener('click', () => {
                 this.showDetails(item);
             });
+            
+            // Add click handlers for review buttons
+            div.querySelectorAll('.btn-review').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const review = btn.dataset.review;
+                    const analysisId = btn.dataset.id;
+                    await this.submitReview(analysisId, review);
+                });
+            });
         }, 100);
         
         return div;
+    }
+
+    /**
+     * Submit manual review
+     */
+    async submitReview(analysisId, review) {
+        try {
+            const response = await fetch('/api/review-analysis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: this.userId,
+                    analysis_id: analysisId,
+                    review: review,
+                    comment: ''
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                alert(`✅ Thank you for your feedback!`);
+                // Reload history to show updated review status
+                this.loadHistory();
+            } else {
+                alert(`❌ Failed to submit review: ${data.error}`);
+            }
+        } catch (error) {
+            console.error('Review submission error:', error);
+            alert(`❌ Error submitting review: ${error.message}`);
+        }
     }
 
     /**

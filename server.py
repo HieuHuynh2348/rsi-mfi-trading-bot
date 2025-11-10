@@ -236,9 +236,42 @@ def get_analysis_history():
                 'stats': stats
             })
             
-        except Exception as db_error:
-            logger.error(f"❌ Database error: {db_error}", exc_info=True)
-            return jsonify({'success': False, 'error': f'Database error: {str(db_error)}'}), 500
+
+@app.route('/api/review-analysis', methods=['POST'])
+def review_analysis():
+    """
+    API endpoint for manual review (👍/👎)
+    Body: { user_id, analysis_id, review ('good'|'bad'), comment }
+    """
+    from flask import request
+    
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        analysis_id = data.get('analysis_id')
+        review = data.get('review')  # 'good' or 'bad'
+        comment = data.get('comment', '')
+        
+        if not all([user_id, analysis_id, review]):
+            return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+        
+        if review not in ['good', 'bad']:
+            return jsonify({'success': False, 'error': 'Invalid review value'}), 400
+        
+        # Get database
+        from database import get_db
+        db = get_db()
+        
+        if not db:
+            return jsonify({'success': False, 'error': 'Database not available'}), 503
+        
+        # Add review
+        success = db.add_manual_review(analysis_id, user_id, review, comment)
+        
+        if success:
+            return jsonify({'success': True, 'message': 'Review added successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to add review'}), 500
             
     except Exception as e:
         logger.error(f"❌ API error: {e}", exc_info=True)

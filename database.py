@@ -197,6 +197,50 @@ class AnalysisDatabase:
         finally:
             self.pool.putconn(conn)
     
+    def add_manual_review(
+        self,
+        analysis_id: str,
+        user_id: int,
+        review: str,  # 'good' or 'bad'
+        comment: str = None
+    ):
+        """
+        Add manual review from user (👍/👎)
+        
+        Args:
+            analysis_id: Analysis ID to review
+            user_id: User ID
+            review: 'good' or 'bad'
+            comment: Optional comment
+        """
+        conn = self.pool.getconn()
+        try:
+            with conn.cursor() as cur:
+                # Add review to tracking_result JSON
+                cur.execute("""
+                    UPDATE analysis_history
+                    SET tracking_result = COALESCE(tracking_result, '{}'::jsonb) || 
+                        jsonb_build_object('manual_review', %s, 'review_comment', %s, 'reviewed_at', NOW())
+                    WHERE analysis_id = %s AND user_id = %s
+                    RETURNING analysis_id
+                """, (review, comment, analysis_id, user_id))
+                
+                result = cur.fetchone()
+                if result:
+                    conn.commit()
+                    print(f"✅ Added manual review {review} for {analysis_id}")
+                    return True
+                else:
+                    print(f"❌ Analysis {analysis_id} not found or unauthorized")
+                    return False
+                
+        except Exception as e:
+            conn.rollback()
+            print(f"❌ Error adding review: {e}")
+            return False
+        finally:
+            self.pool.putconn(conn)
+    
     def get_symbol_history(
         self,
         symbol: str,

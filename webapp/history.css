@@ -209,6 +209,71 @@
     background: rgba(33, 150, 243, 0.3);
 }
 
+/* Review Buttons */
+.review-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-review {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s;
+}
+
+.btn-good {
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid #4CAF50;
+}
+
+.btn-good:hover {
+    background: rgba(76, 175, 80, 0.4);
+}
+
+.btn-bad {
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid #F44336;
+}
+
+.btn-bad:hover {
+    background: rgba(244, 67, 54, 0.4);
+}
+
+.review-status {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Export CSV Button */
+.export-csv-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.export-csv-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
 /* Empty State */
 .history-empty {
     text-align: center;
