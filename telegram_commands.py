@@ -916,39 +916,82 @@ class TelegramCommandHandler:
                         
                         # Helper function to split and send long messages
                         def send_message_parts(chat_id, message, parse_mode='HTML'):
-                            """Split long message and send all parts"""
-                            max_length = 4000
+                            """Split long message and send all parts with better error handling"""
+                            max_length = 4000  # Telegram limit is 4096, use 4000 for safety
+                            
                             if len(message) <= max_length:
-                                self.telegram_bot.send_message(
-                                    chat_id=chat_id,
-                                    text=message,
-                                    parse_mode=parse_mode
-                                )
-                            else:
-                                # Split message into parts
-                                parts = []
-                                current_part = ""
-                                lines = message.split('\n')
+                                try:
+                                    self.telegram_bot.send_message(
+                                        chat_id=chat_id,
+                                        text=message,
+                                        parse_mode=parse_mode
+                                    )
+                                except Exception as e:
+                                    if "message is too long" in str(e).lower():
+                                        # Force split even if calculated length is under limit
+                                        logger.warning(f"Message rejected as too long, forcing split: {len(message)} chars")
+                                        send_message_parts(chat_id, message, parse_mode)  # Recursive call to split
+                                    else:
+                                        raise
+                                return
+                            
+                            # Split message into parts
+                            parts = []
+                            current_part = ""
+                            lines = message.split('\n')
+                            
+                            for line in lines:
+                                # Check if adding this line would exceed limit
+                                test_length = len(current_part) + len(line) + 1
                                 
-                                for line in lines:
-                                    if len(current_part) + len(line) + 1 > max_length:
-                                        if current_part:
-                                            parts.append(current_part.rstrip())
-                                            current_part = ""
-                                    current_part += line + '\n'
+                                # If line itself is too long, split it
+                                if len(line) > max_length:
+                                    # Save current part if exists
+                                    if current_part:
+                                        parts.append(current_part.rstrip())
+                                        current_part = ""
+                                    
+                                    # Split long line into chunks
+                                    for i in range(0, len(line), max_length - 100):
+                                        chunk = line[i:i + max_length - 100]
+                                        parts.append(chunk)
+                                    continue
                                 
-                                if current_part:
-                                    parts.append(current_part.rstrip())
+                                if test_length > max_length:
+                                    if current_part:
+                                        parts.append(current_part.rstrip())
+                                        current_part = ""
                                 
-                                # Send all parts
-                                for i, part in enumerate(parts):
-                                    if i > 0:  # Add continuation indicator for parts after first
-                                        part = f"<i>...tiếp theo...</i>\n\n{part}"
+                                current_part += line + '\n'
+                            
+                            if current_part:
+                                parts.append(current_part.rstrip())
+                            
+                            # Send all parts with error handling
+                            for i, part in enumerate(parts):
+                                if i > 0:  # Add continuation indicator for parts after first
+                                    part = f"<i>...tiếp theo (phần {i+1}/{len(parts)})...</i>\n\n{part}"
+                                
+                                try:
                                     self.telegram_bot.send_message(
                                         chat_id=chat_id,
                                         text=part,
                                         parse_mode=parse_mode
                                     )
+                                    logger.info(f"✅ Sent message part {i+1}/{len(parts)} ({len(part)} chars)")
+                                except Exception as e:
+                                    logger.error(f"⚠️ Could not send message part {i+1}: {e}")
+                                    # Try to send error notification
+                                    try:
+                                        self.telegram_bot.send_message(
+                                            chat_id=chat_id,
+                                            text=f"⚠️ Lỗi gửi phần {i+1}/{len(parts)}: {str(e)[:100]}",
+                                            parse_mode='HTML'
+                                        )
+                                    except:
+                                        pass
+                                
+                                if i < len(parts) - 1:  # Not last part
                                     time.sleep(0.5)  # Small delay between parts
                         
                         # Send all messages (with auto-splitting if needed)
