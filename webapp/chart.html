@@ -861,20 +861,94 @@
             });
         }
         
+        // Function to validate symbol exists on Binance
+        async function validateSymbol(symbolToCheck) {
+            try {
+                // Use Binance 24hr ticker endpoint to check if symbol exists
+                const checkUrl = `https://api.binance.com/api/v3/ticker/24hr?symbol=${symbolToCheck}`;
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(checkUrl, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    // Check if symbol is trading
+                    if (data.symbol === symbolToCheck) {
+                        console.log(`✅ Symbol ${symbolToCheck} exists and is trading`);
+                        return true;
+                    }
+                }
+                
+                console.warn(`⚠️ Symbol ${symbolToCheck} not found or not trading`);
+                return false;
+            } catch (error) {
+                console.error(`❌ Error validating symbol ${symbolToCheck}:`, error.message);
+                return false;
+            }
+        }
+        
         // Function to switch symbol
         async function switchSymbol(newSymbol) {
-            if (newSymbol === symbol) return;
+            if (newSymbol === symbol) {
+                console.log('Already on this symbol, skipping switch');
+                return;
+            }
             
+            console.log(`📊 Attempting to switch to ${newSymbol}`);
+            
+            // Show loading immediately
+            showLoading();
+            
+            // Validate symbol first
+            const isValid = await validateSymbol(newSymbol);
+            
+            if (!isValid) {
+                hideLoading();
+                
+                // Error haptic
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+                
+                // Show detailed error
+                if (tg.showAlert) {
+                    tg.showAlert(`❌ Symbol không hợp lệ: ${newSymbol}\n\n` +
+                        `Symbol này không tồn tại hoặc không được giao dịch trên Binance.\n\n` +
+                        `Gợi ý:\n` +
+                        `✓ Kiểm tra chính tả (VD: PEPE, DOGE, SHIB)\n` +
+                        `✓ Đảm bảo coin có trên Binance Spot\n` +
+                        `✓ Thử các symbol phổ biến từ dropdown`);
+                }
+                
+                // Reset to previous symbol
+                customSymbolInput.style.display = 'none';
+                applyCustomBtn.style.display = 'none';
+                
+                if (predefinedSymbols.includes(symbol)) {
+                    symbolSelect.value = symbol;
+                } else {
+                    symbolSelect.value = 'BTCUSDT';
+                    symbol = 'BTCUSDT';
+                }
+                
+                return;
+            }
+            
+            // Symbol is valid, proceed with switch
             symbol = newSymbol;
-            console.log(`📊 Switching to ${symbol}`);
+            console.log(`📊 Switching to validated symbol: ${symbol}`);
             
             // Haptic feedback
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.impactOccurred('medium');
             }
-            
-            // Reload chart with new symbol
-            showLoading();
             
             // Close WebSocket if active
             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1882,29 +1956,69 @@
             return Math.round(stochRSI * 100) / 100;
         }
         
-        // Calculate simple MFI
+        // Calculate simple MFI (Money Flow Index)
+        // Formula from Investopedia: MFI = 100 - (100 / (1 + Money Flow Ratio))
+        // Money Flow = Typical Price × Volume
+        // Typical Price = (High + Low + Close) / 3
         function calculateSimpleMFI(candles, period = 6) {
-            if (candles.length < period + 1) return 50;
+            if (candles.length < period + 1) {
+                console.warn('Not enough candles for MFI calculation, returning neutral 50');
+                return 50;
+            }
             
             let posFlow = 0;
             let negFlow = 0;
             
+            // Calculate money flow for each period
             for (let i = candles.length - period; i < candles.length; i++) {
+                // Validate candle data
+                if (!candles[i] || !candles[i-1]) {
+                    console.error('Invalid candle data at index', i);
+                    continue;
+                }
+                
+                // Calculate typical price (High + Low + Close) / 3
                 const typicalPrice = (candles[i].high + candles[i].low + candles[i].close) / 3;
                 const prevTypicalPrice = (candles[i-1].high + candles[i-1].low + candles[i-1].close) / 3;
-                const moneyFlow = typicalPrice * candles[i].value;
                 
+                // Get volume (Binance returns volume, not 'value')
+                const volume = candles[i].volume || 0;
+                
+                // Raw Money Flow = Typical Price × Volume
+                const rawMoneyFlow = typicalPrice * volume;
+                
+                // Classify as positive or negative money flow based on price direction
                 if (typicalPrice > prevTypicalPrice) {
-                    posFlow += moneyFlow;
-                } else {
-                    negFlow += moneyFlow;
+                    posFlow += rawMoneyFlow;
+                } else if (typicalPrice < prevTypicalPrice) {
+                    negFlow += rawMoneyFlow;
                 }
+                // If equal, don't add to either (neutral)
             }
             
-            if (negFlow === 0) return 100;
+            // Handle edge cases
+            if (posFlow === 0 && negFlow === 0) {
+                console.warn('No money flow detected, returning neutral 50');
+                return 50;
+            }
             
-            const mfiRatio = posFlow / negFlow;
-            const mfi = 100 - (100 / (1 + mfiRatio));
+            if (negFlow === 0) {
+                console.log('Only positive money flow, returning 100 (max bullish)');
+                return 100;
+            }
+            
+            if (posFlow === 0) {
+                console.log('Only negative money flow, returning 0 (max bearish)');
+                return 0;
+            }
+            
+            // Calculate Money Flow Ratio
+            const moneyFlowRatio = posFlow / negFlow;
+            
+            // Calculate MFI using standard formula
+            const mfi = 100 - (100 / (1 + moneyFlowRatio));
+            
+            console.log(`MFI(${period}): PosFlow=${posFlow.toFixed(2)}, NegFlow=${negFlow.toFixed(2)}, Ratio=${moneyFlowRatio.toFixed(2)}, MFI=${mfi.toFixed(2)}`);
             
             return Math.round(mfi * 100) / 100;
         }
@@ -2126,14 +2240,14 @@
                 volumeSeries.setData(volumeData);
                 console.log('Volume data set successfully');
                 
-                // Store candles for indicators calculation
+                // Store candles for indicators calculation (with volume for MFI)
                 latestData.candles = candles.map(c => ({
                     time: c.time,
                     open: c.open,
                     high: c.high,
                     low: c.low,
                     close: c.close,
-                    value: c.volume
+                    volume: c.volume  // Store as 'volume' for MFI calculation
                 }));
                 
                 console.log('Fitting content...');
@@ -2650,10 +2764,12 @@
                                     
                                     // Store latest candle with volume
                                     const candleWithVolume = {
-                                        ...candleData,
-                                        value: volume,
-                                        high: candleData.high,
-                                        low: candleData.low
+                                        time: time,
+                                        open: open,
+                                        high: validHigh,
+                                        low: validLow,
+                                        close: close,
+                                        volume: volume  // Store volume for MFI calculation
                                     };
                                     latestData.candles.push(candleWithVolume);
                                     if (latestData.candles.length > 500) {
@@ -2665,10 +2781,10 @@
                                         const closes = latestData.candles.map(c => c.close);
                                         const rsi = calculateSimpleRSI(closes, 6);
                                         const stochRSI = calculateStochRSI(closes, 14, 14);
-                                        const mfi = calculateSimpleMFI(latestData.candles, 6);
+                                        const mfi = calculateSimpleMFI(latestData.candles, 6);  // Pass full candles array with volume
                                         
                                         // Calculate volume ratio
-                                        const volumes = latestData.candles.map(c => c.value || volume);
+                                        const volumes = latestData.candles.map(c => c.volume || 0);
                                         const avgVolume = volumes.slice(0, -1).reduce((a, b) => a + b, 0) / (volumes.length - 1);
                                         const volumeRatio = volume / avgVolume;
                                         
