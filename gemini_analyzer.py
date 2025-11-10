@@ -1894,11 +1894,31 @@ IMPORTANT GUIDELINES:
             if self.db and user_id:
                 try:
                     # Prepare market snapshot (current indicators)
+                    # Convert all data to JSON-serializable format (no pandas Series)
+                    import json
+                    
+                    def make_serializable(obj):
+                        """Convert pandas Series and other non-serializable objects to JSON-safe format"""
+                        if hasattr(obj, 'to_dict'):
+                            return obj.to_dict()
+                        elif hasattr(obj, 'tolist'):
+                            return obj.tolist()
+                        elif isinstance(obj, dict):
+                            return {k: make_serializable(v) for k, v in obj.items()}
+                        elif isinstance(obj, (list, tuple)):
+                            return [make_serializable(item) for item in obj]
+                        elif isinstance(obj, (int, float, str, bool, type(None))):
+                            return obj
+                        else:
+                            return str(obj)
+                    
                     market_snapshot = {
-                        'price': data['market_data']['price'],
-                        'rsi_mfi': data['rsi_mfi'],
-                        'stoch_rsi': data['stoch_rsi'],
-                        'volume_profile': data.get('volume_profile', {}),
+                        'price': float(data['market_data']['price']),
+                        'rsi_mfi': make_serializable(data.get('rsi_mfi', {})),
+                        'stoch_rsi': make_serializable(data.get('stoch_rsi', {})),
+                        'volume_profile': make_serializable(data.get('volume_profile', {})),
+                        'order_blocks': make_serializable(data.get('order_blocks', {})),
+                        'smart_money': make_serializable(data.get('smart_money', {})),
                         'timestamp': datetime.now().isoformat()
                     }
                     

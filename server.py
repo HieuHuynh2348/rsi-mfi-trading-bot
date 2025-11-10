@@ -113,17 +113,43 @@ def trigger_ai_analysis():
                     # Format response using gemini_analyzer's format_response method
                     msg1, msg2, msg3 = bot.command_handler.gemini_analyzer.format_response(result)
                     
-                    # Send to Telegram (background)
+                    # Helper function to split long messages
+                    def split_message(msg, max_len=4000):
+                        """Split message if longer than Telegram's limit"""
+                        if len(msg) <= max_len:
+                            return [msg]
+                        
+                        parts = []
+                        lines = msg.split('\n')
+                        current = ""
+                        
+                        for line in lines:
+                            if len(current) + len(line) + 1 > max_len:
+                                if current:
+                                    parts.append(current.rstrip())
+                                    current = ""
+                            current += line + '\n'
+                        
+                        if current:
+                            parts.append(current.rstrip())
+                        
+                        return parts
+                    
+                    # Send to Telegram with splitting
                     for msg in [msg1, msg2, msg3]:
-                        if msg:  # Only send non-empty messages
-                            try:
-                                bot.telegram.bot.send_message(
-                                    chat_id=user_id,
-                                    text=msg,
-                                    parse_mode='HTML'
-                                )
-                            except Exception as send_err:
-                                logger.warning(f"⚠️ Could not send message part: {send_err}")
+                        if msg:
+                            # Split if too long
+                            msg_parts = split_message(msg, max_len=4000)
+                            
+                            for part in msg_parts:
+                                try:
+                                    bot.telegram.bot.send_message(
+                                        chat_id=user_id,
+                                        text=part,
+                                        parse_mode='HTML'
+                                    )
+                                except Exception as send_err:
+                                    logger.warning(f"⚠️ Could not send message part: {send_err}")
                     
                     logger.info(f"✅ AI Analysis sent to user {user_id} for {symbol}")
                     
