@@ -1925,11 +1925,6 @@ IMPORTANT GUIDELINES:
             # === NEW: SAVE TO DATABASE AND START TRACKING ===
             if self.db and user_id:
                 try:
-                    logger.info(f"📝 Preparing to save analysis for {symbol}...")
-                    logger.info(f"  - analysis type: {type(analysis)}")
-                    logger.info(f"  - data type: {type(data)}")
-                    logger.info(f"  - data keys: {list(data.keys()) if isinstance(data, dict) else 'NOT A DICT'}")
-                    
                     # Prepare market snapshot (current indicators)
                     # Convert all data to JSON-serializable format (no pandas Series/Timestamp)
                     def make_serializable(obj):
