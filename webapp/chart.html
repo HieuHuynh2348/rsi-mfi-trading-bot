@@ -595,7 +595,7 @@
             <input 
                 type="text" 
                 id="custom-symbol-input" 
-                placeholder="Nhập symbol (VD: PEPEUSDT)" 
+                placeholder="Nhập mã coin (VD: PEPE, DOGE, SHIB)" 
                 maxlength="20"
             />
             <button id="apply-custom-symbol" class="symbol-btn">✓ Apply</button>
@@ -633,7 +633,7 @@
             <div class="indicator-row">
                 <span class="indicator-label">
                     <span class="zone-dot" id="mfi-dot" style="background: #777;"></span>
-                    MFI(14)
+                    MFI(6)
                 </span>
                 <span class="indicator-value" id="mfi-value">--</span>
             </div>
@@ -835,21 +835,18 @@
             
             // Handle custom symbol apply button
             applyCustomBtn.addEventListener('click', async () => {
-                const customSymbol = customSymbolInput.value.trim().toUpperCase();
+                let customSymbol = customSymbolInput.value.trim().toUpperCase();
                 
                 if (!customSymbol) {
                     if (tg.showAlert) {
-                        tg.showAlert('⚠️ Vui lòng nhập symbol (VD: PEPEUSDT)');
+                        tg.showAlert('⚠️ Vui lòng nhập symbol (VD: PEPE, BTC, ETH)');
                     }
                     return;
                 }
                 
-                // Validate format (should end with USDT)
+                // Auto-append USDT if not present
                 if (!customSymbol.endsWith('USDT')) {
-                    if (tg.showAlert) {
-                        tg.showAlert('⚠️ Symbol phải kết thúc bằng USDT (VD: PEPEUSDT)');
-                    }
-                    return;
+                    customSymbol = customSymbol + 'USDT';
                 }
                 
                 // Switch to custom symbol
@@ -898,7 +895,7 @@
                     tg.HapticFeedback.notificationOccurred('success');
                 }
             } catch (error) {
-                hideLoading();
+                hideLoading(); // Ensure loading is hidden on error
                 console.error('Error switching symbol:', error);
                 
                 // Error haptic
@@ -911,11 +908,17 @@
                     tg.showAlert(`❌ Không thể tải ${symbol}\n\nLỗi: ${error.message}\n\nVui lòng kiểm tra symbol có tồn tại trên Binance không.`);
                 }
                 
-                // Revert to previous symbol
-                if (predefinedSymbols.includes(symbol)) {
-                    symbolSelect.value = 'BTCUSDT';
-                    symbol = 'BTCUSDT';
+                // Revert to BTCUSDT on error
+                symbol = 'BTCUSDT';
+                symbolSelect.value = 'BTCUSDT';
+                document.getElementById('symbol').textContent = `Binance Spot: ${symbol}`;
+                
+                try {
                     await loadChartData(currentTimeframe);
+                    hideLoading();
+                } catch (revertError) {
+                    hideLoading(); // Ensure loading is hidden even if revert fails
+                    console.error('Error reverting to BTCUSDT:', revertError);
                 }
             }
         }
@@ -1880,7 +1883,7 @@
         }
         
         // Calculate simple MFI
-        function calculateSimpleMFI(candles, period = 14) {
+        function calculateSimpleMFI(candles, period = 6) {
             if (candles.length < period + 1) return 50;
             
             let posFlow = 0;
@@ -2014,7 +2017,7 @@
                 const stochRSI = calculateStochRSI(closes, 14, 14);
                 
                 // Calculate MFI
-                const mfi = calculateSimpleMFI(candles, 14);
+                const mfi = calculateSimpleMFI(candles, 6);
                 
                 // Calculate volume ratio (current vs average)
                 const volumes = candles.map(c => c.volume);
@@ -2192,7 +2195,7 @@
                 rsiDot.style.background = '#2962FF';
             }
             
-            // MFI(14)
+            // MFI(6)
             const mfiEl = document.getElementById('mfi-value');
             const mfiDot = document.getElementById('mfi-dot');
             
@@ -2662,7 +2665,7 @@
                                         const closes = latestData.candles.map(c => c.close);
                                         const rsi = calculateSimpleRSI(closes, 6);
                                         const stochRSI = calculateStochRSI(closes, 14, 14);
-                                        const mfi = calculateSimpleMFI(latestData.candles, 14);
+                                        const mfi = calculateSimpleMFI(latestData.candles, 6);
                                         
                                         // Calculate volume ratio
                                         const volumes = latestData.candles.map(c => c.value || volume);
