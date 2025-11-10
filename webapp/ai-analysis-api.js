@@ -45,7 +45,11 @@ window.triggerAIAnalysis = async function(symbol, timeframe) {
             if (tg.HapticFeedback) {
                 tg.HapticFeedback.notificationOccurred('success');
             }
-            return { success: true, message: 'Analysis sent to Telegram' };
+            return { 
+                success: true, 
+                message: 'Analysis sent to Telegram',
+                analysis: data.analysis  // Return analysis data
+            };
         } else {
             throw new Error(data.error || 'API request failed');
         }

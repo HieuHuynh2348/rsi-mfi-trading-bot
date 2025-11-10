@@ -112,17 +112,40 @@ def trigger_ai_analysis():
                     # Format response using gemini_analyzer's format_response method
                     msg1, msg2, msg3 = bot.command_handler.gemini_analyzer.format_response(result)
                     
-                    # Send all 3 messages
+                    # Send to Telegram (background)
                     for msg in [msg1, msg2, msg3]:
                         if msg:  # Only send non-empty messages
-                            bot.telegram.bot.send_message(
-                                chat_id=user_id,
-                                text=msg,
-                                parse_mode='HTML'
-                            )
+                            try:
+                                bot.telegram.bot.send_message(
+                                    chat_id=user_id,
+                                    text=msg,
+                                    parse_mode='HTML'
+                                )
+                            except Exception as send_err:
+                                logger.warning(f"⚠️ Could not send message part: {send_err}")
                     
                     logger.info(f"✅ AI Analysis sent to user {user_id} for {symbol}")
-                    return jsonify({'success': True, 'message': 'Analysis sent to Telegram'})
+                    
+                    # Return formatted result to WebApp
+                    return jsonify({
+                        'success': True, 
+                        'message': 'Analysis sent to Telegram',
+                        'analysis': {
+                            'symbol': result.get('symbol', symbol),
+                            'recommendation': result.get('recommendation', 'N/A'),
+                            'confidence': result.get('confidence', 0),
+                            'entry_point': result.get('entry_point', 0),
+                            'stop_loss': result.get('stop_loss', 0),
+                            'take_profit': result.get('take_profit', []),
+                            'risk_level': result.get('risk_level', 'N/A'),
+                            'reasoning': result.get('reasoning_vietnamese', 'N/A'),
+                            'messages': {
+                                'summary': msg1,
+                                'technical': msg2,
+                                'reasoning': msg3
+                            }
+                        }
+                    })
                 else:
                     # Analysis failed - send user-friendly error
                     error_msg = (

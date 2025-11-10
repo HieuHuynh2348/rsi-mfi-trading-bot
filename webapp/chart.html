@@ -703,21 +703,27 @@
                     .then(result => {
                         console.log('✅ AI Analysis triggered:', result);
                         
-                        // Show success message
-                        if (aiLoadingEl) {
-                            aiLoadingEl.innerHTML = `
-                                <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
-                                    <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-                                    <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #131722;">
-                                        Analysis Sent!
+                        // Check if we have analysis data
+                        if (result.analysis) {
+                            // Display analysis results in WebApp
+                            displayAIAnalysis(result.analysis, aiLoadingEl);
+                        } else {
+                            // Show success message (sent to Telegram only)
+                            if (aiLoadingEl) {
+                                aiLoadingEl.innerHTML = `
+                                    <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
+                                        <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
+                                        <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #131722;">
+                                            Analysis Sent!
+                                        </div>
+                                        <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
+                                            Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> has been sent to your Telegram chat.
+                                            <br><br>
+                                            📱 <em>Check your chat for the results!</em>
+                                        </div>
                                     </div>
-                                    <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
-                                        Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> has been sent to your Telegram chat.
-                                        <br><br>
-                                        📱 <em>Check your chat for the results!</em>
-                                    </div>
-                                </div>
-                            `;
+                                `;
+                            }
                         }
                         
                         // Reset button
@@ -906,6 +912,87 @@
             `;
             
             return html;
+        }
+        
+        /**
+         * Display AI Analysis results in the WebApp
+         * @param {Object} analysis - Analysis data from API
+         * @param {HTMLElement} container - Container element to display in
+         */
+        function displayAIAnalysis(analysis, container) {
+            if (!container) return;
+            
+            try {
+                // Format using existing formatAIAnalysis function
+                const formattedHtml = formatAIAnalysis(analysis);
+                
+                // Display with smooth transition
+                container.style.opacity = '0';
+                container.innerHTML = `
+                    <div style="padding: 20px; animation: fadeIn 0.3s ease-in;">
+                        ${formattedHtml}
+                        <div style="text-align: center; margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <div style="color: #26A69A; font-size: 14px; margin-bottom: 8px;">
+                                ✅ Analysis also sent to your Telegram chat
+                            </div>
+                            <button id="close-analysis-btn" style="
+                                background: rgba(255,255,255,0.1);
+                                border: 1px solid rgba(255,255,255,0.2);
+                                color: white;
+                                padding: 10px 24px;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-size: 14px;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.background='rgba(255,255,255,0.2)'" 
+                               onmouseout="this.style.background='rgba(255,255,255,0.1)'">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Fade in animation
+                setTimeout(() => {
+                    container.style.opacity = '1';
+                    container.style.transition = 'opacity 0.3s ease-in';
+                }, 10);
+                
+                // Close button handler
+                const closeBtn = container.querySelector('#close-analysis-btn');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        container.innerHTML = `
+                            <div style="text-align: center; color: #787B86; padding: 40px 20px;">
+                                <div style="font-size: 48px; margin-bottom: 16px;">🤖</div>
+                                <div style="font-size: 16px;">Click "Analyze with Gemini AI" to get insights</div>
+                            </div>
+                        `;
+                        
+                        // Reset analyze button
+                        const aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
+                        if (aiAnalyzeBtn) {
+                            aiAnalyzeBtn.disabled = false;
+                            aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
+                            aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
+                        }
+                    });
+                }
+                
+                console.log('✅ AI Analysis displayed in WebApp');
+                
+            } catch (error) {
+                console.error('❌ Error displaying AI analysis:', error);
+                container.innerHTML = `
+                    <div style="text-align: center; color: #EF5350; padding: 32px 24px;">
+                        <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">❌ Display Error</div>
+                        <div style="color: #787B86; font-size: 14px;">
+                            Could not display analysis results.<br>
+                            Check your Telegram chat for the full analysis.
+                        </div>
+                    </div>
+                `;
+            }
         }
         
         // Chart instance
