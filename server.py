@@ -124,7 +124,25 @@ def trigger_ai_analysis():
                     logger.info(f"✅ AI Analysis sent to user {user_id} for {symbol}")
                     return jsonify({'success': True, 'message': 'Analysis sent to Telegram'})
                 else:
-                    return jsonify({'success': False, 'error': 'Analysis returned no results'}), 500
+                    # Analysis failed - send user-friendly error
+                    error_msg = (
+                        f"❌ <b>Không thể phân tích {symbol}</b>\n\n"
+                        f"⚠️ <b>Lỗi:</b> Gemini AI không trả về kết quả hợp lệ.\n"
+                        f"Có thể do:\n"
+                        f"• Response quá dài\n"
+                        f"• JSON format không đúng\n"
+                        f"• API tạm thời quá tải\n\n"
+                        f"💡 <b>Giải pháp:</b> Vui lòng thử lại sau vài giây hoặc dùng nút <b>🤖 AI Phân Tích</b> trong tin nhắn phân tích chính."
+                    )
+                    try:
+                        bot.telegram.bot.send_message(
+                            chat_id=user_id,
+                            text=error_msg,
+                            parse_mode='HTML'
+                        )
+                    except:
+                        pass
+                    return jsonify({'success': False, 'error': 'Analysis parsing failed'}), 500
                     
             except Exception as e:
                 logger.error(f"❌ Error performing AI analysis: {e}", exc_info=True)

@@ -1230,7 +1230,34 @@ Return ONLY valid JSON, no markdown formatting.
             except json.JSONDecodeError as json_err:
                 logger.error(f"JSON parsing failed for {symbol}: {json_err}")
                 logger.error(f"Response preview: {response_text[:500]}...")
-                return None
+                
+                # Try to fix common JSON issues
+                try:
+                    # Remove any trailing incomplete text
+                    if response_text.count('{') > response_text.count('}'):
+                        # Add missing closing braces
+                        response_text += '}' * (response_text.count('{') - response_text.count('}'))
+                    
+                    # Try parsing again
+                    analysis = json.loads(response_text)
+                    logger.info(f"✅ Fixed JSON and parsed successfully for {symbol}")
+                except:
+                    # If still fails, try to extract JSON object
+                    try:
+                        import re
+                        # Find first complete JSON object
+                        match = re.search(r'\{.*?"recommendation".*?"confidence".*?\}', response_text, re.DOTALL)
+                        if match:
+                            json_str = match.group(0)
+                            # Ensure all quotes are properly closed
+                            analysis = json.loads(json_str)
+                            logger.info(f"✅ Extracted partial JSON for {symbol}")
+                        else:
+                            logger.error(f"❌ Cannot extract valid JSON from response")
+                            return None
+                    except Exception as extract_err:
+                        logger.error(f"❌ JSON extraction also failed: {extract_err}")
+                        return None
             
             # Add metadata
             analysis['symbol'] = symbol
