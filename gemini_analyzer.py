@@ -55,14 +55,16 @@ class GeminiAnalyzer:
         # Initialize database connection
         self.db = None
         self.tracker = None
-        if DATABASE_AVAILABLE:
+        self.db_available = DATABASE_AVAILABLE  # Store as instance variable
+        
+        if self.db_available:
             try:
                 self.db = get_db()
                 self.tracker = get_tracker()
                 logger.info("✅ Database and Price Tracker initialized")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to initialize database/tracker: {e}")
-                DATABASE_AVAILABLE = False
+                self.db_available = False
         
         # Initialize institutional indicator modules
         from volume_profile import VolumeProfileAnalyzer
