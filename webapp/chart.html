@@ -863,6 +863,30 @@
         }
         
         // Format AI analysis for display
+        /**
+         * Convert Telegram HTML to browser-safe HTML
+         * @param {string} telegramHtml - HTML formatted for Telegram
+         * @returns {string} Browser-safe HTML
+         */
+        function convertTelegramHTML(telegramHtml) {
+            if (!telegramHtml) return '';
+            
+            // Replace Telegram HTML tags with browser equivalents
+            let html = telegramHtml
+                // Bold
+                .replace(/<b>/g, '<strong>')
+                .replace(/<\/b>/g, '</strong>')
+                // Italic
+                .replace(/<i>/g, '<em>')
+                .replace(/<\/i>/g, '</em>')
+                // Code
+                .replace(/<code>/g, '<code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">')
+                // Preserve line breaks
+                .replace(/\n/g, '<br>');
+            
+            return html;
+        }
+        
         function formatAIAnalysis(analysis) {
             const rec = analysis.recommendation || 'NEUTRAL';
             const conf = analysis.confidence || 0;
@@ -870,10 +894,21 @@
             const stop = analysis.stop_loss || 0;
             const targets = analysis.take_profit || [];
             const risk = analysis.risk_level || 'MEDIUM';
-            const reasoning = analysis.reasoning_vietnamese || 'Không có phân tích chi tiết.';
             
-            const recEmoji = rec === "BUY" ? "🟢" : rec === "SELL" ? "🔴" : "🟡";
-            const recColor = rec === "BUY" ? "#26A69A" : rec === "SELL" ? "#EF5350" : "#FFA726";
+            // Use formatted messages if available (these are HTML formatted for Telegram)
+            let reasoning = analysis.messages?.reasoning 
+                || analysis.reasoning_vietnamese 
+                || analysis.reasoning 
+                || 'Không có phân tích chi tiết.';
+            
+            let technicalAnalysis = analysis.messages?.technical || '';
+            
+            // Convert Telegram HTML to browser HTML
+            reasoning = convertTelegramHTML(reasoning);
+            technicalAnalysis = convertTelegramHTML(technicalAnalysis);
+            
+            const recEmoji = rec === "BUY" ? "🟢" : rec === "SELL" ? "🔴" : rec === "WAIT" ? "🟡" : "⚪";
+            const recColor = rec === "BUY" ? "#26A69A" : rec === "SELL" ? "#EF5350" : rec === "WAIT" ? "#FFA726" : "#787B86";
             
             let html = `
                 <div class="ai-section">
@@ -898,11 +933,22 @@
                         </ul>
                         <div style="margin-top: 8px;"><strong>Risk Level:</strong> ${risk}</div>
                     </div>
-                </div>
-                
-                <div class="ai-section">
+                </div>`;
+            
+            // Add technical analysis section if available
+            if (technicalAnalysis && technicalAnalysis.length > 50) {
+                html += `
+                <div class="ai-section" style="max-height: 400px; overflow-y: auto;">
+                    <div class="ai-title">📊 Technical Analysis</div>
+                    <div style="line-height: 1.6; font-size: 13px;">${technicalAnalysis}</div>
+                </div>`;
+            }
+            
+            // Add reasoning section
+            html += `
+                <div class="ai-section" style="max-height: 500px; overflow-y: auto;">
                     <div class="ai-title">🧠 AI Reasoning</div>
-                    <div style="line-height: 1.8; white-space: pre-wrap;">${reasoning}</div>
+                    <div style="line-height: 1.6; font-size: 13px;">${reasoning}</div>
                 </div>
                 
                 <div style="text-align: center; color: #787B86; font-size: 12px; margin-top: 20px; padding: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
