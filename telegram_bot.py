@@ -229,6 +229,38 @@ class TelegramBot:
         
         return keyboard
     
+    def create_private_chat_keyboard(self):
+        """
+        Create simplified keyboard for private chat users
+        Only shows basic commands without complex monitoring features
+        """
+        keyboard = types.InlineKeyboardMarkup(row_width=2)
+        
+        # Row 1: Quick Analysis
+        keyboard.row(
+            types.InlineKeyboardButton("📊 Quét Thị Trường", callback_data="cmd_scan"),
+            types.InlineKeyboardButton("🔍 Phân Tích Nhanh", callback_data="cmd_quickanalysis")
+        )
+        
+        # Row 2: Popular Symbols - Direct analysis
+        keyboard.row(
+            types.InlineKeyboardButton("₿ Bitcoin", callback_data="cmd_BTC"),
+            types.InlineKeyboardButton("📈 Ethereum", callback_data="cmd_ETH")
+        )
+        
+        # Row 3: More Symbols
+        keyboard.row(
+            types.InlineKeyboardButton("💎 BNB", callback_data="cmd_BNB"),
+            types.InlineKeyboardButton("🔷 XRP", callback_data="cmd_XRP")
+        )
+        
+        # Row 4: Help
+        keyboard.row(
+            types.InlineKeyboardButton("ℹ️ Trợ Giúp", callback_data="cmd_help")
+        )
+        
+        return keyboard
+    
     def create_ai_analysis_keyboard(self, symbol, user_id=None, chat_id=None, chat_type='private'):
         """
         Create AI analysis and Live Chart buttons

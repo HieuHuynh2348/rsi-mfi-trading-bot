@@ -511,6 +511,43 @@ class TelegramCommandHandler:
                 # Command callbacks - use simplified approach
                 elif data.startswith("cmd_"):
                     cmd = data.replace("cmd_", "")
+                    
+                    # Check if it's a symbol (e.g., BTC, ETH, BNB)
+                    common_symbols = ['BTC', 'ETH', 'BNB', 'XRP', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'AVAX']
+                    if cmd.upper() in common_symbols:
+                        # Analyze the symbol directly
+                        symbol = f"{cmd.upper()}USDT"
+                        self.telegram_bot.send_message(
+                            chat_id=call.message.chat.id,
+                            text=f"🔍 <b>Đang phân tích {symbol}...</b>\n⏳ Vui lòng chờ...",
+                            parse_mode='HTML'
+                        )
+                        result = self._analyze_symbol_full(symbol)
+                        if result:
+                            from vietnamese_messages import get_signal_alert
+                            formatted_price = self.binance.format_price(result['symbol'], result.get('price')) if result.get('price') is not None else None
+                            md = result.get('market_data')
+                            if md:
+                                md = md.copy()
+                                md['high'] = self.binance.format_price(result['symbol'], md.get('high'))
+                                md['low'] = self.binance.format_price(result['symbol'], md.get('low'))
+                            
+                            analysis_msg = get_signal_alert(
+                                result['symbol'],
+                                result['timeframe_data'],
+                                result['consensus'],
+                                result['consensus_strength'],
+                                formatted_price,
+                                md,
+                                result.get('volume_data')
+                            )
+                            self.telegram_bot.send_message(
+                                chat_id=call.message.chat.id,
+                                text=analysis_msg,
+                                parse_mode='HTML'
+                            )
+                        return
+                    
                     # Create a fake message object to reuse handlers
                     fake_msg = call.message
                     fake_msg.text = f"/{cmd}"
@@ -1280,7 +1317,16 @@ class TelegramCommandHandler:
             
             # Default help message
             from vietnamese_messages import HELP_MESSAGE
-            keyboard = self.bot.create_main_menu_keyboard()
+            
+            # Use different keyboards based on chat type
+            chat_type = message.chat.type
+            if chat_type == 'private':
+                # Simple keyboard for private chat
+                keyboard = self.bot.create_private_chat_keyboard()
+            else:
+                # Full menu for groups
+                keyboard = self.bot.create_main_menu_keyboard()
+            
             self.bot.send_message(HELP_MESSAGE, reply_markup=keyboard)
         
         @self.telegram_bot.message_handler(commands=['menu'])
