@@ -70,9 +70,32 @@ class PriceTracker:
         
         # Start WebSocket for this symbol if not already running
         if symbol not in self.ws_connections:
-            asyncio.create_task(self._monitor_symbol(symbol))
+            try:
+                # Try to create task if event loop exists
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self._monitor_symbol(symbol))
+                else:
+                    # Create new thread with event loop
+                    import threading
+                    thread = threading.Thread(target=self._start_monitor_in_thread, args=(symbol,), daemon=True)
+                    thread.start()
+            except RuntimeError:
+                # No event loop - create new thread
+                import threading
+                thread = threading.Thread(target=self._start_monitor_in_thread, args=(symbol,), daemon=True)
+                thread.start()
         
         print(f"📊 Started tracking {analysis_id}: {symbol} @ ${entry_price}")
+    
+    def _start_monitor_in_thread(self, symbol: str):
+        """Start monitoring in a new thread with its own event loop"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(self._monitor_symbol(symbol))
+        finally:
+            loop.close()
     
     async def _monitor_symbol(self, symbol: str):
         """

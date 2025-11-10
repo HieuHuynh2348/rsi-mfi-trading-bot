@@ -1847,6 +1847,12 @@ IMPORTANT GUIDELINES:
             
             # Parse JSON
             try:
+                # Remove invalid control characters before parsing
+                # Keep only valid characters: printable + newline + tab
+                import string
+                valid_chars = string.printable
+                response_text = ''.join(char for char in response_text if char in valid_chars or char in '\n\r\t')
+                
                 analysis = json.loads(response_text)
             except json.JSONDecodeError as json_err:
                 logger.error(f"JSON parsing failed for {symbol}: {json_err}")
