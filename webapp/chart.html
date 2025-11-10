@@ -89,10 +89,12 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
         }
         
         #symbol-select {
             flex: 1;
+            min-width: 150px;
             background: #131722;
             color: #D1D4DC;
             border: 1px solid #2A2E39;
@@ -113,6 +115,53 @@
         #symbol-select:focus {
             border-color: #2962FF;
             box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2);
+        }
+        
+        #custom-symbol-input {
+            flex: 1;
+            min-width: 150px;
+            background: #131722;
+            color: #D1D4DC;
+            border: 1px solid #2962FF;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            outline: none;
+            text-transform: uppercase;
+            display: none;
+        }
+        
+        #custom-symbol-input:focus {
+            background: #1A1E2B;
+            box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2);
+        }
+        
+        #custom-symbol-input::placeholder {
+            color: #787B86;
+            text-transform: none;
+        }
+        
+        .symbol-btn {
+            background: #2962FF;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none;
+        }
+        
+        .symbol-btn:hover {
+            background: #1E88E5;
+            transform: translateY(-1px);
+        }
+        
+        .symbol-btn:active {
+            transform: translateY(0);
         }
         
         #symbol {
@@ -541,7 +590,15 @@
                 <option value="ATOMUSDT">ATOM/USDT</option>
                 <option value="LTCUSDT">LTC/USDT</option>
                 <option value="ETCUSDT">ETC/USDT</option>
+                <option value="CUSTOM">🔍 Custom Symbol...</option>
             </select>
+            <input 
+                type="text" 
+                id="custom-symbol-input" 
+                placeholder="Nhập symbol (VD: PEPEUSDT)" 
+                maxlength="20"
+            />
+            <button id="apply-custom-symbol" class="symbol-btn">✓ Apply</button>
             <div id="symbol" style="font-size: 10px; color: #787B86;">Loading...</div>
         </div>
         <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
@@ -732,38 +789,135 @@
         
         // Set initial symbol in dropdown
         const symbolSelect = document.getElementById('symbol-select');
+        const customSymbolInput = document.getElementById('custom-symbol-input');
+        const applyCustomBtn = document.getElementById('apply-custom-symbol');
+        
+        // Check if current symbol is in the predefined list
+        const predefinedSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 
+                                    'ADAUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LINKUSDT', 
+                                    'UNIUSDT', 'ATOMUSDT', 'LTCUSDT', 'ETCUSDT'];
+        
         if (symbolSelect) {
-            symbolSelect.value = symbol;
+            if (predefinedSymbols.includes(symbol)) {
+                symbolSelect.value = symbol;
+            } else {
+                // Custom symbol from URL
+                symbolSelect.value = 'CUSTOM';
+                customSymbolInput.style.display = 'block';
+                applyCustomBtn.style.display = 'block';
+                customSymbolInput.value = symbol;
+            }
             
-            // Handle symbol change
-            symbolSelect.addEventListener('change', async (e) => {
-                const newSymbol = e.target.value;
-                if (newSymbol !== symbol) {
-                    symbol = newSymbol;
-                    console.log(`📊 Switching to ${symbol}`);
+            // Handle dropdown change
+            symbolSelect.addEventListener('change', (e) => {
+                const selectedValue = e.target.value;
+                
+                if (selectedValue === 'CUSTOM') {
+                    // Show custom input
+                    customSymbolInput.style.display = 'block';
+                    applyCustomBtn.style.display = 'block';
+                    customSymbolInput.focus();
                     
                     // Haptic feedback
                     if (tg.HapticFeedback) {
-                        tg.HapticFeedback.impactOccurred('medium');
+                        tg.HapticFeedback.impactOccurred('light');
                     }
+                } else {
+                    // Hide custom input and switch symbol
+                    customSymbolInput.style.display = 'none';
+                    applyCustomBtn.style.display = 'none';
                     
-                    // Reload chart with new symbol
-                    showLoading();
-                    
-                    // Close WebSocket if active
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.close();
+                    if (selectedValue !== symbol) {
+                        switchSymbol(selectedValue);
                     }
-                    
-                    // Update header
-                    document.getElementById('symbol').textContent = `Binance Spot: ${symbol}`;
-                    
-                    // Reload chart data
-                    await loadChartData(currentTimeframe);
-                    
-                    hideLoading();
                 }
             });
+            
+            // Handle custom symbol apply button
+            applyCustomBtn.addEventListener('click', async () => {
+                const customSymbol = customSymbolInput.value.trim().toUpperCase();
+                
+                if (!customSymbol) {
+                    if (tg.showAlert) {
+                        tg.showAlert('⚠️ Vui lòng nhập symbol (VD: PEPEUSDT)');
+                    }
+                    return;
+                }
+                
+                // Validate format (should end with USDT)
+                if (!customSymbol.endsWith('USDT')) {
+                    if (tg.showAlert) {
+                        tg.showAlert('⚠️ Symbol phải kết thúc bằng USDT (VD: PEPEUSDT)');
+                    }
+                    return;
+                }
+                
+                // Switch to custom symbol
+                await switchSymbol(customSymbol);
+            });
+            
+            // Handle Enter key in custom input
+            customSymbolInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    applyCustomBtn.click();
+                }
+            });
+        }
+        
+        // Function to switch symbol
+        async function switchSymbol(newSymbol) {
+            if (newSymbol === symbol) return;
+            
+            symbol = newSymbol;
+            console.log(`📊 Switching to ${symbol}`);
+            
+            // Haptic feedback
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+            
+            // Reload chart with new symbol
+            showLoading();
+            
+            // Close WebSocket if active
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
+            
+            // Update header
+            document.getElementById('symbol').textContent = `Binance Spot: ${symbol}`;
+            
+            try {
+                // Reload chart data
+                await loadChartData(currentTimeframe);
+                
+                hideLoading();
+                
+                // Success haptic
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            } catch (error) {
+                hideLoading();
+                console.error('Error switching symbol:', error);
+                
+                // Error haptic
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.notificationOccurred('error');
+                }
+                
+                // Show error
+                if (tg.showAlert) {
+                    tg.showAlert(`❌ Không thể tải ${symbol}\n\nLỗi: ${error.message}\n\nVui lòng kiểm tra symbol có tồn tại trên Binance không.`);
+                }
+                
+                // Revert to previous symbol
+                if (predefinedSymbols.includes(symbol)) {
+                    symbolSelect.value = 'BTCUSDT';
+                    symbol = 'BTCUSDT';
+                    await loadChartData(currentTimeframe);
+                }
+            }
         }
         
         // Load AI analysis if provided
