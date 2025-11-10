@@ -32,12 +32,10 @@ class PriceTracker:
             ai_response: AI full response with entry/TP/SL
             entry_price: Actual entry price (current market price)
         """
-        recommendation = ai_response.get('recommendation', {})
-        
-        # Extract TP/SL from AI response
-        stop_loss = recommendation.get('stop_loss')
-        take_profits = recommendation.get('take_profit', [])
-        action = recommendation.get('recommendation', 'BUY')
+        # Extract TP/SL directly from AI response (not nested)
+        stop_loss = ai_response.get('stop_loss')
+        take_profits = ai_response.get('take_profit', [])
+        action = ai_response.get('recommendation', 'BUY')
         
         if not stop_loss or not take_profits:
             print(f"⚠️ No TP/SL in analysis {analysis_id}, skipping tracking")
