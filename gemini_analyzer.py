@@ -1847,11 +1847,11 @@ IMPORTANT GUIDELINES:
             
             # Parse JSON
             try:
-                # Remove invalid control characters before parsing
-                # Keep only valid characters: printable + newline + tab
-                import string
-                valid_chars = string.printable
-                response_text = ''.join(char for char in response_text if char in valid_chars or char in '\n\r\t')
+                # Remove only dangerous control characters (0x00-0x1F except tab, newline, carriage return)
+                # Keep Unicode characters for Vietnamese text
+                import re
+                # Remove control chars except \t (09), \n (0A), \r (0D)
+                response_text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F]', '', response_text)
                 
                 analysis = json.loads(response_text)
             except json.JSONDecodeError as json_err:
