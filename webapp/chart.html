@@ -1932,26 +1932,45 @@
             return Math.round(rsi * 100) / 100;
         }
         
-        // Calculate Stochastic RSI
-        function calculateStochRSI(prices, rsiPeriod = 14, stochPeriod = 14) {
-            if (prices.length < rsiPeriod + stochPeriod) return 50;
+        // Calculate Stochastic RSI (Investopedia formula with 6 periods)
+        // Formula: StochRSI = (RSI - min[RSI]) / (max[RSI] - min[RSI]) * 100
+        // Using 6 periods for both RSI and Stoch calculation
+        function calculateStochRSI(prices, rsiPeriod = 6, stochPeriod = 6) {
+            if (prices.length < rsiPeriod + stochPeriod) {
+                console.warn('Not enough data for Stoch RSI, returning neutral 50');
+                return 50;
+            }
             
-            // Calculate RSI values for the period
+            // Calculate RSI values for the lookback period
             const rsiValues = [];
             for (let i = rsiPeriod; i < prices.length; i++) {
                 const subset = prices.slice(i - rsiPeriod, i + 1);
                 rsiValues.push(calculateSimpleRSI(subset, rsiPeriod));
             }
             
-            // Calculate Stochastic of RSI
+            if (rsiValues.length < stochPeriod) {
+                console.warn('Not enough RSI values for Stoch calculation');
+                return 50;
+            }
+            
+            // Get the most recent stochPeriod RSI values
             const recentRSI = rsiValues.slice(-stochPeriod);
             const maxRSI = Math.max(...recentRSI);
             const minRSI = Math.min(...recentRSI);
             
-            if (maxRSI === minRSI) return 50;
+            // Handle edge case where all RSI values are the same
+            if (maxRSI === minRSI) {
+                console.log('RSI range is 0, returning neutral 50');
+                return 50;
+            }
             
+            // Current RSI is the most recent value
             const currentRSI = rsiValues[rsiValues.length - 1];
+            
+            // Stochastic RSI formula
             const stochRSI = ((currentRSI - minRSI) / (maxRSI - minRSI)) * 100;
+            
+            console.log(`Stoch RSI(${rsiPeriod},${stochPeriod}): Current RSI=${currentRSI.toFixed(2)}, Min=${minRSI.toFixed(2)}, Max=${maxRSI.toFixed(2)}, Result=${stochRSI.toFixed(2)}`);
             
             return Math.round(stochRSI * 100) / 100;
         }
@@ -2127,8 +2146,8 @@
                 const closes = candles.map(c => c.close);
                 const rsi = calculateSimpleRSI(closes, 6);
                 
-                // Calculate Stoch RSI
-                const stochRSI = calculateStochRSI(closes, 14, 14);
+                // Calculate Stoch RSI (6 periods)
+                const stochRSI = calculateStochRSI(closes, 6, 6);
                 
                 // Calculate MFI
                 const mfi = calculateSimpleMFI(candles, 6);
@@ -2260,6 +2279,12 @@
                 });
                 
                 console.log('✅ Chart updated successfully');
+                
+                // Reconnect WebSocket for real-time updates
+                if (typeof connectWebSocket === 'function') {
+                    console.log('🔄 Reconnecting WebSocket for real-time updates...');
+                    connectWebSocket();
+                }
                 
                 // Smooth fade out loading
                 setTimeout(() => {
@@ -2780,7 +2805,7 @@
                                     if (isClosed) {
                                         const closes = latestData.candles.map(c => c.close);
                                         const rsi = calculateSimpleRSI(closes, 6);
-                                        const stochRSI = calculateStochRSI(closes, 14, 14);
+                                        const stochRSI = calculateStochRSI(closes, 6, 6);
                                         const mfi = calculateSimpleMFI(latestData.candles, 6);  // Pass full candles array with volume
                                         
                                         // Calculate volume ratio
