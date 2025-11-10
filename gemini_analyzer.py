@@ -12,8 +12,19 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import time
+import os
 
 logger = logging.getLogger(__name__)
+
+# Import database and price tracker
+try:
+    from database import get_db, AnalysisDatabase
+    from price_tracker import get_tracker, PriceTracker
+    DATABASE_AVAILABLE = True
+    logger.info("✅ Database and Price Tracker modules loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Database/Price Tracker not available: {e}")
+    DATABASE_AVAILABLE = False
 
 
 class GeminiAnalyzer:
@@ -40,6 +51,18 @@ class GeminiAnalyzer:
         self.api_key = api_key
         self.binance = binance_client
         self.stoch_rsi_analyzer = stoch_rsi_analyzer
+        
+        # Initialize database connection
+        self.db = None
+        self.tracker = None
+        if DATABASE_AVAILABLE:
+            try:
+                self.db = get_db()
+                self.tracker = get_tracker()
+                logger.info("✅ Database and Price Tracker initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize database/tracker: {e}")
+                DATABASE_AVAILABLE = False
         
         # Initialize institutional indicator modules
         from volume_profile import VolumeProfileAnalyzer
@@ -988,13 +1011,90 @@ class GeminiAnalyzer:
             logger.error(f"Error formatting institutional indicators JSON: {e}")
             return {}
     
-    def _build_prompt(self, data: Dict, trading_style: str = 'swing') -> str:
+    def _generate_learning_recommendation(self, rsi_mfi: Dict, vp_data: Dict, 
+                                          winning_cond: Dict, losing_cond: Dict,
+                                          current_price: float) -> str:
         """
-        Build Gemini prompt from collected data
+        Generate AI learning recommendation based on historical patterns
+        
+        Args:
+            rsi_mfi: Current RSI/MFI data
+            vp_data: Volume Profile data
+            winning_cond: Winning pattern conditions
+            losing_cond: Losing pattern conditions
+            current_price: Current market price
+            
+        Returns:
+            Recommendation text
+        """
+        try:
+            # Get current conditions
+            current_rsi = rsi_mfi.get('timeframes', {}).get('1h', {}).get('rsi', 50)
+            current_mfi = rsi_mfi.get('timeframes', {}).get('1h', {}).get('mfi', 50)
+            
+            # Get VP position if available
+            vp_1d = vp_data.get('1d', {})
+            current_vp_position = "UNKNOWN"
+            if vp_1d:
+                from volume_profile import VolumeProfileAnalyzer
+                position_data = self.volume_profile.get_current_position_in_profile(current_price, vp_1d)
+                current_vp_position = position_data.get('position', 'UNKNOWN')
+            
+            # Check similarity to winning patterns
+            similarity_to_wins = 0
+            if winning_cond.get('rsi_avg'):
+                rsi_distance = abs(current_rsi - winning_cond['rsi_avg'])
+                if rsi_distance < 10:  # Within 10 points
+                    similarity_to_wins += 40
+                elif rsi_distance < 20:
+                    similarity_to_wins += 20
+            
+            if winning_cond.get('best_vp_position') == current_vp_position:
+                similarity_to_wins += 30
+            
+            if winning_cond.get('mfi_avg'):
+                mfi_distance = abs(current_mfi - winning_cond['mfi_avg'])
+                if mfi_distance < 10:
+                    similarity_to_wins += 30
+                elif mfi_distance < 20:
+                    similarity_to_wins += 15
+            
+            # Check similarity to losing patterns
+            similarity_to_losses = 0
+            if losing_cond.get('rsi_avg'):
+                rsi_distance = abs(current_rsi - losing_cond['rsi_avg'])
+                if rsi_distance < 10:
+                    similarity_to_losses += 40
+                elif rsi_distance < 20:
+                    similarity_to_losses += 20
+            
+            if losing_cond.get('worst_vp_position') == current_vp_position:
+                similarity_to_losses += 30
+            
+            # Generate recommendation
+            if similarity_to_wins > 60:
+                return f"✅ STRONG SIGNAL: Current setup matches previous WINS ({similarity_to_wins}% similarity). INCREASE confidence to 85-95%."
+            elif similarity_to_losses > 60:
+                return f"⚠️ WARNING: Current setup matches previous LOSSES ({similarity_to_losses}% similarity). DECREASE confidence or recommend WAIT."
+            elif similarity_to_wins > 40:
+                return f"✓ POSITIVE: Setup has {similarity_to_wins}% similarity to wins. Moderate confidence 65-80%."
+            elif similarity_to_losses > 40:
+                return f"⚠️ CAUTION: Setup has {similarity_to_losses}% similarity to losses. Be conservative, confidence <60%."
+            else:
+                return "ℹ️ NEUTRAL: New market conditions, no strong historical match. Use standard analysis."
+                
+        except Exception as e:
+            logger.warning(f"Error generating learning recommendation: {e}")
+            return "ℹ️ Historical learning data unavailable for this analysis."
+    
+    def _build_prompt(self, data: Dict, trading_style: str = 'swing', user_id: Optional[int] = None) -> str:
+        """
+        Build Gemini prompt from collected data with historical learning
         
         Args:
             data: Collected analysis data
             trading_style: 'scalping' or 'swing'
+            user_id: User ID for historical analysis lookup
             
         Returns:
             Formatted prompt string
@@ -1006,6 +1106,57 @@ class GeminiAnalyzer:
         pump = data.get('pump_data')
         volume = data['volume_data']
         historical = data.get('historical', {})
+        
+        # === NEW: GET HISTORICAL ANALYSIS DATA ===
+        historical_context = ""
+        if self.db and user_id:
+            try:
+                # Get past analyses for this symbol
+                history = self.db.get_symbol_history(symbol, user_id, days=7)
+                stats = self.db.calculate_accuracy_stats(symbol, user_id, days=7)
+                
+                if stats and stats['total'] > 0:
+                    patterns = stats.get('patterns', {})
+                    winning_cond = patterns.get('winning_conditions', {})
+                    losing_cond = patterns.get('losing_conditions', {})
+                    
+                    historical_context = f"""
+═══════════════════════════════════════════
+🧠 HISTORICAL PERFORMANCE FOR {symbol} (Last 7 days)
+═══════════════════════════════════════════
+
+📊 <b>ACCURACY STATISTICS:</b>
+  • Total Analyses: {stats['total']}
+  • Wins: {stats['wins']} | Losses: {stats['losses']}
+  • Win Rate: {stats['win_rate']:.1f}%
+  • Avg Profit: +{stats.get('avg_profit', 0):.2f}% | Avg Loss: {stats.get('avg_loss', 0):.2f}%
+
+✅ <b>WINNING PATTERNS (What worked):</b>
+  • RSI Range: {winning_cond.get('rsi_range', 'N/A')} (avg: {winning_cond.get('rsi_avg', 0):.1f})
+  • MFI Range: {winning_cond.get('mfi_range', 'N/A')} (avg: {winning_cond.get('mfi_avg', 0):.1f})
+  • Best VP Position: {winning_cond.get('best_vp_position', 'N/A')}
+  • Win Rate in This Setup: {winning_cond.get('setup_win_rate', 0):.1f}%
+
+❌ <b>LOSING PATTERNS (What didn't work):</b>
+  • RSI Range: {losing_cond.get('rsi_range', 'N/A')} (avg: {losing_cond.get('rsi_avg', 0):.1f})
+  • MFI Range: {losing_cond.get('mfi_range', 'N/A')} (avg: {losing_cond.get('mfi_avg', 0):.1f})
+  • Problem VP Position: {losing_cond.get('worst_vp_position', 'N/A')}
+
+🎯 <b>AI LEARNING RECOMMENDATION:</b>
+  {self._generate_learning_recommendation(rsi_mfi, data.get('volume_profile', {}), winning_cond, losing_cond, market['price'])}
+
+⚠️ <b>CRITICAL: Use this historical data to:</b>
+  1. Adjust confidence based on similar past setups
+  2. Warn if current conditions match previous losses
+  3. Increase confidence if conditions match previous wins
+  4. Suggest WAIT if win rate for this setup is <40%
+"""
+                else:
+                    historical_context = f"\n🆕 <b>NEW SYMBOL:</b> No historical data for {symbol} yet. First analysis.\n"
+                    
+            except Exception as e:
+                logger.warning(f"Failed to load historical context: {e}")
+                historical_context = ""
         
         # Format RSI/MFI data
         rsi_mfi_text = ""
@@ -1340,6 +1491,8 @@ TRADING STYLE: {trading_style.upper()}
 - If scalping: Focus on 1m-5m-15m timeframes, quick entries/exits, tight stop losses
 - If swing: Focus on 1h-4h-1D timeframes, position holding 2-7 days, wider stop losses
 
+{historical_context}
+
 ANALYZE THIS CRYPTOCURRENCY:
 
 SYMBOL: {symbol}
@@ -1561,15 +1714,17 @@ Return ONLY valid JSON, no markdown formatting.
         return prompt
     
     def analyze(self, symbol: str, pump_data: Optional[Dict] = None, 
-                trading_style: str = 'swing', use_cache: bool = True) -> Optional[Dict]:
+                trading_style: str = 'swing', use_cache: bool = True,
+                user_id: Optional[int] = None) -> Optional[Dict]:
         """
-        Perform AI analysis using Gemini
+        Perform AI analysis using Gemini with historical learning
         
         Args:
             symbol: Trading symbol
             pump_data: Optional pump detector data
             trading_style: 'scalping' or 'swing'
             use_cache: Whether to use cached results
+            user_id: User ID for saving analysis and historical lookup
             
         Returns:
             Analysis result dict or None
@@ -1589,8 +1744,8 @@ Return ONLY valid JSON, no markdown formatting.
                 logger.error(f"Failed to collect data for {symbol}")
                 return None
             
-            # Build prompt
-            prompt = self._build_prompt(data, trading_style)
+            # Build prompt with historical context
+            prompt = self._build_prompt(data, trading_style, user_id)
             
             # Rate limit
             self._rate_limit()
@@ -1679,6 +1834,52 @@ Return ONLY valid JSON, no markdown formatting.
                 'pump_score': pump_data.get('final_score', 0) if pump_data else 0,
                 'current_price': data['market_data']['price']
             }
+            
+            # === NEW: SAVE TO DATABASE AND START TRACKING ===
+            if self.db and user_id and analysis.get('recommendation') != 'WAIT':
+                try:
+                    # Prepare market snapshot (current indicators)
+                    market_snapshot = {
+                        'price': data['market_data']['price'],
+                        'rsi_mfi': data['rsi_mfi'],
+                        'stoch_rsi': data['stoch_rsi'],
+                        'volume_profile': data.get('volume_profile', {}),
+                        'timestamp': datetime.now().isoformat()
+                    }
+                    
+                    # Get timeframe from trading style
+                    timeframe = '5m' if trading_style == 'scalping' else '1h'
+                    
+                    # Save analysis to database
+                    analysis_id = self.db.save_analysis(
+                        user_id=user_id,
+                        symbol=symbol,
+                        timeframe=timeframe,
+                        ai_response=analysis,
+                        market_snapshot=market_snapshot
+                    )
+                    
+                    if analysis_id:
+                        logger.info(f"✅ Saved analysis to database: {analysis_id}")
+                        analysis['analysis_id'] = analysis_id
+                        
+                        # Start price tracking if we have entry/TP/SL
+                        if (self.tracker and 
+                            analysis.get('entry_point') and 
+                            analysis.get('stop_loss') and 
+                            analysis.get('take_profit')):
+                            
+                            self.tracker.start_tracking(
+                                analysis_id=analysis_id,
+                                symbol=symbol,
+                                ai_response=analysis,
+                                entry_price=data['market_data']['price']
+                            )
+                            logger.info(f"✅ Started price tracking for {analysis_id}")
+                        
+                except Exception as db_error:
+                    logger.error(f"❌ Failed to save analysis or start tracking: {db_error}")
+                    # Don't fail the whole analysis if DB save fails
             
             # Cache result
             self._update_cache(symbol, analysis)

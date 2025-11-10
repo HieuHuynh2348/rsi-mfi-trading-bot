@@ -881,13 +881,14 @@ class TelegramCommandHandler:
                     if symbol in self.pump_detector.detected_pumps:
                         pump_data = self.pump_detector.detected_pumps[symbol]
                     
-                    # Perform AI analysis
+                    # Perform AI analysis with user_id for historical learning
                     try:
                         result = self.gemini_analyzer.analyze(
                             symbol, 
                             pump_data=pump_data, 
                             trading_style='swing',
-                            use_cache=True
+                            use_cache=True,
+                            user_id=call.from_user.id  # NEW: Pass user_id for history
                         )
                         
                         if not result:
@@ -3286,13 +3287,14 @@ class TelegramCommandHandler:
                             f"⏳ Please wait 10-20 seconds for Gemini AI analysis..."
                         )
                         
-                        # Perform AI analysis
+                        # Perform AI analysis with user_id for historical learning
                         try:
                             result = self.gemini_analyzer.analyze(
                                 symbol=symbol,
                                 pump_data=None,
                                 trading_style='swing',
-                                use_cache=True
+                                use_cache=True,
+                                user_id=message.from_user.id  # NEW: Pass user_id for history
                             )
                             
                             if result:
