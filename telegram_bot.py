@@ -252,7 +252,7 @@ class TelegramBot:
         if webapp_url:
             if chat_type == 'private':
                 # In private chat: Use WebApp (opens IN Telegram)
-                chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
                 keyboard.row(
                     types.InlineKeyboardButton(
                         "📊 Live Chart (in Telegram)", 
@@ -313,7 +313,7 @@ class TelegramBot:
         if webapp_url:
             if chat_type == 'private':
                 # In private chat: Use WebApp (opens IN Telegram)
-                chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+                chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
                 keyboard.row(
                     types.InlineKeyboardButton(
                         "📊 Live Chart (in Telegram)", 
@@ -396,7 +396,7 @@ class TelegramBot:
         
         # WebApp Live Chart button (opens in Telegram)
         if webapp_url:
-            chart_webapp_url = f"{webapp_url}?symbol={symbol}&timeframe=1h"
+            chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe=1h"
             keyboard.row(
                 types.InlineKeyboardButton(
                     "📊 Live Chart (in Telegram)", 
