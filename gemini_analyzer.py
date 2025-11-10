@@ -313,14 +313,14 @@ class GeminiAnalyzer:
     
     def _analyze_historical_period(self, df, period_name: str) -> Dict:
         """
-        Analyze a historical period and extract key statistics
+        Analyze a historical period and extract key statistics INCLUDING institutional indicators
         
         Args:
             df: DataFrame with OHLCV data
             period_name: Name of the period for logging
             
         Returns:
-            Dict with statistics
+            Dict with statistics including institutional analysis
         """
         try:
             from indicators import calculate_rsi, calculate_mfi, calculate_hlcc4
@@ -370,6 +370,44 @@ class GeminiAnalyzer:
             total_candles = len(df)
             bullish_ratio = (bullish_candles / total_candles) * 100
             
+            # ============================================================
+            # INSTITUTIONAL INDICATORS ON HISTORICAL DATA
+            # ============================================================
+            
+            institutional_stats = {}
+            
+            try:
+                # Volume Profile analysis on historical range
+                vp_stats = self._analyze_volume_profile_historical(df, current_price)
+                institutional_stats['volume_profile'] = vp_stats
+            except Exception as e:
+                logger.warning(f"Volume Profile historical analysis failed: {e}")
+                institutional_stats['volume_profile'] = {}
+            
+            try:
+                # Fair Value Gaps count and nearest gaps
+                fvg_stats = self._analyze_fvg_historical(df, current_price)
+                institutional_stats['fair_value_gaps'] = fvg_stats
+            except Exception as e:
+                logger.warning(f"FVG historical analysis failed: {e}")
+                institutional_stats['fair_value_gaps'] = {}
+            
+            try:
+                # Order Blocks active count and strength
+                ob_stats = self._analyze_order_blocks_historical(df, current_price)
+                institutional_stats['order_blocks'] = ob_stats
+            except Exception as e:
+                logger.warning(f"Order Blocks historical analysis failed: {e}")
+                institutional_stats['order_blocks'] = {}
+            
+            try:
+                # Smart Money structure changes over time
+                smc_stats = self._analyze_smc_historical(df)
+                institutional_stats['smart_money'] = smc_stats
+            except Exception as e:
+                logger.warning(f"SMC historical analysis failed: {e}")
+                institutional_stats['smart_money'] = {}
+            
             stats = {
                 'period': period_name,
                 'candles_count': total_candles,
@@ -407,7 +445,8 @@ class GeminiAnalyzer:
                     'bullish_candles': int(bullish_candles),
                     'bearish_candles': int(bearish_candles),
                     'bullish_ratio_pct': round(bullish_ratio, 2)
-                }
+                },
+                'institutional_indicators': institutional_stats  # NEW: Institutional analysis
             }
             
             logger.info(f"✅ Analyzed {period_name} ({total_candles} candles): "
@@ -420,6 +459,261 @@ class GeminiAnalyzer:
             
         except Exception as e:
             logger.error(f"Error analyzing historical period {period_name}: {e}")
+            return {}
+    
+    def _analyze_volume_profile_historical(self, df, current_price: float) -> Dict:
+        """Analyze Volume Profile metrics over historical period"""
+        try:
+            # Calculate POC (Point of Control) - price level with highest volume
+            # Group by price levels and sum volume
+            price_levels = df[['close', 'volume']].copy()
+            price_levels['price_level'] = (price_levels['close'] // 1).astype(int)  # Round to nearest dollar
+            volume_by_level = price_levels.groupby('price_level')['volume'].sum()
+            
+            if len(volume_by_level) == 0:
+                return {}
+            
+            poc_price = float(volume_by_level.idxmax())
+            poc_volume = float(volume_by_level.max())
+            
+            # Value Area (70% of volume) estimation
+            total_volume = float(df['volume'].sum())
+            sorted_levels = volume_by_level.sort_values(ascending=False)
+            cumsum = sorted_levels.cumsum()
+            value_area_levels = sorted_levels[cumsum <= total_volume * 0.7]
+            
+            vah = float(value_area_levels.index.max()) if len(value_area_levels) > 0 else poc_price * 1.05
+            val = float(value_area_levels.index.min()) if len(value_area_levels) > 0 else poc_price * 0.95
+            
+            # Current price position relative to Value Area
+            if current_price > vah:
+                position = "PREMIUM"
+            elif current_price < val:
+                position = "DISCOUNT"
+            else:
+                position = "VALUE_AREA"
+            
+            # Distance from POC
+            distance_from_poc = ((current_price - poc_price) / poc_price) * 100
+            
+            return {
+                'poc': round(poc_price, 4),
+                'vah': round(vah, 4),
+                'val': round(val, 4),
+                'current_position': position,
+                'distance_from_poc_pct': round(distance_from_poc, 2),
+                'poc_volume': round(poc_volume, 2),
+                'value_area_coverage': 70.0
+            }
+        except Exception as e:
+            logger.warning(f"Volume Profile historical calc error: {e}")
+            return {}
+    
+    def _analyze_fvg_historical(self, df, current_price: float) -> Dict:
+        """Analyze Fair Value Gaps over historical period"""
+        try:
+            bullish_gaps = 0
+            bearish_gaps = 0
+            unfilled_bullish = []
+            unfilled_bearish = []
+            
+            # Detect gaps: gap exists when candle i+1 leaves a gap with candle i-1
+            for i in range(1, len(df) - 1):
+                prev_candle = df.iloc[i-1]
+                curr_candle = df.iloc[i]
+                next_candle = df.iloc[i+1]
+                
+                # Bullish FVG: low[i+1] > high[i-1]
+                if next_candle['low'] > prev_candle['high']:
+                    gap_top = next_candle['low']
+                    gap_bottom = prev_candle['high']
+                    bullish_gaps += 1
+                    
+                    # Check if gap is still unfilled (current price hasn't gone back to fill it)
+                    if current_price > gap_top:
+                        unfilled_bullish.append({
+                            'bottom': float(gap_bottom),
+                            'top': float(gap_top),
+                            'index': i
+                        })
+                
+                # Bearish FVG: high[i+1] < low[i-1]
+                if next_candle['high'] < prev_candle['low']:
+                    gap_top = prev_candle['low']
+                    gap_bottom = next_candle['high']
+                    bearish_gaps += 1
+                    
+                    # Check if gap is still unfilled
+                    if current_price < gap_bottom:
+                        unfilled_bearish.append({
+                            'bottom': float(gap_bottom),
+                            'top': float(gap_top),
+                            'index': i
+                        })
+            
+            # Find nearest unfilled gaps
+            nearest_bullish = None
+            nearest_bearish = None
+            
+            if unfilled_bullish:
+                # Nearest bullish gap below current price
+                nearest_bullish = min(unfilled_bullish, key=lambda g: current_price - g['top'])
+            
+            if unfilled_bearish:
+                # Nearest bearish gap above current price
+                nearest_bearish = min(unfilled_bearish, key=lambda g: g['bottom'] - current_price)
+            
+            return {
+                'total_bullish_gaps': bullish_gaps,
+                'total_bearish_gaps': bearish_gaps,
+                'unfilled_bullish_count': len(unfilled_bullish),
+                'unfilled_bearish_count': len(unfilled_bearish),
+                'nearest_bullish_gap': nearest_bullish,
+                'nearest_bearish_gap': nearest_bearish,
+                'gap_density_pct': round(((bullish_gaps + bearish_gaps) / len(df)) * 100, 2)
+            }
+        except Exception as e:
+            logger.warning(f"FVG historical calc error: {e}")
+            return {}
+    
+    def _analyze_order_blocks_historical(self, df, current_price: float) -> Dict:
+        """Analyze Order Blocks over historical period"""
+        try:
+            bullish_ob_count = 0
+            bearish_ob_count = 0
+            active_bullish = []
+            active_bearish = []
+            
+            # Detect Order Blocks: significant candles before strong moves
+            for i in range(len(df) - 2):
+                curr = df.iloc[i]
+                next1 = df.iloc[i+1]
+                next2 = df.iloc[i+2] if i+2 < len(df) else None
+                
+                # Bullish OB: Large down candle followed by strong bullish move
+                if curr['close'] < curr['open']:  # Down candle
+                    if next1['close'] > next1['open'] and next2 and next2['close'] > next2['open']:
+                        # Strong 2-candle bullish move after down candle
+                        move_pct = ((next2['close'] - curr['close']) / curr['close']) * 100
+                        if move_pct > 2:  # Significant move
+                            ob_high = float(curr['high'])
+                            ob_low = float(curr['low'])
+                            bullish_ob_count += 1
+                            
+                            # Check if still active (price hasn't broken below it significantly)
+                            if current_price > ob_low * 0.98:
+                                active_bullish.append({
+                                    'high': ob_high,
+                                    'low': ob_low,
+                                    'strength': min(move_pct / 2, 10),  # Cap at 10
+                                    'index': i
+                                })
+                
+                # Bearish OB: Large up candle followed by strong bearish move
+                if curr['close'] > curr['open']:  # Up candle
+                    if next1['close'] < next1['open'] and next2 and next2['close'] < next2['open']:
+                        move_pct = ((curr['close'] - next2['close']) / curr['close']) * 100
+                        if move_pct > 2:
+                            ob_high = float(curr['high'])
+                            ob_low = float(curr['low'])
+                            bearish_ob_count += 1
+                            
+                            if current_price < ob_high * 1.02:
+                                active_bearish.append({
+                                    'high': ob_high,
+                                    'low': ob_low,
+                                    'strength': min(move_pct / 2, 10),
+                                    'index': i
+                                })
+            
+            # Find strongest active OBs
+            strongest_bullish = max(active_bullish, key=lambda x: x['strength']) if active_bullish else None
+            strongest_bearish = max(active_bearish, key=lambda x: x['strength']) if active_bearish else None
+            
+            return {
+                'total_bullish_ob': bullish_ob_count,
+                'total_bearish_ob': bearish_ob_count,
+                'active_bullish_count': len(active_bullish),
+                'active_bearish_count': len(active_bearish),
+                'strongest_bullish_ob': strongest_bullish,
+                'strongest_bearish_ob': strongest_bearish,
+                'ob_density_pct': round(((bullish_ob_count + bearish_ob_count) / len(df)) * 100, 2)
+            }
+        except Exception as e:
+            logger.warning(f"Order Blocks historical calc error: {e}")
+            return {}
+    
+    def _analyze_smc_historical(self, df) -> Dict:
+        """Analyze Smart Money Concepts over historical period"""
+        try:
+            # Track structure breaks
+            bos_bullish = 0  # Break of Structure (bullish)
+            bos_bearish = 0
+            choch_bullish = 0  # Change of Character (bullish)
+            choch_bearish = 0
+            
+            # Find swing highs and lows
+            swing_highs = []
+            swing_lows = []
+            
+            for i in range(2, len(df) - 2):
+                # Swing high: higher than 2 candles before and after
+                if (df.iloc[i]['high'] > df.iloc[i-1]['high'] and 
+                    df.iloc[i]['high'] > df.iloc[i-2]['high'] and
+                    df.iloc[i]['high'] > df.iloc[i+1]['high'] and 
+                    df.iloc[i]['high'] > df.iloc[i+2]['high']):
+                    swing_highs.append({'index': i, 'price': float(df.iloc[i]['high'])})
+                
+                # Swing low
+                if (df.iloc[i]['low'] < df.iloc[i-1]['low'] and 
+                    df.iloc[i]['low'] < df.iloc[i-2]['low'] and
+                    df.iloc[i]['low'] < df.iloc[i+1]['low'] and 
+                    df.iloc[i]['low'] < df.iloc[i+2]['low']):
+                    swing_lows.append({'index': i, 'price': float(df.iloc[i]['low'])})
+            
+            # Count structure breaks
+            for i in range(1, len(swing_highs)):
+                if swing_highs[i]['price'] > swing_highs[i-1]['price']:
+                    bos_bullish += 1
+                else:
+                    choch_bearish += 1
+            
+            for i in range(1, len(swing_lows)):
+                if swing_lows[i]['price'] < swing_lows[i-1]['price']:
+                    bos_bearish += 1
+                else:
+                    choch_bullish += 1
+            
+            # Determine overall structure bias
+            net_bullish = bos_bullish + choch_bullish
+            net_bearish = bos_bearish + choch_bearish
+            total_signals = net_bullish + net_bearish
+            
+            if total_signals > 0:
+                bullish_ratio = (net_bullish / total_signals) * 100
+                if bullish_ratio > 60:
+                    structure_bias = "BULLISH"
+                elif bullish_ratio < 40:
+                    structure_bias = "BEARISH"
+                else:
+                    structure_bias = "NEUTRAL"
+            else:
+                structure_bias = "NEUTRAL"
+                bullish_ratio = 50
+            
+            return {
+                'bos_bullish': bos_bullish,
+                'bos_bearish': bos_bearish,
+                'choch_bullish': choch_bullish,
+                'choch_bearish': choch_bearish,
+                'swing_highs_count': len(swing_highs),
+                'swing_lows_count': len(swing_lows),
+                'structure_bias': structure_bias,
+                'bullish_bias_pct': round(bullish_ratio, 2),
+                'total_structure_events': total_signals
+            }
+        except Exception as e:
+            logger.warning(f"SMC historical calc error: {e}")
             return {}
     
     def _get_historical_comparison(self, symbol: str, klines_dict: Dict) -> Dict:
