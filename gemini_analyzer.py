@@ -1838,7 +1838,7 @@ Return ONLY valid JSON, no markdown formatting.
             }
             
             # === NEW: SAVE TO DATABASE AND START TRACKING ===
-            if self.db and user_id and analysis.get('recommendation') != 'WAIT':
+            if self.db and user_id:
                 try:
                     # Prepare market snapshot (current indicators)
                     market_snapshot = {
@@ -1852,7 +1852,7 @@ Return ONLY valid JSON, no markdown formatting.
                     # Get timeframe from trading style
                     timeframe = '5m' if trading_style == 'scalping' else '1h'
                     
-                    # Save analysis to database
+                    # Save analysis to database (including WAIT recommendations)
                     analysis_id = self.db.save_analysis(
                         user_id=user_id,
                         symbol=symbol,
@@ -1865,8 +1865,10 @@ Return ONLY valid JSON, no markdown formatting.
                         logger.info(f"✅ Saved analysis to database: {analysis_id}")
                         analysis['analysis_id'] = analysis_id
                         
-                        # Start price tracking if we have entry/TP/SL
+                        # Start price tracking ONLY for BUY/SELL (not WAIT/HOLD)
+                        recommendation = analysis.get('recommendation', '').upper()
                         if (self.tracker and 
+                            recommendation in ['BUY', 'SELL'] and
                             analysis.get('entry_point') and 
                             analysis.get('stop_loss') and 
                             analysis.get('take_profit')):
@@ -1878,6 +1880,9 @@ Return ONLY valid JSON, no markdown formatting.
                                 entry_price=data['market_data']['price']
                             )
                             logger.info(f"✅ Started price tracking for {analysis_id}")
+                        else:
+                            logger.info(f"ℹ️ Analysis saved but not tracked (recommendation: {recommendation})")
+                        
                         
                 except Exception as db_error:
                     logger.error(f"❌ Failed to save analysis or start tracking: {db_error}")
