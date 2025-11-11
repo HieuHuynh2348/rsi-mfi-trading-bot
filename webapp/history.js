@@ -100,15 +100,15 @@ class AnalysisHistory {
         const profits = this.history
             .filter(h => h.tracking_result?.result === 'WIN')
             .map(h => h.tracking_result?.pnl_percent || 0);
-        const avgProfit = profits.length > 0 
-            ? profits.reduce((a, b) => a + b, 0) / profits.length 
+        const totalProfit = profits.length > 0 
+            ? profits.reduce((a, b) => a + b, 0)
             : 0;
             
         const losses_ = this.history
             .filter(h => h.tracking_result?.result === 'LOSS')
             .map(h => h.tracking_result?.pnl_percent || 0);
-        const avgLoss = losses_.length > 0
-            ? losses_.reduce((a, b) => a + b, 0) / losses_.length
+        const totalLoss = losses_.length > 0
+            ? losses_.reduce((a, b) => a + b, 0)
             : 0;
         
         return {
@@ -116,8 +116,8 @@ class AnalysisHistory {
             wins,
             losses,
             win_rate: winRate,
-            avg_profit: avgProfit,
-            avg_loss: avgLoss
+            total_profit: totalProfit,
+            total_loss: totalLoss
         };
     }
 
@@ -251,15 +251,15 @@ class AnalysisHistory {
                 <div class="stat-item success">
                     <div class="stat-icon">📈</div>
                     <div class="stat-content">
-                        <div class="stat-value">+${(stats.avg_profit || 0).toFixed(2)}%</div>
-                        <div class="stat-label">Lãi Trung Bình</div>
+                        <div class="stat-value">+${(stats.total_profit || 0).toFixed(2)}%</div>
+                        <div class="stat-label">Tổng Lãi</div>
                     </div>
                 </div>
                 <div class="stat-item danger">
                     <div class="stat-icon">📉</div>
                     <div class="stat-content">
-                        <div class="stat-value">${(stats.avg_loss || 0).toFixed(2)}%</div>
-                        <div class="stat-label">Lỗ Trung Bình</div>
+                        <div class="stat-value">${(stats.total_loss || 0).toFixed(2)}%</div>
+                        <div class="stat-label">Tổng Lỗ</div>
                     </div>
                 </div>
             </div>
