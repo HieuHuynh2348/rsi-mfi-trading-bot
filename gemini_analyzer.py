@@ -1089,6 +1089,48 @@ class GeminiAnalyzer:
             logger.warning(f"Error generating learning recommendation: {e}")
             return "ℹ️ Historical learning data unavailable for this analysis."
     
+    def _detect_asset_type(self, symbol: str, market_cap: Optional[float] = None) -> str:
+        """
+        Detect asset type based on symbol and market cap
+        
+        Asset Types (v2.2):
+        - BTC: Bitcoin, macro-driven, highest priority
+        - ETH: Ethereum, smart contracts, institutional
+        - LARGE_CAP_ALT: >$10B, lower risk altcoins
+        - MID_CAP_ALT: $1B-$10B, moderate risk
+        - SMALL_CAP_ALT: $100M-$1B, high risk
+        - MEME_COIN: <$100M, extreme risk, community-driven
+        
+        Args:
+            symbol: Trading symbol (e.g., 'BTCUSDT')
+            market_cap: Optional market cap in USD
+            
+        Returns:
+            Asset type string
+        """
+        base = symbol.replace('USDT', '').replace('BUSD', '').replace('USDC', '').upper()
+        
+        # Check special cases first
+        if base == 'BTC':
+            return 'BTC'
+        elif base == 'ETH':
+            return 'ETH'
+        
+        # Use market cap if available
+        if market_cap:
+            if market_cap > 10_000_000_000:  # > $10B
+                return 'LARGE_CAP_ALT'
+            elif market_cap > 1_000_000_000:  # $1B - $10B
+                return 'MID_CAP_ALT'
+            elif market_cap > 100_000_000:  # $100M - $1B
+                return 'SMALL_CAP_ALT'
+            else:  # < $100M
+                return 'MEME_COIN'
+        
+        # Fallback: assume altcoin without market cap
+        logger.debug(f"Asset type detection: {symbol} (no market cap data available)")
+        return 'MID_CAP_ALT'
+    
     def _build_prompt(self, data: Dict, trading_style: str = 'swing', user_id: Optional[int] = None) -> str:
         """
         Build Gemini prompt from collected data with historical learning
@@ -1486,9 +1528,108 @@ SỬ DỤNG DỮ LIỆU NÀY ĐỂ:
         # Format institutional indicators as JSON
         institutional_json = self._format_institutional_indicators_json(data, market)
         
-        # Build full prompt
+        # === NEW v2.2: ASSET TYPE DETECTION ===
+        asset_type = self._detect_asset_type(symbol)
+        
+        # === NEW v2.2: DYNAMIC RISK MULTIPLIERS BY ASSET TYPE ===
+        risk_multiplier = {
+            'BTC': 1.0,
+            'ETH': 1.2,
+            'LARGE_CAP_ALT': 1.5,
+            'MID_CAP_ALT': 2.0,
+            'SMALL_CAP_ALT': 2.5,
+            'MEME_COIN': 3.0
+        }.get(asset_type, 2.0)
+        
+        position_sizing_guide = {
+            'BTC': '3-5% of portfolio',
+            'ETH': '2-3% of portfolio',
+            'LARGE_CAP_ALT': '1.5-2% of portfolio',
+            'MID_CAP_ALT': '1-1.5% of portfolio',
+            'SMALL_CAP_ALT': '0.5-1% of portfolio',
+            'MEME_COIN': '0.05-0.1% of portfolio'
+        }.get(asset_type, '1% of portfolio')
+        
+        # Build full prompt with v2.2 enhancements
         prompt = f"""You are an expert cryptocurrency trading analyst with 10+ years of experience in technical analysis and market psychology.
 
+═══════════════════════════════════════════════════════════════════════════════
+🎯 SECTION 0: ASSET TYPE DETECTION & ANALYSIS FOCUS (v2.2)
+═══════════════════════════════════════════════════════════════════════════════
+
+DETECTED ASSET TYPE: {asset_type}
+
+Asset Classification (v2.2):
+- BTC: Bitcoin - Macro-driven, institutional flows, dominance critical
+- ETH: Ethereum - Smart contract ecosystem, institutional interest
+- LARGE_CAP_ALT (>$10B): Lower risk, stronger fundamentals, institutional access
+- MID_CAP_ALT ($1B-$10B): Moderate risk, sector potential, growth opportunity
+- SMALL_CAP_ALT ($100M-$1B): High risk, high reward, technical analysis critical
+- MEME_COIN (<$100M): Extreme risk, community-driven, sentiment matters most
+
+ANALYSIS APPROACH FOR {asset_type}:
+- Risk Multiplier: {risk_multiplier}x (higher = more cautious)
+- Recommended Position Size: {position_sizing_guide}
+- Stop Loss Width: {"5-10% BTC dominance-aware" if asset_type == "BTC" else "Wider stops due to correlation risk" if asset_type != "BTC" else "Standard"}
+- Confidence Adjustment: {"Base on macro factors heavily" if asset_type == "BTC" else "Base on BTC correlation" if asset_type in ["ETH", "LARGE_CAP_ALT"] else "Base on sector momentum"}
+
+CRITICAL FOR {asset_type}:
+"""
+        
+        # Add asset-specific critical factors
+        if asset_type == 'BTC':
+            prompt += """1. BTC MACRO FACTORS (Weight: 40% of analysis):
+   - BTC dominance (trend, support/resistance levels, institutional thesis)
+   - ETF flows (>$500M daily = strong institutional signal)
+   - Whale accumulation/distribution (large transaction analysis)
+   - Miner pressure (difficulty adjustments, outflows from mining pools)
+   - Macro correlations (DXY, S&P500, Gold, Treasury yields)
+   - Fed policy and macro sentiment shifts
+   ONLY BTC can have dominance-driven analysis. Use this heavily for conviction.
+
+2. CONFLUENCE RULES FOR BTC:
+   - STRONG BUY: Price at support + Dominance rising + Positive macro + Institutional inflow
+   - WEAK BUY: Technical confluence alone without macro support = reduce confidence 30%
+   - SELL: Breaking macro support levels (dominance break, whale exit, macro headwind)
+   - WAIT: Macro uncertainty or dominance consolidation (sideways 50-60%)
+
+"""
+        elif asset_type in ['ETH', 'LARGE_CAP_ALT', 'MID_CAP_ALT']:
+            prompt += f"""1. ALTCOIN CORRELATION ANALYSIS (Weight: 35% of analysis):
+   - BTC correlation strength: How closely {symbol} follows BTC (0-100%)
+   - ETH correlation: Alternative smart contract ecosystem dependency
+   - Independent move probability: Can this move against BTC? (low on alts)
+   - Sector momentum: {asset_type} sector performance vs overall market
+   - Sector rotation risk: Moving from one sector to another?
+   - Project health score: Tokenomics, development, adoption
+   - Liquidity assessment: Can you enter/exit without slippage?
+   ALTCOINS HIGHLY DEPENDENT ON BTC - Use correlation heavily for conviction.
+
+2. CONFLUENCE RULES FOR {asset_type}:
+   - STRONG BUY: Technical setup + BTC positive + Sector leadership + Health good
+   - WEAK BUY: Technical alone without BTC support = reduce confidence 40%
+   - SELL: BTC weakness OR sector rotation OR health degradation
+   - WAIT: High BTC correlation + uncertain macro (price will follow BTC down)
+
+"""
+        else:
+            prompt += f"""1. SMALL CAP/MEME ANALYSIS (Weight: 30% of technical):
+   - Community sentiment and social metrics
+   - Chart technicals and momentum
+   - Volatility and pump-and-dump risk assessment
+   - Liquidity and slippage concerns
+   - Project fundamentals (if any) or pure sentiment play
+   SMALL CAPS ARE HIGHLY RISKY - Only trade with tight stops and small position sizes.
+
+2. CONFLUENCE RULES FOR {asset_type}:
+   - STRONG BUY: Perfect technical + Extreme momentum + Good liquidity
+   - WEAK BUY: Technical alone = apply 50% confidence penalty
+   - SELL: Loss of momentum or liquidity drying up
+   - WAIT: Whenever uncertain (risk/reward not favorable)
+
+"""
+        
+        prompt += f"""
 TRADING STYLE: {trading_style.upper()}
 - If scalping: Focus on 1m-5m-15m timeframes, quick entries/exits, tight stop losses
 - If swing: Focus on 1h-4h-1D timeframes, position holding 2-7 days, wider stop losses
@@ -1498,6 +1639,7 @@ TRADING STYLE: {trading_style.upper()}
 ANALYZE THIS CRYPTOCURRENCY:
 
 SYMBOL: {symbol}
+DETECTED TYPE: {asset_type}
 CURRENT PRICE: ${market['price']:,.2f}
 
 ═══════════════════════════════════════════
@@ -1506,6 +1648,7 @@ CURRENT PRICE: ${market['price']:,.2f}
 
 RSI + MFI Analysis:
 {rsi_mfi_text}
+
 
 Stochastic + RSI Analysis:
 {stoch_text}
@@ -1556,9 +1699,52 @@ KEY INTERPRETATIONS:
 🎯 YOUR TASK
 ═══════════════════════════════════════════
 
+═══════════════════════════════════════════════════════════════════════════════
+⚖️ SECTION 12: DYNAMIC RISK ADJUSTMENTS (v2.2)
+═══════════════════════════════════════════════════════════════════════════════
+
+FOR {asset_type} - Apply these risk multipliers to your analysis:
+
+**Position Sizing Formula:**
+Base Position = 2% of portfolio
+Risk Multiplier = {risk_multiplier}x (asset type risk)
+Liquidity Factor = 1.0 if volume > $10M, else 0.5-0.7x (reduce position if illiquid)
+BTC Correlation Factor = 0.8-1.0x for alts (reduce if highly correlated to BTC weakness)
+
+FINAL_POSITION = Base Position × (1/Risk_Multiplier) × Liquidity_Factor × Correlation_Factor
+CAPPED AT: {position_sizing_guide}
+
+**Asset Type Risk Profiles:**
+- BTC (1.0x): 3-5% position, 5-10% stop, long-term conviction possible
+- ETH (1.2x): 2-3% position, 8-12% stop, sector leadership matters
+- LARGE_CAP_ALT (1.5x): 1.5-2% position, 10-15% stop, BTC correlation important
+- MID_CAP_ALT (2.0x): 1-1.5% position, 12-18% stop, correlation risk high
+- SMALL_CAP_ALT (2.5x): 0.5-1% position, 15-25% stop, tight technical stops critical
+- MEME_COIN (3.0x): 0.05-0.1% position, 20-30% stop, use only with extreme caution
+
+**Market Regime Adjustments:**
+- ALTSEASON (alts outperforming BTC): Increase small cap position 20-30%
+- BTC_DOMINANT (alts underperforming): Reduce small cap position 30-50%, increase BTC
+- RISK_ON (high market confidence): Normal sizing
+- RISK_OFF (uncertainty/fear): Reduce all positions 30-50%, increase stop widths 20-30%
+
+**Critical Risk Rules:**
+1. If volume < $10M: Reduce position by 50-70% (liquidity too low for exit)
+2. If BTC correlation > 90% for altcoin: Add dependency warning (limited independent move)
+3. If volatility is 2x normal: Widen stops by 20-30% (larger average swings)
+4. If market regime uncertain: Increase confidence requirement from 65 to 75%
+5. Use WAIT instead of HOLD if conditions unclear (preserve capital)
+
+APPLY THESE RULES TO YOUR RECOMMENDATION AND ADJUST ENTRY/TP/SL ACCORDINGLY.
+
+═══════════════════════════════════════════
+🎯 ENHANCED JSON FORMAT (v2.2)
+═══════════════════════════════════════════
+
 Provide a comprehensive trading analysis in JSON format with the following structure:
 
 {{
+  "asset_type": "{asset_type}",
   "recommendation": "BUY" | "SELL" | "HOLD" | "WAIT",
   "confidence": 0-100,
   "trading_style": "{trading_style}",
@@ -1568,6 +1754,57 @@ Provide a comprehensive trading analysis in JSON format with the following struc
   "expected_holding_period": "X hours/days",
   "risk_level": "LOW" | "MEDIUM" | "HIGH",
   "reasoning_vietnamese": "Chi tiết phân tích bằng tiếng Việt (300-500 từ)",
+  
+  "sector_analysis": {{
+    "sector": "{asset_type} sector name",
+    "sector_momentum": "STRONG_UP" | "UP" | "NEUTRAL" | "DOWN" | "STRONG_DOWN",
+    "rotation_risk": "None" | "Minor" | "Moderate" | "High",
+    "sector_leadership": "This coin is leading sector" or "Lagging sector"
+  }},
+  
+  "correlation_analysis": {{
+    "btc_correlation": 0-100,
+    "eth_correlation": 0-100,
+    "independent_move_probability": 0-100
+  }},
+  
+  "fundamental_analysis": {{
+    "health_score": 0-100,
+    "tokenomics": "Good" | "Fair" | "Poor",
+    "centralization_risk": "Low" | "Medium" | "High",
+    "ecosystem_strength": "Strong" | "Moderate" | "Weak"
+  }},
+  
+  "position_sizing_recommendation": {{
+    "position_size_percent": "X% of portfolio",
+    "risk_per_trade": "X%",
+    "recommended_leverage": "1x (no leverage)" | "2x" | "3x+",
+    "liquidity_notes": "Good liquidity" | "Moderate" | "Low - reduce position"
+  }},
+  
+  "macro_context": {{"""
+        
+        if asset_type == "BTC":
+            prompt += """
+    "btc_dominance": "RISING" | "FALLING" | "STABLE",
+    "dominance_trend": "Bullish" | "Bearish" | "Neutral",
+    "institutional_flows": "Inflows $XXM" | "Outflows $XXM" | "Neutral",
+    "etf_status": "Strong inflows" | "Neutral" | "Outflows",
+    "whale_activity": "Accumulation" | "Distribution" | "Neutral",
+    "miner_pressure": "Selling pressure" | "Accumulating" | "Neutral",
+    "macro_correlation": "Positive (DXY down, S&P up)" | "Neutral" | "Negative"
+  }}"""
+        else:
+            prompt += """
+    "sector_rotation_status": "Sector in favor" | "Rotating out" | "Out of favor",
+    "btc_dependency": "High (follow BTC)" | "Moderate" | "Low (independent)",
+    "project_catalysts": "Near-term catalyst details" | "None expected",
+    "liquidity_assessment": "Good (easy entry/exit)" | "Moderate" | "Poor (wide spreads)",
+    "market_cap_impact": "Supported by market cap" | "Fair value" | "Overvalued"
+  }}"""
+        
+        prompt += f"""
+  ,
   "key_points": ["Point 1", "Point 2", ...],
   "conflicting_signals": ["Signal 1", "Signal 2", ...] or [],
   "warnings": ["Warning 1", ...] or [],
@@ -1594,12 +1831,19 @@ Provide a comprehensive trading analysis in JSON format with the following struc
       "institutional_insights": "Phân tích Volume Profile, FVG, OB, SMC trên khung 1D (90 ngày)"
     }}
   }}
-  }}
 }}
 
-IMPORTANT GUIDELINES:
-1. Reasoning MUST be in Vietnamese language (300-500 words)
-2. **Analyze ALL technical indicators systematically:**
+IMPORTANT GUIDELINES - EXPANDED (v2.2):
+
+1. **ASSET TYPE ANALYSIS (New):**
+   - {asset_type} requires specific focus areas (see Section 0)
+   - Apply risk multiplier {risk_multiplier}x to position sizing
+   - Adjust confidence penalties based on asset type (see Dynamic Risk Rules)
+   - Include macro_context section in JSON (conditional on asset type)
+
+2. Reasoning MUST be in Vietnamese language (300-500 words)
+
+3. **Analyze ALL technical indicators systematically:**
    - RSI+MFI consensus and individual timeframe signals
    - Stochastic+RSI momentum across timeframes
    - Volume patterns and 24h trading activity
@@ -1607,24 +1851,27 @@ IMPORTANT GUIDELINES:
    - Previous candle patterns on H4 and D1 (wick analysis, body size, bullish/bearish)
    - **HISTORICAL DATA ANALYSIS (CRITICAL):** Xem section "DỮ LIỆU LỊCH SỬ MỞ RỘNG" bên trên
 
-3. **Historical Data Analysis (REQUIRED - Fill historical_analysis in JSON):**
-   - **1H Context (7 days):** 
-     * Compare current RSI vs average RSI (oversold/overbought interpretation)
-     * Volume trend increasing/decreasing và ý nghĩa cho momentum
-     * Price position in range (near support/resistance zones)
-   - **4H Context (30 days):**
-     * RSI context over 30 days (trending or mean-reverting)
-     * Volume pattern (accumulation/distribution)
-     * Price position và xu hướng trung hạn
-   - **1D Context (90 days):**
-     * RSI & MFI correlation (aligned bullish/bearish or diverging)
-     * Long-term trend direction và strength
-     * Volatility assessment (high/low và impact on risk)
+4. **Historical Data Analysis (REQUIRED - Fill historical_analysis in JSON):**
+   - **1H Context (7 days):** Compare current RSI vs average, volume trend, price position
+   - **4H Context (30 days):** RSI context, volume pattern, price positioning
+   - **1D Context (90 days):** RSI & MFI correlation, long-term trend, volatility
 
-4. **Candle Pattern Analysis (CRITICAL):**
+5. **Candle Pattern Analysis (CRITICAL):**
    - D1/H4 previous candles show institutional behavior
    - Large wicks indicate rejection or absorption zones
    - Bullish candles with small upper wicks = continuation potential
+
+6. **Dynamic Risk Application (CRITICAL - v2.2):**
+   - Calculate position size using formula above
+   - Apply liquidity penalties if volume < $10M
+   - Apply correlation penalties for altcoins dependent on BTC
+   - Adjust confidence if market regime is uncertain
+   - Use WAIT if risk/reward not favorable
+
+7. **CONJUNCTION RULES (Based on Asset Type):**
+   - For BTC: Confluence requires macro + technical (both critical)
+   - For ETH/LARGE_CAPS: Confluence requires BTC alignment + technical (both important)
+   - For SMALL_CAPS/MEMES: Confluence requires strong technicals + liquidity + low BTC risk"""
    - Bearish candles with long lower wicks = support testing
    - Compare body size to average - larger bodies = stronger momentum
 
@@ -1921,6 +2168,52 @@ IMPORTANT GUIDELINES:
             # Add metadata
             analysis['symbol'] = symbol
             analysis['analyzed_at'] = datetime.now().isoformat()
+            
+            # === NEW v2.2: Add default values for new fields if missing ===
+            # Asset Type (auto-detected if not in response)
+            if 'asset_type' not in analysis:
+                analysis['asset_type'] = self._detect_asset_type(symbol)
+            
+            # Sector Analysis (8 new fields - v2.2)
+            if 'sector_analysis' not in analysis:
+                analysis['sector_analysis'] = {
+                    'sector': 'Unknown',
+                    'sector_momentum': 'NEUTRAL',
+                    'rotation_risk': 'None',
+                    'sector_leadership': 'Not available'
+                }
+            
+            # Correlation Analysis (3 new fields - v2.2)
+            if 'correlation_analysis' not in analysis:
+                analysis['correlation_analysis'] = {
+                    'btc_correlation': 0,
+                    'eth_correlation': 0,
+                    'independent_move_probability': 50
+                }
+            
+            # Fundamental Analysis (4 new fields - v2.2)
+            if 'fundamental_analysis' not in analysis:
+                analysis['fundamental_analysis'] = {
+                    'health_score': 50,
+                    'tokenomics': 'Unknown',
+                    'centralization_risk': 'Medium',
+                    'ecosystem_strength': 'Moderate'
+                }
+            
+            # Position Sizing Recommendation (4 new fields - v2.2)
+            if 'position_sizing_recommendation' not in analysis:
+                analysis['position_sizing_recommendation'] = {
+                    'position_size_percent': '1-2% of portfolio',
+                    'risk_per_trade': '1-2%',
+                    'recommended_leverage': '1x (no leverage)',
+                    'liquidity_notes': 'Check liquidity before trading'
+                }
+            
+            # Macro Context (conditional - v2.2)
+            if 'macro_context' not in analysis:
+                analysis['macro_context'] = {}
+            
+            # Legacy fields for backward compatibility
             analysis['data_used'] = {
                 'rsi_mfi_consensus': data['rsi_mfi'].get('consensus', 'N/A') if isinstance(data.get('rsi_mfi'), dict) else 'N/A',
                 'stoch_rsi_consensus': data['stoch_rsi'].get('consensus', 'N/A') if isinstance(data.get('stoch_rsi'), dict) else 'N/A',
@@ -2044,6 +2337,11 @@ IMPORTANT GUIDELINES:
             
         Returns:
             Tuple of (summary_msg, technical_msg, reasoning_msg)
+        
+        MESSAGE ORDER (v2.2):
+        1. ENTRY/TP/SL SUMMARY - What to do (recommendation + prices) - FIRST for quick decision
+        2. TECHNICAL DETAILS - Why to do it (analysis + indicators) - Context for decision
+        3. AI REASONING - Deep analysis - Extended reading
         """
         def split_long_message(msg: str, max_length: int = 4000) -> list:
             """
@@ -2089,11 +2387,12 @@ IMPORTANT GUIDELINES:
             risk = analysis['risk_level']
             style = analysis.get('trading_style', 'swing')
             
-            # Message 1: Summary
+            # Message 1: ENTRY/TP/SL Summary (MOVED TO TOP)
+            # This is the ACTION PLAN - Users see what Gemini recommends FIRST
             rec_emoji = "🟢" if rec == "BUY" else "🔴" if rec == "SELL" else "🟡" if rec == "HOLD" else "⚪"
             
             summary = "═══════════════════════════════════\n"
-            summary += "🤖 <b>GEMINI AI ANALYSIS</b>\n"
+            summary += "🤖 <b>GEMINI AI ANALYSIS (v2.2)</b>\n"
             summary += "═══════════════════════════════════\n\n"
             summary += f"💎 <b>{symbol}</b>\n"
             summary += f"📊 <b>Trading Style:</b> {style.upper()}\n\n"
@@ -2103,7 +2402,7 @@ IMPORTANT GUIDELINES:
             summary += f"⚠️ <b>Mức Rủi Ro:</b> {risk}\n"
             summary += "───────────────────────────────────\n\n"
             
-            summary += "💰 <b>KẾ HOẠCH GIAO DỊCH:</b>\n\n"
+            summary += "💰 <b>KẾ HOẠCH GIAO DỊCH (Từ Gemini AI):</b>\n\n"
             summary += f"   📍 <b>Điểm Vào:</b> ${self.binance.format_price(symbol, entry)}\n"
             summary += f"   🛑 <b>Cắt Lỗ:</b> ${self.binance.format_price(symbol, stop)}\n"
             summary += f"   🎯 <b>Chốt Lời:</b>\n"
@@ -2131,6 +2430,59 @@ IMPORTANT GUIDELINES:
                 tech += f"   • Tín Hiệu Pump: {pump_score:.0f}%\n"
             
             tech += f"   • Giá Hiện Tại: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
+            
+            # === NEW v2.2: Add Asset Type Context ===
+            asset_type = analysis.get('asset_type', 'UNKNOWN')
+            tech += f"<b>🎯 Asset Type (v2.2):</b> {asset_type}\n"
+            
+            # Add asset-specific context
+            sector = analysis.get('sector_analysis', {})
+            if sector and sector.get('sector') != 'Unknown':
+                tech += f"   • Sector: {sector.get('sector')}\n"
+                tech += f"   • Sector Momentum: {sector.get('sector_momentum')}\n"
+                tech += f"   • Rotation Risk: {sector.get('rotation_risk')}\n\n"
+            
+            corr = analysis.get('correlation_analysis', {})
+            if corr and corr.get('btc_correlation', 0) > 0:
+                tech += f"<b>🔗 Correlation Analysis:</b>\n"
+                tech += f"   • BTC Correlation: {corr.get('btc_correlation', 0)}%\n"
+                tech += f"   • ETH Correlation: {corr.get('eth_correlation', 0)}%\n"
+                tech += f"   • Independent Move Probability: {corr.get('independent_move_probability', 50)}%\n\n"
+            
+            fund = analysis.get('fundamental_analysis', {})
+            if fund and fund.get('health_score', 0) >= 0:
+                tech += f"<b>💪 Fundamental Analysis:</b>\n"
+                tech += f"   • Health Score: {fund.get('health_score', 0)}/100\n"
+                tech += f"   • Tokenomics: {fund.get('tokenomics', 'Unknown')}\n"
+                tech += f"   • Centralization Risk: {fund.get('centralization_risk', 'Medium')}\n"
+                tech += f"   • Ecosystem: {fund.get('ecosystem_strength', 'Moderate')}\n\n"
+            
+            sizing = analysis.get('position_sizing_recommendation', {})
+            if sizing and sizing.get('position_size_percent'):
+                tech += f"<b>📊 Position Sizing (v2.2):</b>\n"
+                tech += f"   • Position Size: {sizing.get('position_size_percent')}\n"
+                tech += f"   • Risk Per Trade: {sizing.get('risk_per_trade')}\n"
+                tech += f"   • Leverage: {sizing.get('recommended_leverage')}\n"
+                if sizing.get('liquidity_notes'):
+                    tech += f"   • Liquidity: {sizing.get('liquidity_notes')}\n"
+                tech += "\n"
+            
+            # Macro context for BTC or altcoins
+            macro = analysis.get('macro_context', {})
+            if macro:
+                if asset_type == 'BTC':
+                    tech += f"<b>🏛️ BTC Macro Context:</b>\n"
+                    tech += f"   • Dominance: {macro.get('btc_dominance', 'N/A')}\n"
+                    tech += f"   • Institutional: {macro.get('institutional_flows', 'N/A')}\n"
+                    tech += f"   • ETF Status: {macro.get('etf_status', 'N/A')}\n"
+                    tech += f"   • Whale Activity: {macro.get('whale_activity', 'N/A')}\n\n"
+                elif asset_type in ['ETH', 'LARGE_CAP_ALT', 'MID_CAP_ALT']:
+                    tech += f"<b>🔗 Altcoin Context:</b>\n"
+                    tech += f"   • Sector Status: {macro.get('sector_rotation_status', 'N/A')}\n"
+                    tech += f"   • BTC Dependency: {macro.get('btc_dependency', 'N/A')}\n"
+                    if macro.get('project_catalysts'):
+                        tech += f"   • Catalysts: {macro.get('project_catalysts')}\n"
+                    tech += f"   • Liquidity: {macro.get('liquidity_assessment', 'N/A')}\n\n"
             
             # Scores
             tech_score = analysis.get('technical_score', 0)
