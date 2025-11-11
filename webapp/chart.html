@@ -949,69 +949,8 @@
             document.body.style.background = '#1a1a1a';
         }
         
-        // Tab switching with nav indicator animation
-        const navItems = document.querySelectorAll('.nav-item');
-        const navIndicator = document.getElementById('nav-indicator');
-        const chartContainer = document.getElementById('chartContainer');
-        let historyModule;
-        
-        // Initialize indicator position
-        function updateIndicatorPosition(activeItem) {
-            if (!navIndicator || !activeItem) return;
-            const container = activeItem.parentElement;
-            const items = Array.from(container.querySelectorAll('.nav-item'));
-            const index = items.indexOf(activeItem);
-            const width = 100 / items.length;
-            navIndicator.style.width = `calc(${width}% - 4px)`;
-            navIndicator.style.left = `calc(${width * index}% + 2px)`;
-        }
-        
-        navItems.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const tab = btn.dataset.tab;
-                
-                // Update active tab button
-                navItems.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                // Animate indicator
-                updateIndicatorPosition(btn);
-                
-                // Hide all tab contents
-                document.querySelectorAll('[data-tab-content]').forEach(content => {
-                    content.style.display = 'none';
-                });
-                chartContainer.style.display = 'none';
-                
-                // Show selected tab
-                if (tab === 'chart') {
-                    chartContainer.style.display = 'block';
-                } else {
-                    const tabContent = document.querySelector(`[data-tab-content="${tab}"]`);
-                    if (tabContent) {
-                        tabContent.style.display = 'block';
-                        
-                        // Special handling for history tab
-                        if (tab === 'history' && !historyModule) {
-                            const userId = tg.initDataUnsafe.user?.id || 6228875204;
-                            historyModule = new AnalysisHistory(userId);
-                            historyModule.loadHistory(null, 7); // Load last 7 days, all symbols
-                        }
-                    }
-                }
-                
-                // Haptic feedback
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('light');
-                }
-            });
-        });
-        
-        // Initialize indicator on first active item
-        const activeNav = document.querySelector('.nav-item.active');
-        if (activeNav) {
-            updateIndicatorPosition(activeNav);
-        }
+        // Tab navigation will be handled by NavigationController (js/navigation.js)
+        // Keeping this comment for reference - inline code removed to avoid conflicts
         
         // Get parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -3499,16 +3438,16 @@
             console.log('TimeframeSwitcher:', typeof TimeframeSwitcher);
             console.log('IndicatorPanel:', typeof IndicatorPanel);
             
-            // Initialize Navigation
+            // Enable NavigationController (now supports 4 tabs)
             if (typeof NavigationController !== 'undefined') {
                 try {
                     window.navigation = new NavigationController();
-                    console.log('✅ Navigation initialized');
+                    console.log('✅ Navigation initialized (4 tabs via NavigationController)');
                 } catch (e) {
                     console.error('❌ Navigation error:', e);
                 }
             } else {
-                console.warn('⚠️ NavigationController not found');
+                console.log('⚠️ NavigationController not found, using fallback');
             }
             
             // Initialize Timeframe Switcher

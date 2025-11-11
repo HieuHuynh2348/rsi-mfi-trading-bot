@@ -6,42 +6,59 @@
 class NavigationController {
     constructor() {
         this.currentTab = 'chart';
-        this.tabs = ['chart', 'indicators', 'ai'];
+        this.tabs = ['chart', 'indicators', 'ai', 'history'];
         this.touchStartX = 0;
         this.touchEndX = 0;
-        this.swipeThreshold = 50; // минимальное расстояние свайпа в пикселях
+        this.swipeThreshold = 50;
+        this.historyModule = null;
         
         this.init();
     }
     
     init() {
-        this.createBottomNav();
+        // Check if bottom nav already exists in HTML
+        const existingNav = document.querySelector('.bottom-nav');
+        
+        if (existingNav) {
+            // Use existing HTML nav from chart.html
+            this.navElement = existingNav;
+            this.indicator = existingNav.querySelector('.nav-indicator');
+            console.log('✅ Using existing bottom-nav from HTML');
+        } else {
+            // Fallback: create nav dynamically
+            this.createBottomNav();
+        }
+        
         this.setupEventListeners();
         // this.setupSwipeGestures(); // DISABLED: Conflicts with chart zoom/pan/pinch gestures
-        console.log('✅ Navigation system initialized (swipe gestures disabled)');
+        console.log('✅ Navigation system initialized (4 tabs: chart, indicators, ai, history)');
     }
     
     /**
-     * Create bottom navigation bar HTML with sliding indicator
+     * Create bottom navigation bar HTML with sliding indicator (fallback if not in HTML)
      */
     createBottomNav() {
-        const nav = document.createElement('div');
-        nav.className = 'bottom-nav safe-bottom';
+        const nav = document.createElement('nav');
+        nav.className = 'bottom-nav';
         nav.innerHTML = `
             <div class="bottom-nav-container">
-                <div class="nav-indicator"></div>
-                <div class="nav-item active" data-tab="chart">
-                    <div class="nav-item-icon">📊</div>
-                    <div class="nav-item-label">Chart</div>
-                </div>
-                <div class="nav-item" data-tab="indicators">
-                    <div class="nav-item-icon">📈</div>
-                    <div class="nav-item-label">Indicators</div>
-                </div>
-                <div class="nav-item" data-tab="ai">
-                    <div class="nav-item-icon">🤖</div>
-                    <div class="nav-item-label">AI</div>
-                </div>
+                <div class="nav-indicator" id="nav-indicator"></div>
+                <button class="nav-item active" data-tab="chart">
+                    <span class="nav-item-icon">�</span>
+                    <span class="nav-item-label">Chart</span>
+                </button>
+                <button class="nav-item" data-tab="indicators">
+                    <span class="nav-item-icon">�</span>
+                    <span class="nav-item-label">Indicators</span>
+                </button>
+                <button class="nav-item" data-tab="ai">
+                    <span class="nav-item-icon">🤖</span>
+                    <span class="nav-item-label">AI</span>
+                </button>
+                <button class="nav-item" data-tab="history">
+                    <span class="nav-item-icon">📋</span>
+                    <span class="nav-item-label">History</span>
+                </button>
             </div>
         `;
         
@@ -63,14 +80,12 @@ class NavigationController {
         if (!activeItem) return;
         
         const container = this.navElement.querySelector('.bottom-nav-container');
-        const containerRect = container.getBoundingClientRect();
-        const itemRect = activeItem.getBoundingClientRect();
+        const items = Array.from(container.querySelectorAll('.nav-item'));
+        const index = items.indexOf(activeItem);
+        const width = 100 / items.length;
         
-        const left = itemRect.left - containerRect.left;
-        const width = itemRect.width;
-        
-        this.indicator.style.transform = `translateX(${left}px)`;
-        this.indicator.style.width = `${width}px`;
+        this.indicator.style.width = `calc(${width}% - 4px)`;
+        this.indicator.style.left = `calc(${width * index}% + 2px)`;
     }
     
     /**
@@ -81,6 +96,7 @@ class NavigationController {
         
         navItems.forEach(item => {
             item.addEventListener('click', (e) => {
+                e.preventDefault();
                 const tab = e.currentTarget.dataset.tab;
                 this.switchTab(tab);
             });
@@ -181,19 +197,51 @@ class NavigationController {
      * @param {string} tabName 
      */
     showTabContent(tabName) {
+        const chartContainer = document.getElementById('chartContainer');
+        
         // Hide all sections
         const sections = document.querySelectorAll('[data-tab-content]');
         sections.forEach(section => {
             section.style.display = 'none';
         });
         
-        // Show selected section
-        const activeSection = document.querySelector(`[data-tab-content="${tabName}"]`);
-        if (activeSection) {
-            activeSection.style.display = 'block';
-            // Add slide-in animation
-            activeSection.style.animation = 'fadeIn 0.3s ease-out';
+        if (chartContainer) {
+            chartContainer.style.display = 'none';
         }
+        
+        // Show selected section
+        if (tabName === 'chart') {
+            if (chartContainer) {
+                chartContainer.style.display = 'block';
+            }
+        } else {
+            const activeSection = document.querySelector(`[data-tab-content="${tabName}"]`);
+            if (activeSection) {
+                activeSection.style.display = 'block';
+                
+                // Special handling for history tab
+                if (tabName === 'history' && !this.historyModule) {
+                    this.initializeHistoryModule();
+                }
+            }
+        }
+    }
+    
+    /**
+     * Initialize History Module
+     */
+    initializeHistoryModule() {
+        if (typeof AnalysisHistory === 'undefined') {
+            console.error('❌ AnalysisHistory class not found');
+            return;
+        }
+        
+        const tg = window.Telegram?.WebApp;
+        const userId = tg?.initDataUnsafe?.user?.id || 6228875204;
+        
+        this.historyModule = new AnalysisHistory(userId);
+        this.historyModule.loadHistory(null, 7); // Load last 7 days, all symbols
+        console.log('✅ History module initialized');
     }
     
     /**
