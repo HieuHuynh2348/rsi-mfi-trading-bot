@@ -2496,19 +2496,19 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             tech_score = analysis.get('technical_score', 0)
             fund_score = analysis.get('fundamental_score', 0)
             
-            tech += "📈 <b>Điểm Đánh Giá:</b>\n"
-            tech += f"• Kỹ Thuật: {tech_score}/100\n"
-            tech += f"• Cơ Bản: {fund_score}/100\n"
-            tech += f"• Tổng: {(tech_score + fund_score)/2:.0f}/100\n\n"
+            tech += "📈 <b>&#272;i&#7875;m &#272;&#225;nh Gi&#225;:</b>\n"
+            tech += f"• K&#7929; Thu&#7853;t: {tech_score}/100\n"
+            tech += f"• C&#417; B&#7843;n: {fund_score}/100\n"
+            tech += f"• T&#7893;ng: {(tech_score + fund_score)/2:.0f}/100\n\n"
             
             # Market sentiment
             sentiment = analysis.get('market_sentiment', 'NEUTRAL')
             sentiment_emoji = "🟢" if sentiment == "BULLISH" else "🔴" if sentiment == "BEARISH" else "🟡"
-            sentiment_vn = "Tăng" if sentiment == "BULLISH" else "Giảm" if sentiment == "BEARISH" else "Trung Lập"
-            tech += f"💭 <b>Tâm Lý:</b> {sentiment_emoji} {sentiment_vn}\n\n"
+            sentiment_vn = "T&#259;ng" if sentiment == "BULLISH" else "Gi&#7843;m" if sentiment == "BEARISH" else "Trung L&#7853;p"
+            tech += f"💭 <b>T&#226;m L&#253;:</b> {sentiment_emoji} {sentiment_vn}\n\n"
             
             # Key points
-            tech += "🎯 <b>Điểm Chính:</b>\n"
+            tech += "🎯 <b>&#272;i&#7875;m Ch&#237;nh:</b>\n"
             for point in analysis.get('key_points', []):
                 # Escape HTML characters in key points
                 safe_point = (str(point).replace('&', '&amp;')
@@ -2520,7 +2520,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # Conflicting signals
             conflicts = analysis.get('conflicting_signals', [])
             if conflicts:
-                tech += "\n⚠️ <b>Tín Hiệu Mâu Thuẫn:</b>\n"
+                tech += "\n⚠️ <b>T&#237;n Hi&#7879;u M&#226;u Thu&#7849;n:</b>\n"
                 for conflict in conflicts:
                     safe_conflict = (str(conflict).replace('&', '&amp;')
                                                   .replace('<', '&lt;')
@@ -2531,7 +2531,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # Warnings
             warnings = analysis.get('warnings', [])
             if warnings:
-                tech += "\n🚨 <b>Cảnh Báo:</b>\n"
+                tech += "\n🚨 <b>C&#7843;nh B&#225;o:</b>\n"
                 for warning in warnings:
                     safe_warning = (str(warning).replace('&', '&amp;')
                                                 .replace('<', '&lt;')
@@ -2542,7 +2542,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # Historical Analysis
             hist_analysis = analysis.get('historical_analysis', {})
             if hist_analysis:
-                tech += "\n📊 <b>Dữ Liệu Lịch Sử:</b>\n\n"
+                tech += "\n📊 <b>D&#7919; Li&#7879;u L&#7883;ch S&#7917;:</b>\n\n"
                 
                 # Helper to escape HTML in historical data
                 def safe_text(text):
@@ -2556,13 +2556,13 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 # 1H Context
                 h1 = hist_analysis.get('h1_context', {})
                 if h1:
-                    tech += "⏰ <b>1H (7 ngày):</b>\n"
+                    tech += "⏰ <b>1H (7 ng&#224;y):</b>\n"
                     if h1.get('rsi_interpretation'):
                         tech += f"• RSI: {safe_text(h1['rsi_interpretation'])}\n"
                     if h1.get('volume_trend'):
                         tech += f"• Volume: {safe_text(h1['volume_trend'])}\n"
                     if h1.get('price_position'):
-                        tech += f"• Vị trí: {safe_text(h1['price_position'])}\n"
+                        tech += f"• V&#7883; tr&#237;: {safe_text(h1['price_position'])}\n"
                     if h1.get('institutional_insights'):
                         tech += f"• Institutional: {safe_text(h1['institutional_insights'])}\n"
                     tech += "\n"
@@ -2570,13 +2570,13 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 # 4H Context
                 h4 = hist_analysis.get('h4_context', {})
                 if h4:
-                    tech += "⏰ <b>4H (30 ngày):</b>\n"
+                    tech += "⏰ <b>4H (30 ng&#224;y):</b>\n"
                     if h4.get('rsi_interpretation'):
                         tech += f"• RSI: {safe_text(h4['rsi_interpretation'])}\n"
                     if h4.get('volume_trend'):
                         tech += f"• Volume: {safe_text(h4['volume_trend'])}\n"
                     if h4.get('price_position'):
-                        tech += f"• Vị trí: {safe_text(h4['price_position'])}\n"
+                        tech += f"• V&#7883; tr&#237;: {safe_text(h4['price_position'])}\n"
                     if h4.get('institutional_insights'):
                         tech += f"• Institutional: {safe_text(h4['institutional_insights'])}\n"
                     tech += "\n"
@@ -2584,26 +2584,26 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 # 1D Context
                 d1 = hist_analysis.get('d1_context', {})
                 if d1:
-                    tech += "⏰ <b>1D (90 ngày):</b>\n"
+                    tech += "⏰ <b>1D (90 ng&#224;y):</b>\n"
                     if d1.get('rsi_mfi_correlation'):
                         tech += f"• RSI/MFI: {safe_text(d1['rsi_mfi_correlation'])}\n"
                     if d1.get('long_term_trend'):
-                        tech += f"• Xu hướng: {safe_text(d1['long_term_trend'])}\n"
+                        tech += f"• Xu h&#432;&#7899;ng: {safe_text(d1['long_term_trend'])}\n"
                     if d1.get('volatility_assessment'):
-                        tech += f"• Biến động: {safe_text(d1['volatility_assessment'])}\n"
+                        tech += f"• Bi&#7871;n &#273;&#7897;ng: {safe_text(d1['volatility_assessment'])}\n"
                     if d1.get('institutional_insights'):
                         tech += f"• Institutional: {safe_text(d1['institutional_insights'])}\n"
             
-            tech += "\n<i>💡 Phân tích đa khung thời gian</i>"
+            tech += "\n<i>💡 Ph&#226;n t&#237;ch &#273;a khung th&#7901;i gian</i>"
             
             # Message 3: AI Reasoning
-            reasoning = "🧠 <b>PHÂN TÍCH CHI TIẾT TỪ AI</b>\n\n"
+            reasoning = "🧠 <b>PH&#202;N T&#205;CH CHI TI&#7870;T T&#7914; AI</b>\n\n"
             reasoning += f"💎 <b>{symbol}</b>\n\n"
-            reasoning += analysis.get('reasoning_vietnamese', 'Không có phân tích chi tiết.')
-            reasoning += f"\n\n⏰ <b>Thời gian:</b> {analysis.get('analyzed_at', 'N/A')}\n"
+            reasoning += analysis.get('reasoning_vietnamese', 'Kh&#244;ng c&#243; ph&#226;n t&#237;ch chi ti&#7871;t.')
+            reasoning += f"\n\n⏰ <b>Th&#7901;i gian:</b> {analysis.get('analyzed_at', 'N/A')}\n"
             reasoning += f"🤖 <b>Model:</b> Gemini 2.0 Flash\n\n"
-            reasoning += "<i>⚠️ Đây là phân tích AI, không phải tư vấn tài chính.\n"
-            reasoning += "Luôn DYOR (Do Your Own Research) trước khi đầu tư.</i>"
+            reasoning += "<i>⚠️ &#272;&#226;y l&#224; ph&#226;n t&#237;ch AI, kh&#244;ng ph&#7843;i t&#432; v&#7845;n t&#224;i ch&#237;nh.\n"
+            reasoning += "Lu&#244;n DYOR (Do Your Own Research) tr&#432;&#7899;c khi &#273;&#7847;u t&#432;.</i>"
             
             # Return in proper order: technical details first, then summary, then reasoning
             # This allows users to understand the analysis BEFORE seeing entry/TP/SL recommendations
