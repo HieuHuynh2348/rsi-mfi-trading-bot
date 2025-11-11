@@ -300,12 +300,13 @@
         
         /* TAB CONTENT WRAPPERS */
         [data-tab-content] {
-            min-height: calc(100vh - 165px - 80px);
-            padding-bottom: 80px; /* Space for bottom nav */
+            min-height: calc(100vh - 165px - 60px);
+            padding-bottom: 60px; /* Space for compact bottom nav */
         }
         
         [data-tab-content="chart"] {
             padding-bottom: 0; /* Chart handles its own spacing */
+            min-height: 0; /* Chart has its own height calculation */
         }
         
         #timeframes::-webkit-scrollbar {
@@ -371,8 +372,8 @@
         
         #chartContainer {
             width: 100%;
-            /* Add space for bottom navigation (60px + safe area) */
-            height: calc(100vh - 165px - 80px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+            /* Add space for compact bottom navigation (60px + safe area) */
+            height: calc(100vh - 165px - 60px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
             position: relative;
             /* Optimized touch handling for mobile */
             touch-action: pan-x pan-y pinch-zoom;
@@ -390,8 +391,8 @@
         /* Mobile-specific chart optimizations */
         @media (max-width: 768px) {
             #chartContainer {
-                /* Reserve space for bottom nav + safe area */
-                height: calc(100vh - 165px - 80px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+                /* Reserve space for compact bottom nav + safe area */
+                height: calc(100vh - 165px - 60px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
                 /* Disable text selection on mobile */
                 -webkit-user-select: none;
                 -moz-user-select: none;
