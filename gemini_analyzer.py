@@ -1197,7 +1197,60 @@ class GeminiAnalyzer:
   2. Warn if current conditions match previous losses
   3. Increase confidence if conditions match previous wins
   4. Suggest WAIT if win rate for this setup is <40%
+
+═══════════════════════════════════════════
+📜 PREVIOUS ANALYSES DETAILS (Read and learn from these)
+═══════════════════════════════════════════
 """
+                    
+                    # Add detailed previous analyses (up to 5 most recent)
+                    if history and len(history) > 0:
+                        for i, record in enumerate(history[:5], 1):
+                            try:
+                                ai_response = record.get('ai_full_response', {})
+                                tracking = record.get('tracking_result', {})
+                                created_at = record.get('created_at', 'Unknown')
+                                
+                                # Extract key fields from AI response
+                                recommendation = ai_response.get('recommendation', 'N/A')
+                                confidence = ai_response.get('confidence', 0)
+                                entry = ai_response.get('entry_point', 0)
+                                stop_loss = ai_response.get('stop_loss', 0)
+                                take_profit = ai_response.get('take_profit', [])
+                                reasoning = ai_response.get('reasoning_vietnamese', '')
+                                
+                                # Tracking result
+                                outcome = tracking.get('outcome', 'PENDING') if tracking else 'PENDING'
+                                profit_pct = tracking.get('profit_percent', 0) if tracking else 0
+                                peak_profit = tracking.get('peak_profit_percent', 0) if tracking else 0
+                                hit_tp = tracking.get('hit_take_profit', False) if tracking else False
+                                hit_sl = tracking.get('hit_stop_loss', False) if tracking else False
+                                
+                                # Format outcome emoji
+                                outcome_emoji = "✅" if outcome == "WIN" else "❌" if outcome == "LOSS" else "⏳"
+                                
+                                historical_context += f"""
+<b>Analysis #{i} - {created_at}</b> {outcome_emoji}
+  • Recommendation: {recommendation} (Confidence: {confidence}%)
+  • Entry: ${entry:,.2f} | Stop Loss: ${stop_loss:,.2f} | Take Profit: {take_profit}
+  • Outcome: {outcome} | Profit: {profit_pct:+.2f}% (Peak: {peak_profit:+.2f}%)
+  • Hit TP: {'Yes' if hit_tp else 'No'} | Hit SL: {'Yes' if hit_sl else 'No'}
+  • Reasoning Summary: {reasoning[:200]}{'...' if len(reasoning) > 200 else ''}
+
+"""
+                            except Exception as detail_error:
+                                logger.warning(f"Failed to parse analysis detail #{i}: {detail_error}")
+                                continue
+                    
+                    historical_context += """
+<b>🔍 HOW TO USE PREVIOUS ANALYSES:</b>
+  1. Check if current market conditions (RSI, MFI, VP position) are similar to past WIN or LOSS
+  2. If similar to WIN → Mention it and INCREASE confidence: "Setup tương tự phân tích #X đã thắng +Y%"
+  3. If similar to LOSS → Mention it and DECREASE confidence or WAIT: "⚠️ Cảnh báo: Setup giống phân tích #X đã thua -Y%"
+  4. Learn from reasoning: If past reasoning was wrong, adjust your logic
+  5. If past entry/SL/TP were off, improve current recommendations
+"""
+                    
                 else:
                     historical_context = f"\n🆕 <b>NEW SYMBOL:</b> No historical data for {symbol} yet. First analysis.\n"
                     
@@ -1833,6 +1886,39 @@ Provide a comprehensive trading analysis in JSON format with the following struc
       "volatility_assessment": "Đánh giá độ biến động",
       "institutional_insights": "Phân tích Volume Profile, FVG, OB, SMC trên khung 1D (90 ngày)"
     }}
+  }},
+  
+  "historical_learning": {{
+    "total_past_analyses": 0-100,
+    "win_rate_percent": 0-100,
+    "base_confidence": 0-100,
+    "historical_adjustment": -20 to +15,
+    "final_confidence_calculation": "Explain: base X + adjustment Y = final Z",
+    "similar_past_analysis": {{
+      "found": true | false,
+      "analysis_number": "#X" or null,
+      "analysis_date": "YYYY-MM-DD" or null,
+      "similarity_factors": ["RSI range match", "MFI range match", "VP position match", ...] or [],
+      "past_outcome": "WIN" | "LOSS" | "PENDING" | null,
+      "past_profit_percent": -100 to +100 or null,
+      "lessons_learned": "What went right/wrong in that analysis" or null,
+      "adjustments_made": "How current recommendation differs based on past outcome" or null
+    }},
+    "pattern_match": {{
+      "matches_winning_pattern": true | false,
+      "matches_losing_pattern": true | false,
+      "winning_pattern_details": "RSI X-Y, MFI A-B, VP position Z" or null,
+      "losing_pattern_details": "RSI X-Y, MFI A-B, VP position Z" or null,
+      "pattern_confidence_impact": "Increase/Decrease by X points" or "No impact"
+    }},
+    "entry_stop_learning": {{
+      "past_sl_too_tight": true | false,
+      "past_sl_too_wide": true | false,
+      "past_tp_not_reached": true | false,
+      "past_entry_too_early": true | false,
+      "current_adjustments": "Specific changes made to entry/SL/TP based on past" or "No adjustments needed"
+    }},
+    "recommendation_rationale": "Brief explanation of how historical data influenced final recommendation (2-3 sentences)"
   }}
 }}
 
@@ -1859,12 +1945,40 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
    - **4H Context (30 days):** RSI context, volume pattern, price positioning
    - **1D Context (90 days):** RSI & MFI correlation, long-term trend, volatility
 
-5. **Candle Pattern Analysis (CRITICAL):**
+5. **Historical Learning Analysis (NEW - REQUIRED - Fill historical_learning in JSON):**
+   - **MANDATORY FIELD** - Must be included in every response with all sub-fields filled
+   - Based on PREVIOUS ANALYSES DETAILS section above (Analysis #1, #2, #3, etc.):
+     * total_past_analyses: Count from statistics
+     * win_rate_percent: From statistics section
+     * base_confidence: Initial confidence before historical adjustment
+     * historical_adjustment: Calculate (-20 to +15) based on win rate + similar analysis + patterns
+     * final_confidence_calculation: Show clear math, e.g., "Base 68 + WinRate +12 + Similar +5 = 85"
+   - **similar_past_analysis**:
+     * Search Analysis #1, #2, #3, etc. for similar RSI/MFI/VP conditions
+     * If found: Set found=true, fill analysis_number, date, outcome, profit_percent
+     * similarity_factors: ["RSI both 30-35", "MFI both 25-30", "Both DISCOUNT"]
+     * lessons_learned: What worked/failed in that past analysis
+     * adjustments_made: "Widened SL 2%→3% based on Analysis #3 getting stopped"
+   - **pattern_match**:
+     * matches_winning_pattern: true if current RSI/MFI/VP matches WINNING PATTERNS stats
+     * matches_losing_pattern: true if matches LOSING PATTERNS stats
+     * Fill winning_pattern_details or losing_pattern_details
+     * pattern_confidence_impact: "Increase by 12 points" or "Decrease by 15 points"
+   - **entry_stop_learning**:
+     * Review past analyses' SL/TP outcomes
+     * Mark true if past had issues (SL too tight, TP not reached, etc.)
+     * current_adjustments: "SL 2.5%→3.2% based on Analysis #2 stopped out too early"
+   - **recommendation_rationale**: 
+     * 2-3 sentences: HOW historical data influenced final recommendation
+     * MUST reference specific Analysis numbers if similar found
+     * Example: "Win rate 75% for this setup. Similar to Analysis #2 (WIN +5.3%), boosted confidence 68→85"
+
+6. **Candle Pattern Analysis (CRITICAL):**
    - D1/H4 previous candles show institutional behavior
    - Large wicks indicate rejection or absorption zones
    - Bullish candles with small upper wicks = continuation potential
 
-6. **Dynamic Risk Application (CRITICAL - v2.2):**
+7. **Dynamic Risk Application (CRITICAL - v2.2):**
    - Calculate position size using formula above
    - Apply liquidity penalties if volume < $10M
    - Apply correlation penalties for altcoins dependent on BTC
@@ -1950,6 +2064,230 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
    - **Swing**: Wider stops (3-5%), 10-20% targets, 3-7 day holding, focus on 1D Volume Profile/SMC
 9. Consider historical trends - strong week-over-week growth is bullish indicator
 10. Be conservative - if major conflicting signals exist, recommend WAIT
+
+═══════════════════════════════════════════════════════════════════════════════
+🧠 SECTION 13: HISTORICAL LEARNING & ADAPTIVE ANALYSIS (v2.2) - CRITICAL!
+═══════════════════════════════════════════════════════════════════════════════
+
+{historical_context}
+
+**🔥 MANDATORY INSTRUCTIONS - YOU MUST USE HISTORICAL DATA TO IMPROVE ANALYSIS:**
+
+1. **Read Previous Analyses (NEW - CRITICAL):**
+   - Section "PREVIOUS ANALYSES DETAILS" above shows actual past recommendations
+   - Each analysis shows: Recommendation, Entry/SL/TP, Reasoning, and Outcome (WIN/LOSS/PENDING)
+   - Compare CURRENT market conditions with each past analysis:
+     * If current setup is similar to a WIN → Reference it: "Setup tương tự Analysis #2 đã thắng +5.3%"
+     * If current setup is similar to a LOSS → Warn: "⚠️ Cảnh báo: Điều kiện giống Analysis #4 đã thua -3.2%"
+   - Learn from reasoning: If past reasoning was wrong, explain what was missed
+   - Improve entry/SL/TP: If past levels were hit too early/late, adjust current recommendations
+
+2. **Win Rate-Based Confidence Adjustment:**
+   - If historical win rate > 60% for THIS specific setup → Increase confidence by +10 to +15 points
+   - If historical win rate < 40% for THIS specific setup → DECREASE confidence by -15 to -20 points OR use WAIT
+   - Example: Current RSI=35, historical data shows RSI 30-40 has 70% win rate → BOOST confidence significantly
+
+3. **Pattern Matching (CRITICAL):**
+   - Compare CURRENT indicators with WINNING PATTERNS above:
+     * Current RSI/MFI ranges vs historical winning RSI/MFI ranges
+     * Current Volume Profile position (DISCOUNT/PREMIUM/VALUE_AREA) vs past wins
+     * Current SMC bias vs historical successful biases
+   - If setup MATCHES winning pattern:
+     * MUST mention in reasoning: "✅ Setup khớp với pattern thắng lịch sử (Win Rate: X%)"
+     * Use as STRONG confirmation → Increase confidence
+   - If setup MATCHES losing pattern:
+     * MUST mention: "⚠️ CẢNH BÁO: Setup khớp với pattern thua lịch sử (Loss Rate: X%)"
+     * STRONGLY favor WAIT unless overriding factors exist
+
+4. **RSI/MFI Learning Rules:**
+   - Historical winning RSI ranges = Zones where AI made CORRECT predictions
+   - If current RSI in losing range (e.g., past losses at RSI 60-70) → AVOID that signal
+   - If current RSI in winning range (e.g., past wins at RSI 30-40) → FAVOR that signal
+   - Same logic for MFI ranges
+
+5. **Volume Profile Position Learning:**
+   - Check if past WINS occurred at DISCOUNT, PREMIUM, or VALUE_AREA
+   - If 70%+ of past wins were at DISCOUNT and current is DISCOUNT → Strong BUY confluence
+   - If past losses concentrated at specific position → Avoid similar setups
+
+6. **Entry/SL/TP Learning (NEW):**
+   - Review previous analyses' entry/stop/target levels vs actual outcomes
+   - If past SL was hit too early → Widen current SL by 0.5-1%
+   - If past TP was not reached (price reversed before TP) → Lower current TP targets
+   - If past entry was too early (price went lower first) → Wait for better entry
+   - Example: "Analysis #3 had SL too tight at 2%, got stopped out before reversal. Using 3% SL now."
+
+7. **AI Learning Recommendation Compliance:**
+   - The "AI LEARNING RECOMMENDATION" text above provides SPECIFIC guidance
+   - MUST follow these rules in your analysis
+   - Example: If recommendation says "avoid RSI 60-70" and current RSI=65 → Lower confidence or WAIT
+
+8. **Reasoning Integration (MANDATORY IN JSON):**
+   - In "reasoning_vietnamese" field, you MUST explicitly reference historical data:
+     * "Dựa trên phân tích 7 ngày qua, setup tương tự có tỷ lệ thắng X%..."
+     * "RSI hiện tại [value] nằm trong vùng [range] đã thắng X lần/thua Y lần trong quá khứ..."
+     * "Volume Profile ở [position] - vị trí này có lịch sử thắng/thua như thế nào..."
+     * "Setup hiện tại giống Analysis #X (đã thắng/thua Y%), điều chỉnh SL/TP dựa trên bài học đó..."
+   - **MUST also summarize historical_learning JSON findings in Vietnamese**
+   - This proves you ACTUALLY analyzed historical context (not just ignored it)
+
+9. **Historical Learning JSON Integration (CRITICAL):**
+   - The "historical_learning" section in JSON MUST align with "reasoning_vietnamese" text
+   - If you mention "Analysis #2" in reasoning → historical_learning.similar_past_analysis must show analysis_number="#2"
+   - If you say confidence boosted → historical_learning.historical_adjustment must be positive
+   - If you mention pattern match → historical_learning.pattern_match must show matches_winning_pattern=true
+   - **CONSISTENCY CHECK**: Reasoning text + historical_learning JSON must tell same story
+   - Example alignment:
+     * Reasoning says: "Setup giống Analysis #2 thắng +5.3%, tăng confidence từ 68 lên 85"
+     * JSON shows: similar_past_analysis.found=true, analysis_number="#2", past_profit_percent=5.3
+     * JSON shows: base_confidence=68, final_confidence_calculation="68 + 12 + 5 = 85"
+
+10. **Confidence Calculation Formula:**
+   ```
+   BASE_CONFIDENCE = Technical Analysis (0-100) + Fundamental Analysis (0-100) / 2
+   
+   HISTORICAL_ADJUSTMENT:
+   - Win rate > 60%: +10 to +15
+   - Win rate 40-60%: 0 (neutral)
+   - Win rate < 40%: -15 to -20 (or force WAIT)
+   - Similar to past WIN: +5 to +10
+   - Similar to past LOSS: -10 to -15
+   
+   FINAL_CONFIDENCE = min(100, max(0, BASE_CONFIDENCE + HISTORICAL_ADJUSTMENT))
+   ```
+   - Example: BASE=70, Win rate=72%, Similar to Analysis #2 (WIN) → FINAL=70+12+8=90
+   - Example: BASE=65, Win rate=30% → Force WAIT (too risky)
+
+10. **WAIT Triggers Based on History:**
+   - If win rate < 35% for similar setup → FORCE WAIT (preserve capital)
+   - If losing pattern matches AND no strong overriding technicals → WAIT
+   - If current setup very similar to recent LOSS → WAIT unless conditions clearly different
+   - If only 1-2 historical analyses (insufficient data) → Note "limited historical context, be cautious"
+
+**📊 EXAMPLES OF CORRECT HISTORICAL INTEGRATION:**
+
+✅ **EXCELLENT ANALYSIS WITH PREVIOUS ANALYSES REFERENCE:**
+```json
+{{
+  "confidence": 85,
+  "reasoning_vietnamese": "Phân tích kỹ thuật cơ bản cho confidence 68 điểm. 
+Dựa trên dữ liệu lịch sử 7 ngày, setup tương tự (RSI 30-40, MFI 25-35, Volume Profile ở DISCOUNT) 
+có tỷ lệ thắng 75% (9/12). RSI hiện tại 32 khớp với vùng này → +12 điểm.
+
+Đặc biệt, điều kiện hiện tại rất giống Analysis #2 (ngày 10/11) với:
+- RSI 31 vs 32 hiện tại
+- MFI 28 vs 27 hiện tại  
+- Volume Profile ở DISCOUNT (cùng vị trí)
+- Entry $103,200 đã thắng +5.3%, hit TP2
+
+Tuy nhiên, Analysis #2 có SL hơi rộng (3.5%), giá không test SL. 
+Do đó sử dụng SL chặt hơn 2.8% để tối ưu risk/reward.
+
+Final confidence: 68 + 12 (win rate) + 5 (similar to past win) = 85",
+  
+  "historical_learning": {{
+    "total_past_analyses": 12,
+    "win_rate_percent": 75,
+    "base_confidence": 68,
+    "historical_adjustment": 17,
+    "final_confidence_calculation": "Base 68 + Win Rate 75% (+12) + Similar to Analysis #2 WIN (+5) = 85",
+    "similar_past_analysis": {{
+      "found": true,
+      "analysis_number": "#2",
+      "analysis_date": "2025-11-10",
+      "similarity_factors": ["RSI 31 vs 32 current", "MFI 28 vs 27 current", "Both at DISCOUNT position", "Both BUY signals"],
+      "past_outcome": "WIN",
+      "past_profit_percent": 5.3,
+      "lessons_learned": "Analysis #2 entry worked well, hit TP2. SL was 3.5% but never tested, could have been tighter.",
+      "adjustments_made": "Tightened SL from 3.5% to 2.8% to improve risk/reward ratio while maintaining safety margin."
+    }},
+    "pattern_match": {{
+      "matches_winning_pattern": true,
+      "matches_losing_pattern": false,
+      "winning_pattern_details": "RSI 30-40, MFI 25-35, DISCOUNT position - 75% win rate (9/12 trades)",
+      "losing_pattern_details": null,
+      "pattern_confidence_impact": "Increase by 12 points due to strong historical win rate"
+    }},
+    "entry_stop_learning": {{
+      "past_sl_too_tight": false,
+      "past_sl_too_wide": true,
+      "past_tp_not_reached": false,
+      "past_entry_too_early": false,
+      "current_adjustments": "Tightened SL from historical 3.5% to 2.8% based on Analysis #2 not testing SL. TP targets kept similar as Analysis #2 hit TP2 successfully."
+    }},
+    "recommendation_rationale": "Historical win rate of 75% for this setup type combined with strong similarity to past winning Analysis #2 justifies high confidence. SL adjustment learned from past success improves risk/reward."
+  }}
+}}
+```
+
+✅ **EXCELLENT ANALYSIS WITH LOSS AVOIDANCE:**
+```json
+{{
+  "recommendation": "WAIT",
+  "confidence": 0,
+  "reasoning_vietnamese": "Phân tích kỹ thuật cho BUY signal với base confidence 62.
+Tuy nhiên, ⚠️ CẢNH BÁO: Setup hiện tại giống Analysis #4 (ngày 09/11) đã thua -3.8%:
+- RSI 67 (Analysis #4: RSI 65) - Cùng vùng overbought
+- MFI 72 (Analysis #4: MFI 70) - Quá cao
+- Volume Profile ở PREMIUM (Analysis #4: PREMIUM) - Đã quá đắt
+- Entry $105,000 đã bị rejected, hit SL
+
+Dữ liệu lịch sử cho thấy RSI 60-70 + PREMIUM position có win rate chỉ 30% (3/10).
+Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dưới 50.",
+  
+  "historical_learning": {{
+    "total_past_analyses": 10,
+    "win_rate_percent": 30,
+    "base_confidence": 62,
+    "historical_adjustment": -20,
+    "final_confidence_calculation": "Base 62 - Win Rate 30% (-18) - Similar to Analysis #4 LOSS (-2) = 42 → FORCED WAIT",
+    "similar_past_analysis": {{
+      "found": true,
+      "analysis_number": "#4",
+      "analysis_date": "2025-11-09",
+      "similarity_factors": ["RSI 65 vs 67 current (both overbought)", "MFI 70 vs 72 current (both high)", "Both at PREMIUM position", "Both BUY attempts at resistance"],
+      "past_outcome": "LOSS",
+      "past_profit_percent": -3.8,
+      "lessons_learned": "Analysis #4 tried to buy at PREMIUM with overbought indicators. Price rejected and hit SL. Buying at PREMIUM with RSI>60 has proven risky.",
+      "adjustments_made": "Changed recommendation from BUY to WAIT. Will only consider BUY when price returns to DISCOUNT or RSI drops below 50."
+    }},
+    "pattern_match": {{
+      "matches_winning_pattern": false,
+      "matches_losing_pattern": true,
+      "winning_pattern_details": null,
+      "losing_pattern_details": "RSI 60-70, MFI 65-75, PREMIUM position - 30% win rate (3/10 trades, 7 losses)",
+      "pattern_confidence_impact": "Decrease by 18 points due to poor historical performance in this setup"
+    }},
+    "entry_stop_learning": {{
+      "past_sl_too_tight": false,
+      "past_sl_too_wide": false,
+      "past_tp_not_reached": true,
+      "past_entry_too_early": true,
+      "current_adjustments": "Recommendation changed to WAIT instead of attempting early entry. Will wait for better conditions (DISCOUNT or lower RSI) before considering entry."
+    }},
+    "recommendation_rationale": "Strong similarity to past losing Analysis #4 combined with 30% win rate for this pattern type makes this trade too risky. Preserving capital by waiting for better setup."
+  }}
+}}
+```
+
+❌ **BAD ANALYSIS (DO NOT DO THIS):**
+```json
+{{
+  "confidence": 65,
+  "reasoning_vietnamese": "RSI quá bán, MFI thấp, có thể sẽ tăng.",
+  "historical_learning": {{}}
+}}
+```
+→ Không mention historical data, historical_learning empty = AI không học được gì!
+
+**⚠️ CRITICAL REMINDERS:**
+- PREVIOUS ANALYSES DETAILS section shows ACTUAL past recommendations - READ AND USE THEM
+- Historical data is NOT optional - it MUST influence your final recommendation
+- If you see losing patterns, AVOID them (don't repeat mistakes)
+- If you see winning patterns, FAVOR them (capitalize on what works)
+- Always explain WHY historical data changed your confidence score
+- Learning from past = Better future predictions = Higher user trust
+
 11. **Scoring methodology (UPDATED):**
     - Technical score = RSI+MFI (15%) + Stoch+RSI (15%) + Volume (10%) + Candles (10%) + Volume Profile (15%) + FVG (10%) + OB (10%) + S/R (10%) + SMC (15%)
     - Fundamental score = volume strength (40%), liquidity (30%), market sentiment (30%)
@@ -2101,7 +2439,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 # Remove control chars except \t (09), \n (0A), \r (0D)
                 response_text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F]', '', response_text)
                 
-                # Additional JSON cleaning
+                # Additional JSON cleaning (MORE AGGRESSIVE)
                 # Fix trailing commas in arrays/objects
                 response_text = re.sub(r',\s*}', '}', response_text)
                 response_text = re.sub(r',\s*]', ']', response_text)
@@ -2109,6 +2447,23 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 # Fix missing commas between object properties (common Gemini error)
                 # Pattern: "value"\n  "key" -> "value",\n  "key"
                 response_text = re.sub(r'"\s*\n\s*"', '",\n  "', response_text)
+                
+                # Fix missing commas after numbers in arrays: ] -> ,]
+                response_text = re.sub(r'(\d)\s*\n\s*(\d)', r'\1,\2', response_text)
+                
+                # Fix missing commas in arrays: 100.00 200.00 -> 100.00, 200.00
+                response_text = re.sub(r'(\d+\.?\d*)\s+(\d+\.?\d*)', r'\1, \2', response_text)
+                
+                # Fix long text breaking JSON: truncate reasoning if > 2000 chars
+                reasoning_match = re.search(r'"reasoning_vietnamese"\s*:\s*"([^"]*(?:\\"[^"]*)*)"', response_text, re.DOTALL)
+                if reasoning_match:
+                    reasoning_text = reasoning_match.group(1)
+                    if len(reasoning_text) > 2000:
+                        # Truncate and close properly
+                        truncated = reasoning_text[:2000] + '..."'
+                        response_text = response_text.replace(reasoning_match.group(0), 
+                                                              f'"reasoning_vietnamese": "{truncated}')
+                        logger.warning(f"Truncated reasoning_vietnamese from {len(reasoning_text)} to 2000 chars")
                 
                 analysis = json.loads(response_text)
             except json.JSONDecodeError as json_err:
