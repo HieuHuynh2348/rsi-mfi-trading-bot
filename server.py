@@ -289,19 +289,22 @@ def get_candles():
         
         binance = BinanceClient(config.BINANCE_API_KEY, config.BINANCE_API_SECRET)
         
-        # Fetch candles from Binance
-        candles_data = binance.get_klines(symbol, interval, limit=limit)
+        # Fetch candles from Binance (returns pandas DataFrame)
+        df = binance.get_klines(symbol, interval, limit=limit)
         
-        # Format candles for frontend
+        if df is None or df.empty:
+            return jsonify({'success': False, 'error': 'No data available'}), 404
+        
+        # Convert DataFrame to list of dicts for frontend
         candles = []
-        for candle in candles_data:
+        for idx, row in df.iterrows():
             candles.append({
-                'time': candle[0],  # Open time
-                'open': float(candle[1]),
-                'high': float(candle[2]),
-                'low': float(candle[3]),
-                'close': float(candle[4]),
-                'volume': float(candle[5])
+                'time': int(idx.timestamp() * 1000),  # Convert to milliseconds
+                'open': float(row['open']),
+                'high': float(row['high']),
+                'low': float(row['low']),
+                'close': float(row['close']),
+                'volume': float(row['volume'])
             })
         
         logger.info(f"✅ Returned {len(candles)} candles for {symbol} {interval}")
