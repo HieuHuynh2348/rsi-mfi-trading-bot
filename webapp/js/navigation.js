@@ -6,7 +6,7 @@
 class NavigationController {
     constructor() {
         this.currentTab = 'chart';
-        this.tabs = ['chart', 'indicators', 'ai', 'settings', 'info'];
+        this.tabs = ['chart', 'indicators', 'ai'];
         this.touchStartX = 0;
         this.touchEndX = 0;
         this.swipeThreshold = 50; // минимальное расстояние свайпа в пикселях
@@ -39,14 +39,6 @@ class NavigationController {
             <div class="nav-item" data-tab="ai">
                 <div class="nav-item-icon">🤖</div>
                 <div class="nav-item-label">AI</div>
-            </div>
-            <div class="nav-item" data-tab="settings">
-                <div class="nav-item-icon">⚙️</div>
-                <div class="nav-item-label">Settings</div>
-            </div>
-            <div class="nav-item" data-tab="info">
-                <div class="nav-item-icon">ℹ️</div>
-                <div class="nav-item-label">Info</div>
             </div>
         `;
         

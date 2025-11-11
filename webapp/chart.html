@@ -902,14 +902,17 @@
         <div id="chartContainer"></div>
     </div>
     
-    <!-- Indicators Tab (old panel kept for reference, but hidden) -->
+    <!-- Indicators Tab -->
     <div data-tab-content="indicators" style="display: none;">
-        <!-- Mobile IndicatorPanel will be shown here -->
+        <!-- Mobile IndicatorPanel will be dynamically shown here -->
+        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
+            <p>Drag indicator panel from bottom to view</p>
+        </div>
     </div>
     
     <!-- AI Analysis Tab -->
-    <div data-tab-content="ai" style="display: none;">
-        <div id="ai-analysis">
+    <div data-tab-content="ai" style="display: none; padding: 0;">
+        <div id="ai-analysis" style="height: 100%; overflow-y: auto;">
             <div style="padding: 20px; text-align: center;">
                 <button id="ai-analysis-btn" style="
                     padding: 12px 24px;
@@ -930,22 +933,6 @@
                 </div>
             </div>
             <div id="ai-content"></div>
-        </div>
-    </div>
-    
-    <!-- Settings Tab -->
-    <div data-tab-content="settings" style="display: none;">
-        <div style="padding: 20px;">
-            <h3 style="color: var(--text-primary); margin-bottom: 16px;">Settings</h3>
-            <p style="color: var(--text-secondary);">Settings panel coming soon...</p>
-        </div>
-    </div>
-    
-    <!-- Info Tab -->
-    <div data-tab-content="info" style="display: none;">
-        <div style="padding: 20px;">
-            <h3 style="color: var(--text-primary); margin-bottom: 16px;">Info</h3>
-            <p style="color: var(--text-secondary);">App info coming soon...</p>
         </div>
     </div>
     
