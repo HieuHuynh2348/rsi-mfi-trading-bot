@@ -2433,12 +2433,22 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             asset_type = analysis.get('asset_type', 'UNKNOWN')
             tech += f"<b>🎯 Asset Type (v2.2):</b> {asset_type}\n"
             
+            # Helper function to escape HTML special characters
+            def escape_html(text):
+                """Escape HTML special characters to prevent parsing errors"""
+                if not isinstance(text, str):
+                    text = str(text)
+                return (text.replace('&', '&amp;')
+                           .replace('<', '&lt;')
+                           .replace('>', '&gt;')
+                           .replace('"', '&quot;'))
+            
             # Add asset-specific context
             sector = analysis.get('sector_analysis', {})
             if sector and sector.get('sector') != 'Unknown':
-                tech += f"   • Sector: {sector.get('sector')}\n"
-                tech += f"   • Sector Momentum: {sector.get('sector_momentum')}\n"
-                tech += f"   • Rotation Risk: {sector.get('rotation_risk')}\n\n"
+                tech += f"   • Sector: {escape_html(sector.get('sector', ''))}\n"
+                tech += f"   • Sector Momentum: {escape_html(sector.get('sector_momentum', ''))}\n"
+                tech += f"   • Rotation Risk: {escape_html(sector.get('rotation_risk', ''))}\n\n"
             
             corr = analysis.get('correlation_analysis', {})
             if corr and corr.get('btc_correlation', 0) > 0:
@@ -2451,18 +2461,18 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             if fund and fund.get('health_score', 0) >= 0:
                 tech += f"<b>💪 Fundamental Analysis:</b>\n"
                 tech += f"   • Health Score: {fund.get('health_score', 0)}/100\n"
-                tech += f"   • Tokenomics: {fund.get('tokenomics', 'Unknown')}\n"
-                tech += f"   • Centralization Risk: {fund.get('centralization_risk', 'Medium')}\n"
-                tech += f"   • Ecosystem: {fund.get('ecosystem_strength', 'Moderate')}\n\n"
+                tech += f"   • Tokenomics: {escape_html(fund.get('tokenomics', 'Unknown'))}\n"
+                tech += f"   • Centralization Risk: {escape_html(fund.get('centralization_risk', 'Medium'))}\n"
+                tech += f"   • Ecosystem: {escape_html(fund.get('ecosystem_strength', 'Moderate'))}\n\n"
             
             sizing = analysis.get('position_sizing_recommendation', {})
             if sizing and sizing.get('position_size_percent'):
                 tech += f"<b>📊 Position Sizing (v2.2):</b>\n"
-                tech += f"   • Position Size: {sizing.get('position_size_percent')}\n"
-                tech += f"   • Risk Per Trade: {sizing.get('risk_per_trade')}\n"
-                tech += f"   • Leverage: {sizing.get('recommended_leverage')}\n"
+                tech += f"   • Position Size: {escape_html(sizing.get('position_size_percent', ''))}\n"
+                tech += f"   • Risk Per Trade: {escape_html(sizing.get('risk_per_trade', ''))}\n"
+                tech += f"   • Leverage: {escape_html(sizing.get('recommended_leverage', ''))}\n"
                 if sizing.get('liquidity_notes'):
-                    tech += f"   • Liquidity: {sizing.get('liquidity_notes')}\n"
+                    tech += f"   • Liquidity: {escape_html(sizing.get('liquidity_notes', ''))}\n"
                 tech += "\n"
             
             # Macro context for BTC or altcoins
@@ -2470,17 +2480,17 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             if macro:
                 if asset_type == 'BTC':
                     tech += f"<b>🏛️ BTC Macro Context:</b>\n"
-                    tech += f"   • Dominance: {macro.get('btc_dominance', 'N/A')}\n"
-                    tech += f"   • Institutional: {macro.get('institutional_flows', 'N/A')}\n"
-                    tech += f"   • ETF Status: {macro.get('etf_status', 'N/A')}\n"
-                    tech += f"   • Whale Activity: {macro.get('whale_activity', 'N/A')}\n\n"
+                    tech += f"   • Dominance: {escape_html(macro.get('btc_dominance', 'N/A'))}\n"
+                    tech += f"   • Institutional: {escape_html(macro.get('institutional_flows', 'N/A'))}\n"
+                    tech += f"   • ETF Status: {escape_html(macro.get('etf_status', 'N/A'))}\n"
+                    tech += f"   • Whale Activity: {escape_html(macro.get('whale_activity', 'N/A'))}\n\n"
                 elif asset_type in ['ETH', 'LARGE_CAP_ALT', 'MID_CAP_ALT']:
                     tech += f"<b>🔗 Altcoin Context:</b>\n"
-                    tech += f"   • Sector Status: {macro.get('sector_rotation_status', 'N/A')}\n"
-                    tech += f"   • BTC Dependency: {macro.get('btc_dependency', 'N/A')}\n"
+                    tech += f"   • Sector Status: {escape_html(macro.get('sector_rotation_status', 'N/A'))}\n"
+                    tech += f"   • BTC Dependency: {escape_html(macro.get('btc_dependency', 'N/A'))}\n"
                     if macro.get('project_catalysts'):
-                        tech += f"   • Catalysts: {macro.get('project_catalysts')}\n"
-                    tech += f"   • Liquidity: {macro.get('liquidity_assessment', 'N/A')}\n\n"
+                        tech += f"   • Catalysts: {escape_html(macro.get('project_catalysts', ''))}\n"
+                    tech += f"   • Liquidity: {escape_html(macro.get('liquidity_assessment', 'N/A'))}\n\n"
             
             # Scores
             tech_score = analysis.get('technical_score', 0)
@@ -2500,39 +2510,61 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # Key points
             tech += "<b>🎯 Điểm Chính:</b>\n"
             for point in analysis.get('key_points', []):
-                tech += f"   ✓ {point}\n"
+                # Escape HTML characters in key points
+                safe_point = (str(point).replace('&', '&amp;')
+                                       .replace('<', '&lt;')
+                                       .replace('>', '&gt;')
+                                       .replace('"', '&quot;'))
+                tech += f"   ✓ {safe_point}\n"
             
             # Conflicting signals
             conflicts = analysis.get('conflicting_signals', [])
             if conflicts:
                 tech += "\n<b>⚠️ Tín Hiệu Mâu Thuẫn:</b>\n"
                 for conflict in conflicts:
-                    tech += f"   • {conflict}\n"
+                    safe_conflict = (str(conflict).replace('&', '&amp;')
+                                                  .replace('<', '&lt;')
+                                                  .replace('>', '&gt;')
+                                                  .replace('"', '&quot;'))
+                    tech += f"   • {safe_conflict}\n"
             
             # Warnings
             warnings = analysis.get('warnings', [])
             if warnings:
                 tech += "\n<b>🚨 Cảnh Báo:</b>\n"
                 for warning in warnings:
-                    tech += f"   ⚠️ {warning}\n"
+                    safe_warning = (str(warning).replace('&', '&amp;')
+                                                .replace('<', '&lt;')
+                                                .replace('>', '&gt;')
+                                                .replace('"', '&quot;'))
+                    tech += f"   ⚠️ {safe_warning}\n"
             
             # Historical Analysis
             hist_analysis = analysis.get('historical_analysis', {})
             if hist_analysis:
                 tech += "\n<b>📊 Phân Tích Dữ Liệu Lịch Sử:</b>\n\n"
                 
+                # Helper to escape HTML in historical data
+                def safe_text(text):
+                    if not text:
+                        return ''
+                    return (str(text).replace('&', '&amp;')
+                                    .replace('<', '&lt;')
+                                    .replace('>', '&gt;')
+                                    .replace('"', '&quot;'))
+                
                 # 1H Context
                 h1 = hist_analysis.get('h1_context', {})
                 if h1:
                     tech += "<b>⏰ Khung 1H (7 ngày):</b>\n"
                     if h1.get('rsi_interpretation'):
-                        tech += f"   • RSI: {h1['rsi_interpretation']}\n"
+                        tech += f"   • RSI: {safe_text(h1['rsi_interpretation'])}\n"
                     if h1.get('volume_trend'):
-                        tech += f"   • Volume: {h1['volume_trend']}\n"
+                        tech += f"   • Volume: {safe_text(h1['volume_trend'])}\n"
                     if h1.get('price_position'):
-                        tech += f"   • Vị trí: {h1['price_position']}\n"
+                        tech += f"   • Vị trí: {safe_text(h1['price_position'])}\n"
                     if h1.get('institutional_insights'):
-                        tech += f"   • Institutional: {h1['institutional_insights']}\n"
+                        tech += f"   • Institutional: {safe_text(h1['institutional_insights'])}\n"
                     tech += "\n"
                 
                 # 4H Context
@@ -2540,13 +2572,13 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 if h4:
                     tech += "<b>⏰ Khung 4H (30 ngày):</b>\n"
                     if h4.get('rsi_interpretation'):
-                        tech += f"   • RSI: {h4['rsi_interpretation']}\n"
+                        tech += f"   • RSI: {safe_text(h4['rsi_interpretation'])}\n"
                     if h4.get('volume_trend'):
-                        tech += f"   • Volume: {h4['volume_trend']}\n"
+                        tech += f"   • Volume: {safe_text(h4['volume_trend'])}\n"
                     if h4.get('price_position'):
-                        tech += f"   • Vị trí: {h4['price_position']}\n"
+                        tech += f"   • Vị trí: {safe_text(h4['price_position'])}\n"
                     if h4.get('institutional_insights'):
-                        tech += f"   • Institutional: {h4['institutional_insights']}\n"
+                        tech += f"   • Institutional: {safe_text(h4['institutional_insights'])}\n"
                     tech += "\n"
                 
                 # 1D Context
@@ -2554,13 +2586,13 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 if d1:
                     tech += "<b>⏰ Khung 1D (90 ngày):</b>\n"
                     if d1.get('rsi_mfi_correlation'):
-                        tech += f"   • RSI/MFI: {d1['rsi_mfi_correlation']}\n"
+                        tech += f"   • RSI/MFI: {safe_text(d1['rsi_mfi_correlation'])}\n"
                     if d1.get('long_term_trend'):
-                        tech += f"   • Xu hướng: {d1['long_term_trend']}\n"
+                        tech += f"   • Xu hướng: {safe_text(d1['long_term_trend'])}\n"
                     if d1.get('volatility_assessment'):
-                        tech += f"   • Biến động: {d1['volatility_assessment']}\n"
+                        tech += f"   • Biến động: {safe_text(d1['volatility_assessment'])}\n"
                     if d1.get('institutional_insights'):
-                        tech += f"   • Institutional: {d1['institutional_insights']}\n"
+                        tech += f"   • Institutional: {safe_text(d1['institutional_insights'])}\n"
             
             tech += "\n═══════════════════════════════════"
             
