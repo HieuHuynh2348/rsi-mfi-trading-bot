@@ -38,6 +38,7 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/ai-tab.css">
+    <link rel="stylesheet" href="css/indicators-tab.css">
     
     <!-- Lightweight Charts Library v5.0 with fallback CDN -->
     <script 
@@ -3352,6 +3353,24 @@
             } else {
                 if (typeof AnalysisHistory === 'undefined') console.warn('⚠️ AnalysisHistory class not found');
                 if (!tg.initDataUnsafe?.user?.id) console.warn('⚠️ User ID not available');
+            }
+            
+            // Initialize Indicators Tab Controller
+            if (typeof IndicatorsTabController !== 'undefined') {
+                try {
+                    window.indicatorsTab = new IndicatorsTabController();
+                    window.indicatorsTab.init();
+                    console.log('✅ Indicators Tab initialized');
+                    
+                    // Update indicators context when symbol/timeframe changes
+                    if (typeof symbol !== 'undefined' && typeof currentTimeframe !== 'undefined') {
+                        window.indicatorsTab.setContext(symbol, currentTimeframe);
+                    }
+                } catch (e) {
+                    console.error('❌ Indicators Tab initialization error:', e);
+                }
+            } else {
+                console.warn('⚠️ IndicatorsTabController class not found');
             }
             
             // Initialize Timeframe Switcher

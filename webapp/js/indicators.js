@@ -318,3 +318,404 @@ class IndicatorPanel {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = IndicatorPanel;
 }
+
+/**
+ * Indicators Tab Controller
+ * Modern multi-timeframe technical indicators display
+ * Version: 2.0 - Complete Rebuild with Multi-Timeframe Support
+ */
+
+class IndicatorsTabController {
+    constructor() {
+        this.container = document.querySelector('[data-tab-content="indicators"]');
+        this.currentSymbol = 'BTCUSDT';
+        this.timeframes = ['1m', '5m', '15m', '1h', '4h', '1d'];
+        this.selectedTimeframe = '1h';
+        this.indicators = {};
+        this.isLoading = false;
+        
+        console.log('📊 IndicatorsTabController initialized');
+    }
+
+    /**
+     * Initialize the tab
+     */
+    init() {
+        console.log('📊 Initializing Indicators Tab...');
+        if (!this.container) {
+            console.warn('⚠️ Indicators container not found');
+            return;
+        }
+        this.render();
+    }
+
+    /**
+     * Set context (symbol and timeframe)
+     */
+    setContext(symbol, timeframe) {
+        console.log(`📊 Indicators context: ${symbol} ${timeframe}`);
+        this.currentSymbol = symbol;
+        this.selectedTimeframe = timeframe;
+        this.loadIndicators();
+    }
+
+    /**
+     * Load indicators for all timeframes
+     */
+    async loadIndicators() {
+        if (this.isLoading) return;
+        
+        this.isLoading = true;
+        this.showLoading();
+
+        try {
+            // Load indicators for all timeframes in parallel
+            const promises = this.timeframes.map(tf => 
+                this.fetchIndicatorsForTimeframe(tf)
+            );
+            
+            const results = await Promise.all(promises);
+            
+            // Store results
+            results.forEach((data, index) => {
+                this.indicators[this.timeframes[index]] = data;
+            });
+            
+            this.renderIndicators();
+            console.log('✅ Indicators loaded for all timeframes');
+        } catch (error) {
+            console.error('❌ Error loading indicators:', error);
+            this.showError(error.message);
+        } finally {
+            this.isLoading = false;
+        }
+    }
+
+    /**
+     * Fetch indicators for a specific timeframe
+     */
+    async fetchIndicatorsForTimeframe(timeframe) {
+        const response = await fetch(`/api/candles?symbol=${this.currentSymbol}&interval=${timeframe}&limit=100`);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch data for ${timeframe}`);
+        }
+        
+        const data = await response.json();
+        return this.calculateIndicators(data.candles || []);
+    }
+
+    /**
+     * Calculate technical indicators from candle data
+     */
+    calculateIndicators(candles) {
+        if (!candles || candles.length === 0) {
+            return {
+                rsi: null,
+                mfi: null,
+                stochRSI: null,
+                volumeRatio: null,
+                ema20: null,
+                macd: null,
+                price: 0
+            };
+        }
+
+        return {
+            rsi: this.calculateRSI(candles, 6),
+            mfi: this.calculateMFI(candles, 6),
+            stochRSI: this.calculateStochRSI(candles, 14),
+            volumeRatio: this.calculateVolumeRatio(candles),
+            ema20: this.calculateEMA(candles, 20),
+            macd: this.calculateMACD(candles),
+            price: candles[candles.length - 1]?.close || 0
+        };
+    }
+
+    /**
+     * Calculate RSI
+     */
+    calculateRSI(candles, period = 14) {
+        if (candles.length < period + 1) return null;
+
+        let gains = 0;
+        let losses = 0;
+
+        for (let i = candles.length - period; i < candles.length; i++) {
+            const change = candles[i].close - candles[i - 1].close;
+            if (change > 0) gains += change;
+            else losses += Math.abs(change);
+        }
+
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+
+        if (avgLoss === 0) return 100;
+        const rs = avgGain / avgLoss;
+        return 100 - (100 / (1 + rs));
+    }
+
+    /**
+     * Calculate MFI (Money Flow Index)
+     */
+    calculateMFI(candles, period = 14) {
+        if (candles.length < period + 1) return null;
+
+        let positiveFlow = 0;
+        let negativeFlow = 0;
+
+        for (let i = candles.length - period; i < candles.length; i++) {
+            const typicalPrice = (candles[i].high + candles[i].low + candles[i].close) / 3;
+            const prevTypicalPrice = (candles[i - 1].high + candles[i - 1].low + candles[i - 1].close) / 3;
+            const moneyFlow = typicalPrice * candles[i].volume;
+
+            if (typicalPrice > prevTypicalPrice) {
+                positiveFlow += moneyFlow;
+            } else {
+                negativeFlow += moneyFlow;
+            }
+        }
+
+        if (negativeFlow === 0) return 100;
+        const moneyFlowRatio = positiveFlow / negativeFlow;
+        return 100 - (100 / (1 + moneyFlowRatio));
+    }
+
+    /**
+     * Calculate Stochastic RSI
+     */
+    calculateStochRSI(candles, period = 14) {
+        if (candles.length < period + 1) return null;
+
+        const rsiValues = [];
+        for (let i = period; i < candles.length; i++) {
+            const slice = candles.slice(i - period, i + 1);
+            const rsi = this.calculateRSI(slice, period);
+            if (rsi !== null) rsiValues.push(rsi);
+        }
+
+        if (rsiValues.length === 0) return null;
+
+        const currentRSI = rsiValues[rsiValues.length - 1];
+        const minRSI = Math.min(...rsiValues);
+        const maxRSI = Math.max(...rsiValues);
+
+        if (maxRSI === minRSI) return 50;
+        return ((currentRSI - minRSI) / (maxRSI - minRSI)) * 100;
+    }
+
+    /**
+     * Calculate Volume Ratio
+     */
+    calculateVolumeRatio(candles) {
+        if (candles.length < 20) return null;
+
+        const recentVolume = candles[candles.length - 1].volume;
+        const avgVolume = candles.slice(-20).reduce((sum, c) => sum + c.volume, 0) / 20;
+
+        return avgVolume > 0 ? recentVolume / avgVolume : 0;
+    }
+
+    /**
+     * Calculate EMA
+     */
+    calculateEMA(candles, period = 20) {
+        if (candles.length < period) return null;
+
+        const multiplier = 2 / (period + 1);
+        let ema = candles.slice(0, period).reduce((sum, c) => sum + c.close, 0) / period;
+
+        for (let i = period; i < candles.length; i++) {
+            ema = (candles[i].close - ema) * multiplier + ema;
+        }
+
+        return ema;
+    }
+
+    /**
+     * Calculate MACD
+     */
+    calculateMACD(candles) {
+        if (candles.length < 26) return null;
+
+        const ema12 = this.calculateEMA(candles, 12);
+        const ema26 = this.calculateEMA(candles, 26);
+
+        if (ema12 === null || ema26 === null) return null;
+
+        return ema12 - ema26;
+    }
+
+    /**
+     * Get signal for indicator value
+     */
+    getSignal(indicator, value) {
+        if (value === null) return 'neutral';
+
+        switch (indicator) {
+            case 'rsi':
+                return value > 70 ? 'bearish' : value < 30 ? 'bullish' : 'neutral';
+            case 'mfi':
+                return value > 80 ? 'bearish' : value < 20 ? 'bullish' : 'neutral';
+            case 'stochRSI':
+                return value > 80 ? 'bearish' : value < 20 ? 'bullish' : 'neutral';
+            case 'volumeRatio':
+                return value > 2 ? 'bullish' : value < 0.5 ? 'bearish' : 'neutral';
+            case 'macd':
+                return value > 0 ? 'bullish' : value < 0 ? 'bearish' : 'neutral';
+            default:
+                return 'neutral';
+        }
+    }
+
+    /**
+     * Show loading state
+     */
+    showLoading() {
+        if (!this.container) return;
+        
+        const content = this.container.querySelector('#indicators-tab-content');
+        if (content) {
+            content.innerHTML = `
+                <div class="indicators-loading">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Đang tải indicators...</div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Show error state
+     */
+    showError(message) {
+        if (!this.container) return;
+        
+        const content = this.container.querySelector('#indicators-tab-content');
+        if (content) {
+            content.innerHTML = `
+                <div class="indicators-error">
+                    <div class="error-icon">⚠️</div>
+                    <div class="error-title">Lỗi Tải Dữ Liệu</div>
+                    <div class="error-message">${message}</div>
+                    <button class="error-retry-btn" onclick="window.indicatorsTab?.loadIndicators()">
+                        <span>🔄</span> Thử Lại
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render initial UI
+     */
+    render() {
+        if (!this.container) return;
+        
+        // Just ensure the container structure exists
+        const content = this.container.querySelector('#indicators-tab-content');
+        if (!content) {
+            this.container.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: var(--text-primary); font-size: var(--font-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-md);">
+                        Technical Indicators - Multi Timeframe
+                    </h3>
+                </div>
+                <div id="indicators-tab-content">
+                    <div class="indicators-empty">
+                        <div class="empty-icon">📊</div>
+                        <div class="empty-title">Chưa Có Dữ Liệu</div>
+                        <div class="empty-text">Chọn symbol để xem indicators</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Render indicators for all timeframes
+     */
+    renderIndicators() {
+        if (!this.container) return;
+        
+        const content = this.container.querySelector('#indicators-tab-content');
+        if (!content) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'indicators-wrapper';
+
+        // Render each timeframe
+        this.timeframes.forEach(tf => {
+            const data = this.indicators[tf];
+            const card = this.renderTimeframeCard(tf, data);
+            wrapper.appendChild(card);
+        });
+
+        content.innerHTML = '';
+        content.appendChild(wrapper);
+    }
+
+    /**
+     * Render a single timeframe card
+     */
+    renderTimeframeCard(timeframe, data) {
+        const card = document.createElement('div');
+        card.className = 'indicators-timeframe-card';
+
+        const isActive = timeframe === this.selectedTimeframe;
+        if (isActive) card.classList.add('active');
+
+        const rsiSignal = this.getSignal('rsi', data?.rsi);
+        const mfiSignal = this.getSignal('mfi', data?.mfi);
+        const stochSignal = this.getSignal('stochRSI', data?.stochRSI);
+        const volumeSignal = this.getSignal('volumeRatio', data?.volumeRatio);
+        const macdSignal = this.getSignal('macd', data?.macd);
+
+        card.innerHTML = `
+            <div class="timeframe-header">
+                <div class="timeframe-label">${timeframe.toUpperCase()}</div>
+                ${data?.price ? `<div class="timeframe-price">$${data.price.toFixed(2)}</div>` : ''}
+            </div>
+            <div class="indicators-grid">
+                <div class="indicator-item">
+                    <div class="indicator-name">RSI (6)</div>
+                    <div class="indicator-value ${rsiSignal}">
+                        ${data?.rsi !== null ? data.rsi.toFixed(1) : 'N/A'}
+                    </div>
+                </div>
+                <div class="indicator-item">
+                    <div class="indicator-name">MFI (6)</div>
+                    <div class="indicator-value ${mfiSignal}">
+                        ${data?.mfi !== null ? data.mfi.toFixed(1) : 'N/A'}
+                    </div>
+                </div>
+                <div class="indicator-item">
+                    <div class="indicator-name">Stoch RSI</div>
+                    <div class="indicator-value ${stochSignal}">
+                        ${data?.stochRSI !== null ? data.stochRSI.toFixed(1) : 'N/A'}
+                    </div>
+                </div>
+                <div class="indicator-item">
+                    <div class="indicator-name">Volume Ratio</div>
+                    <div class="indicator-value ${volumeSignal}">
+                        ${data?.volumeRatio !== null ? data.volumeRatio.toFixed(2) + 'x' : 'N/A'}
+                    </div>
+                </div>
+                <div class="indicator-item">
+                    <div class="indicator-name">EMA (20)</div>
+                    <div class="indicator-value neutral">
+                        ${data?.ema20 !== null ? '$' + data.ema20.toFixed(2) : 'N/A'}
+                    </div>
+                </div>
+                <div class="indicator-item">
+                    <div class="indicator-name">MACD</div>
+                    <div class="indicator-value ${macdSignal}">
+                        ${data?.macd !== null ? data.macd.toFixed(2) : 'N/A'}
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return card;
+    }
+}

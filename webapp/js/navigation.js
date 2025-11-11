@@ -219,6 +219,14 @@ class NavigationController {
             if (activeSection) {
                 activeSection.style.display = 'block';
                 
+                // Special handling for indicators tab
+                if (tabName === 'indicators' && window.indicatorsTab) {
+                    // Reload indicators when tab is shown
+                    if (typeof symbol !== 'undefined' && typeof currentTimeframe !== 'undefined') {
+                        window.indicatorsTab.setContext(symbol, currentTimeframe);
+                    }
+                }
+                
                 // Special handling for history tab
                 if (tabName === 'history' && !this.historyModule) {
                     this.initializeHistoryModule();
