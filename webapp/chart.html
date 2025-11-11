@@ -334,8 +334,8 @@
             position: relative;
             margin: 0;
             padding: 0;
-            /* Optimized touch handling for mobile - allow all gestures */
-            touch-action: manipulation;
+            /* Disable default touch actions - let chart library handle all gestures */
+            touch-action: none;
             -webkit-user-select: none;
             user-select: none;
             /* GPU acceleration for smoother scrolling */
@@ -1741,9 +1741,9 @@
                     },
                     handleScroll: {
                         mouseWheel: true,
-                        pressedMouseMove: true,
-                        horzTouchDrag: true,  // Enable horizontal touch drag for panning timeline
-                        vertTouchDrag: false,  // Disable to prevent conflict with page scroll
+                        pressedMouseMove: true,  // Enable drag with mouse/touch press on chart body
+                        horzTouchDrag: true,     // Enable horizontal swipe on chart body
+                        vertTouchDrag: true,     // Enable vertical touch for price scale (won't scroll page due to touch-action CSS)
                     },
                     handleScale: {
                         axisPressedMouseMove: {
