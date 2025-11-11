@@ -283,39 +283,36 @@ def get_candles():
         if not symbol or not interval:
             return jsonify({'success': False, 'error': 'Missing symbol or interval parameter'}), 400
         
-        # Get binance client from bot
-        from main import bot as trading_bot
+        # Create Binance client directly (no need to import from main)
+        from binance_client import BinanceClient
+        import config
         
-        if trading_bot and hasattr(trading_bot, 'binance_client'):
-            binance = trading_bot.binance_client
-            
-            # Fetch candles from Binance
-            candles_data = binance.get_klines(symbol, interval, limit=limit)
-            
-            # Format candles for frontend
-            candles = []
-            for candle in candles_data:
-                candles.append({
-                    'time': candle[0],  # Open time
-                    'open': float(candle[1]),
-                    'high': float(candle[2]),
-                    'low': float(candle[3]),
-                    'close': float(candle[4]),
-                    'volume': float(candle[5])
-                })
-            
-            logger.info(f"✅ Returned {len(candles)} candles for {symbol} {interval}")
-            
-            return jsonify({
-                'success': True,
-                'symbol': symbol,
-                'interval': interval,
-                'count': len(candles),
-                'candles': candles
+        binance = BinanceClient(config.BINANCE_API_KEY, config.BINANCE_API_SECRET)
+        
+        # Fetch candles from Binance
+        candles_data = binance.get_klines(symbol, interval, limit=limit)
+        
+        # Format candles for frontend
+        candles = []
+        for candle in candles_data:
+            candles.append({
+                'time': candle[0],  # Open time
+                'open': float(candle[1]),
+                'high': float(candle[2]),
+                'low': float(candle[3]),
+                'close': float(candle[4]),
+                'volume': float(candle[5])
             })
-        else:
-            logger.error("❌ Binance client not found")
-            return jsonify({'success': False, 'error': 'Binance client not available'}), 503
+        
+        logger.info(f"✅ Returned {len(candles)} candles for {symbol} {interval}")
+        
+        return jsonify({
+            'success': True,
+            'symbol': symbol,
+            'interval': interval,
+            'count': len(candles),
+            'candles': candles
+        })
             
     except Exception as e:
         logger.error(f"❌ Candles API error: {e}", exc_info=True)
