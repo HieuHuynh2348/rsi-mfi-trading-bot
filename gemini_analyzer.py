@@ -519,7 +519,10 @@ class GeminiAnalyzer:
                 position = "VALUE_AREA"
             
             # Distance from POC
-            distance_from_poc = ((current_price - poc_price) / poc_price) * 100
+            if poc_price > 0:
+                distance_from_poc = ((current_price - poc_price) / poc_price) * 100
+            else:
+                distance_from_poc = 0.0
             
             return {
                 'poc': round(poc_price, 4),
@@ -2097,6 +2100,15 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 import re
                 # Remove control chars except \t (09), \n (0A), \r (0D)
                 response_text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F]', '', response_text)
+                
+                # Additional JSON cleaning
+                # Fix trailing commas in arrays/objects
+                response_text = re.sub(r',\s*}', '}', response_text)
+                response_text = re.sub(r',\s*]', ']', response_text)
+                
+                # Fix missing commas between object properties (common Gemini error)
+                # Pattern: "value"\n  "key" -> "value",\n  "key"
+                response_text = re.sub(r'"\s*\n\s*"', '",\n  "', response_text)
                 
                 analysis = json.loads(response_text)
             except json.JSONDecodeError as json_err:
