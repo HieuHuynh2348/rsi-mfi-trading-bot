@@ -33,6 +33,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="analytics.js"></script>
     
+    <!-- Mobile-First Design System -->
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/components.css">
+    
     <!-- Lightweight Charts Library v5.0 with fallback CDN -->
     <script 
         src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"
@@ -755,6 +760,9 @@
         <button class="tab-btn" data-tab="ai">AI Analysis</button>
         <button class="tab-btn" data-tab="history">📊 History</button>
     </div>
+    
+    <!-- Timeframe Switcher Container (New Mobile Component) -->
+    <div id="timeframe-container"></div>
     
     <div id="timeframes">
         <button class="tf-btn" data-tf="5m">5M</button>
@@ -2923,6 +2931,11 @@
                 // Update indicators with dynamic display
                 updateIndicatorDisplay(rsi, mfi, stochRSI, volumeRatio);
                 
+                // Update mobile indicator panel
+                if (typeof updateIndicatorPanel === 'function') {
+                    updateIndicatorPanel({ rsi, mfi, stochRSI, volumeRatio });
+                }
+                
                 // Update signal badge
                 updateSignalBadge(rsi, mfi);
                 
@@ -3647,6 +3660,11 @@
                                     updateIndicatorDisplay(rsi, mfi, stochRSI, volumeRatio);
                                     updateSignalBadge(rsi, mfi);
                                     
+                                    // Update mobile indicator panel
+                                    if (typeof updateIndicatorPanel === 'function') {
+                                        updateIndicatorPanel({ rsi, mfi, stochRSI, volumeRatio });
+                                    }
+                                    
                                     console.log(`📊 Candle closed: ${close}, RSI: ${rsi.toFixed(2)}, MFI: ${mfi.toFixed(2)}, StochRSI: ${stochRSI.toFixed(2)}, Vol: ${volumeRatio.toFixed(2)}x`);
                                 }
                             }
@@ -3783,6 +3801,92 @@
                     <button onclick="location.reload()" style="margin-top: 10px; padding: 10px 20px; font-size: 16px;">Reload</button>
                 </div>
             `;
+        }
+    </script>
+    
+    <!-- Mobile Components -->
+    <script src="js/navigation.js"></script>
+    <script src="js/timeframe.js"></script>
+    <script src="js/indicators.js"></script>
+    
+    <!-- Component Initialization -->
+    <script>
+        // Initialize after DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Initializing mobile components...');
+            
+            // Initialize Navigation
+            if (typeof NavigationController !== 'undefined') {
+                window.navigation = new NavigationController();
+                console.log('✅ Navigation initialized');
+            }
+            
+            // Initialize Timeframe Switcher
+            const timeframeContainer = document.querySelector('#timeframe-container');
+            if (timeframeContainer && typeof TimeframeSwitcher !== 'undefined') {
+                window.timeframeSwitcher = new TimeframeSwitcher({
+                    container: timeframeContainer,
+                    defaultTimeframe: '1h',
+                    onChange: (timeframe) => {
+                        console.log('⏱️ Timeframe changed:', timeframe);
+                        // Update chart data
+                        currentTimeframe = timeframe;
+                        loadChartData(timeframe);
+                    }
+                });
+                console.log('✅ Timeframe switcher initialized');
+            }
+            
+            // Initialize Indicator Panel
+            if (typeof IndicatorPanel !== 'undefined') {
+                window.indicatorPanel = new IndicatorPanel({
+                    container: document.body,
+                    indicators: [] // Will be populated when chart loads
+                });
+                console.log('✅ Indicator panel initialized');
+            }
+        });
+        
+        // Update indicators when chart data loads
+        function updateIndicatorPanel(data) {
+            if (!window.indicatorPanel) return;
+            
+            const { rsi, mfi, stochRSI, volumeRatio } = data;
+            
+            window.indicatorPanel.updateIndicators([
+                {
+                    id: 'rsi',
+                    name: 'RSI (6)',
+                    value: rsi ? rsi.toFixed(1) : 'N/A',
+                    signal: rsi > 70 ? 'bearish' : rsi < 30 ? 'bullish' : 'neutral',
+                    enabled: true,
+                    description: rsi > 70 ? 'Overbought zone' : rsi < 30 ? 'Oversold zone' : 'Neutral zone'
+                },
+                {
+                    id: 'mfi',
+                    name: 'MFI (6)',
+                    value: mfi ? mfi.toFixed(1) : 'N/A',
+                    signal: mfi > 80 ? 'bearish' : mfi < 20 ? 'bullish' : 'neutral',
+                    enabled: true,
+                    description: mfi > 80 ? 'Overbought zone' : mfi < 20 ? 'Oversold zone' : 'Neutral zone'
+                },
+                {
+                    id: 'stochRSI',
+                    name: 'Stoch RSI',
+                    value: stochRSI ? stochRSI.toFixed(1) : 'N/A',
+                    signal: stochRSI > 80 ? 'bearish' : stochRSI < 20 ? 'bullish' : 'neutral',
+                    enabled: true,
+                    description: stochRSI > 80 ? 'Overbought' : stochRSI < 20 ? 'Oversold' : 'Neutral'
+                },
+                {
+                    id: 'volume',
+                    name: 'Volume Ratio',
+                    value: volumeRatio ? volumeRatio.toFixed(2) + 'x' : 'N/A',
+                    signal: volumeRatio > 2 ? 'bullish' : volumeRatio < 0.5 ? 'bearish' : 'neutral',
+                    enabled: true,
+                    description: volumeRatio > 2 ? 'High volume' : volumeRatio < 0.5 ? 'Low volume' : 'Normal volume'
+                }
+            ]);
         }
     </script>
 </body>
