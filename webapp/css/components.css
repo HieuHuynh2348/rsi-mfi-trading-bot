@@ -1,0 +1,372 @@
+/**
+ * Component Styles - Mobile-First UI Components
+ * TradingView + Binance inspired design
+ */
+
+/* ============================================================ */
+/* BOTTOM NAVIGATION BAR */
+/* ============================================================ */
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(60px + var(--safe-area-inset-bottom));
+    background: var(--secondary-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding-bottom: var(--safe-area-inset-bottom);
+    z-index: var(--z-sticky);
+    /* GPU acceleration */
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+.nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: var(--touch-target-min);
+    color: var(--text-secondary);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    position: relative;
+}
+
+.nav-item-icon {
+    font-size: 24px;
+    transition: transform var(--transition-fast) var(--spring);
+}
+
+.nav-item-label {
+    font-size: var(--font-xs);
+    font-weight: var(--weight-medium);
+}
+
+.nav-item.active {
+    color: var(--accent-blue);
+}
+
+.nav-item.active .nav-item-icon {
+    transform: scale(1.1);
+}
+
+/* Ripple effect on tap */
+.nav-item::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: var(--accent-blue);
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s, height 0.3s, opacity 0.3s;
+}
+
+.nav-item:active::before {
+    width: 100px;
+    height: 100px;
+    opacity: 0.2;
+}
+
+/* ============================================================ */
+/* TIMEFRAME SWITCHER (Segmented Control) */
+/* ============================================================ */
+
+.timeframe-switcher {
+    display: flex;
+    background: var(--tertiary-bg);
+    border-radius: var(--radius-pill);
+    padding: 2px;
+    gap: 2px;
+    position: relative;
+}
+
+.timeframe-btn {
+    flex: 1;
+    padding: 8px 16px;
+    font-size: var(--font-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    border-radius: var(--radius-pill);
+    transition: color var(--transition-fast);
+    position: relative;
+    z-index: 2;
+}
+
+.timeframe-btn.active {
+    color: var(--text-highlight);
+}
+
+/* Sliding indicator */
+.timeframe-indicator {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    height: calc(100% - 4px);
+    background: var(--accent-blue);
+    border-radius: var(--radius-pill);
+    transition: all var(--transition-normal) var(--spring);
+    z-index: 1;
+}
+
+/* ============================================================ */
+/* INDICATOR PANEL (Collapsible) */
+/* ============================================================ */
+
+.indicator-panel {
+    position: fixed;
+    bottom: calc(60px + var(--safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    max-height: 60vh;
+    background: var(--secondary-bg);
+    border-top-left-radius: var(--radius-xl);
+    border-top-right-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    transform: translateY(0);
+    transition: transform var(--transition-normal) var(--spring);
+    z-index: var(--z-dropdown);
+    overflow: hidden;
+}
+
+.indicator-panel.collapsed {
+    transform: translateY(calc(100% - 40px));
+}
+
+.indicator-panel-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--text-tertiary);
+    border-radius: var(--radius-pill);
+    margin: 12px auto;
+    cursor: grab;
+}
+
+.indicator-panel-handle:active {
+    cursor: grabbing;
+}
+
+.indicator-panel-content {
+    padding: 0 var(--space-md) var(--space-md);
+    max-height: calc(60vh - 40px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Indicator Card */
+.indicator-card {
+    background: var(--tertiary-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    margin-bottom: var(--space-sm);
+}
+
+.indicator-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-sm);
+}
+
+.indicator-title {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+}
+
+.indicator-value {
+    font-size: var(--font-lg);
+    font-weight: var(--weight-bold);
+    font-family: var(--font-mono);
+}
+
+.indicator-value.bullish {
+    color: var(--accent-green);
+}
+
+.indicator-value.bearish {
+    color: var(--accent-red);
+}
+
+/* ============================================================ */
+/* FLOATING ACTION BUTTON (FAB) */
+/* ============================================================ */
+
+.fab {
+    position: fixed;
+    bottom: calc(80px + var(--safe-area-inset-bottom));
+    right: var(--space-md);
+    width: 56px;
+    height: 56px;
+    background: var(--accent-blue);
+    border-radius: 50%;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    z-index: var(--z-dropdown);
+}
+
+.fab:active {
+    transform: scale(0.9);
+}
+
+/* Radial Menu */
+.radial-menu {
+    position: fixed;
+    bottom: calc(80px + var(--safe-area-inset-bottom));
+    right: var(--space-md);
+    z-index: var(--z-dropdown);
+    pointer-events: none;
+}
+
+.radial-menu.open {
+    pointer-events: all;
+}
+
+.radial-menu-item {
+    position: absolute;
+    width: 48px;
+    height: 48px;
+    background: var(--tertiary-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: scale(0);
+    transition: all var(--transition-normal) var(--spring);
+}
+
+.radial-menu.open .radial-menu-item {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Position items in circle */
+.radial-menu-item:nth-child(1) {
+    bottom: 80px;
+    right: 4px;
+}
+
+.radial-menu-item:nth-child(2) {
+    bottom: 56px;
+    right: 60px;
+}
+
+.radial-menu-item:nth-child(3) {
+    bottom: 4px;
+    right: 80px;
+}
+
+/* ============================================================ */
+/* BUTTONS */
+/* ============================================================ */
+
+.btn {
+    padding: 12px 20px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-md);
+    font-weight: var(--weight-medium);
+    min-height: var(--touch-target-min);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    transition: all var(--transition-fast);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.btn-primary {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.btn-primary:active {
+    background: #1E53E5;
+    transform: scale(0.95);
+}
+
+.btn-secondary {
+    background: var(--tertiary-bg);
+    color: var(--text-primary);
+}
+
+.btn-secondary:active {
+    background: var(--secondary-bg);
+    transform: scale(0.95);
+}
+
+.btn-ghost {
+    background: transparent;
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.btn-ghost:active {
+    background: var(--tertiary-bg);
+    transform: scale(0.95);
+}
+
+/* ============================================================ */
+/* TOAST NOTIFICATIONS */
+/* ============================================================ */
+
+.toast {
+    position: fixed;
+    top: calc(var(--safe-area-inset-top) + var(--space-md));
+    left: var(--space-md);
+    right: var(--space-md);
+    background: var(--tertiary-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--space-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    z-index: var(--z-toast);
+    animation: slideDown 0.3s var(--spring);
+}
+
+.toast-icon {
+    font-size: 20px;
+}
+
+.toast-message {
+    flex: 1;
+    font-size: var(--font-sm);
+    color: var(--text-primary);
+}
+
+.toast.success {
+    border-left: 4px solid var(--success);
+}
+
+.toast.error {
+    border-left: 4px solid var(--error);
+}
+
+.toast.warning {
+    border-left: 4px solid var(--warning);
+}
+
+.toast.info {
+    border-left: 4px solid var(--info);
+}

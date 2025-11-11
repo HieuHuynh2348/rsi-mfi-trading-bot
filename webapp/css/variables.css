@@ -1,0 +1,148 @@
+/**
+ * CSS Variables - Mobile-First Design System
+ * Inspired by TradingView + Binance + Material Design 3
+ */
+
+:root {
+    /* ============================================================ */
+    /* COLOR PALETTE - Dark Mode Optimized */
+    /* ============================================================ */
+    
+    /* Primary Colors */
+    --primary-bg: #131722;              /* Main background (TradingView dark) */
+    --secondary-bg: #1E222D;            /* Card/panel background */
+    --tertiary-bg: #2A2E39;             /* Elevated elements */
+    
+    /* Accent Colors */
+    --accent-green: #26a69a;            /* Bullish/positive (Binance teal) */
+    --accent-red: #ef5350;              /* Bearish/negative */
+    --accent-blue: #2962FF;             /* Primary actions */
+    --accent-orange: #FF9800;           /* Warnings */
+    --accent-purple: #9C27B0;           /* Special features */
+    
+    /* Text Colors */
+    --text-primary: #D1D4DC;            /* Main text */
+    --text-secondary: #787B86;          /* Secondary text */
+    --text-tertiary: #434651;           /* Disabled text */
+    --text-highlight: #FFFFFF;          /* Important text */
+    
+    /* Border & Divider */
+    --border-color: rgba(42, 46, 57, 0.5);
+    --divider-color: rgba(42, 46, 57, 0.3);
+    
+    /* Status Colors */
+    --success: #4CAF50;
+    --error: #F44336;
+    --warning: #FF9800;
+    --info: #2196F3;
+    
+    /* ============================================================ */
+    /* SPACING SYSTEM (8px base) */
+    /* ============================================================ */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-xxl: 48px;
+    
+    /* ============================================================ */
+    /* TYPOGRAPHY */
+    /* ============================================================ */
+    --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 
+                   'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'SF Mono', 'Roboto Mono', 'Courier New', monospace;
+    
+    /* Font Sizes */
+    --font-xs: 11px;
+    --font-sm: 13px;
+    --font-md: 15px;
+    --font-lg: 17px;
+    --font-xl: 20px;
+    --font-xxl: 24px;
+    
+    /* Font Weights */
+    --weight-regular: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+    
+    /* ============================================================ */
+    /* BORDER RADIUS */
+    /* ============================================================ */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-pill: 999px;
+    
+    /* ============================================================ */
+    /* SHADOWS */
+    /* ============================================================ */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.5);
+    
+    /* ============================================================ */
+    /* ANIMATIONS */
+    /* ============================================================ */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Spring animation (iOS-like) */
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    
+    /* ============================================================ */
+    /* Z-INDEX LAYERS */
+    /* ============================================================ */
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-modal: 500;
+    --z-toast: 1000;
+    
+    /* ============================================================ */
+    /* MOBILE SAFE AREAS (iOS Notch/Home Indicator) */
+    /* ============================================================ */
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    
+    /* ============================================================ */
+    /* TOUCH TARGETS (iOS/Android Minimum: 44px) */
+    /* ============================================================ */
+    --touch-target-min: 44px;
+    
+    /* ============================================================ */
+    /* CHART SPECIFIC */
+    /* ============================================================ */
+    --chart-grid-color: rgba(42, 46, 57, 0.3);
+    --chart-crosshair: #787B86;
+    --chart-candle-up: var(--accent-green);
+    --chart-candle-down: var(--accent-red);
+}
+
+/* ============================================================ */
+/* LIGHT MODE (Optional - can be toggled) */
+/* ============================================================ */
+[data-theme="light"] {
+    --primary-bg: #FFFFFF;
+    --secondary-bg: #F5F5F5;
+    --tertiary-bg: #E0E0E0;
+    
+    --text-primary: #131722;
+    --text-secondary: #787B86;
+    --text-tertiary: #B2B5BE;
+    --text-highlight: #000000;
+    
+    --border-color: rgba(0, 0, 0, 0.1);
+    --divider-color: rgba(0, 0, 0, 0.06);
+    
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 16px 32px rgba(0, 0, 0, 0.25);
+}
