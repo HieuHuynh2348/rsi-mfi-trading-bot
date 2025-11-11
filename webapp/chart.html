@@ -831,11 +831,6 @@
         </div>
     </div>
     
-    <!-- History Panel -->
-    <div id="history-panel" style="display: none; padding: 15px; overflow-y: auto; height: calc(100vh - 180px);">
-        <div id="history-container"></div>
-    </div>
-    
     <!-- TAB CONTENT SECTIONS FOR MOBILE NAVIGATION -->
     <!-- Chart Tab (default visible) -->
     <div data-tab-content="chart" style="display: block; padding: 0; margin: 0;">
@@ -862,6 +857,39 @@
     </div>
     
     <!-- AI Analysis Tab -->
+    <div data-tab-content="ai" style="display: none; padding: 0;">
+        <div id="ai-analysis" style="height: 100%; overflow-y: auto; background: #131722; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button id="ai-analyze-btn" style="
+                    padding: 12px 24px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                    transition: all 0.2s;
+                    min-height: 44px;
+                    display: block;
+                    margin: 0 auto;
+                ">
+                    🧠 Analyze with Gemini AI
+                </button>
+                <div style="color: #D1D4DC; margin-top: 16px; font-size: 14px; line-height: 1.6;">
+                    Get comprehensive market analysis powered by Gemini 2.0 Flash
+                </div>
+            </div>
+            <div id="ai-loading"></div>
+            <div id="ai-content"></div>
+        </div>
+    </div>
+    
+    <!-- History Tab -->
+    <div data-tab-content="history" style="display: none; padding: 15px; overflow-y: auto;">
+        <div id="history-container"></div>
+    </div>
     <div data-tab-content="ai" style="display: none; padding: 0;">
         <div id="ai-analysis" style="height: 100%; overflow-y: auto; background: #131722; padding: 20px;">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -930,9 +958,6 @@
         
         // Tab switching
         const tabBtns = document.querySelectorAll('.tab-btn');
-        const indicatorsPanel = document.getElementById('indicators');
-        const aiAnalysisPanel = document.getElementById('ai-analysis');
-        const historyPanel = document.getElementById('history-panel');
         const chartContainer = document.getElementById('chartContainer');
         let historyModule;
         
@@ -944,26 +969,27 @@
                 tabBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 
-                // Show/hide content based on tab
-                indicatorsPanel.classList.remove('active');
-                aiAnalysisPanel.classList.remove('active');
-                historyPanel.style.display = 'none';
+                // Hide all tab contents
+                document.querySelectorAll('[data-tab-content]').forEach(content => {
+                    content.style.display = 'none';
+                });
                 chartContainer.style.display = 'none';
                 
-                if (tab === 'indicators') {
-                    indicatorsPanel.classList.add('active');
-                } else if (tab === 'ai') {
-                    aiAnalysisPanel.classList.add('active');
-                } else if (tab === 'history') {
-                    historyPanel.style.display = 'block';
-                    // Initialize history module if not already created
-                    if (!historyModule) {
-                        const userId = tg.initDataUnsafe.user?.id || 6228875204;
-                        historyModule = new AnalysisHistory(userId);
-                        historyModule.loadHistory(null, 7); // Load last 7 days, all symbols
-                    }
-                } else {
+                // Show selected tab
+                if (tab === 'chart') {
                     chartContainer.style.display = 'block';
+                } else {
+                    const tabContent = document.querySelector(`[data-tab-content="${tab}"]`);
+                    if (tabContent) {
+                        tabContent.style.display = 'block';
+                        
+                        // Special handling for history tab
+                        if (tab === 'history' && !historyModule) {
+                            const userId = tg.initDataUnsafe.user?.id || 6228875204;
+                            historyModule = new AnalysisHistory(userId);
+                            historyModule.loadHistory(null, 7); // Load last 7 days, all symbols
+                        }
+                    }
                 }
                 
                 // Haptic feedback
