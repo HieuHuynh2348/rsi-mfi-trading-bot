@@ -1827,6 +1827,9 @@
             console.log('✅ Chart initialized successfully');
             isChartReady = true;
             
+            // Setup Volume Profile updates on scroll/zoom
+            setupVolumeProfileUpdates();
+            
             // Subscribe to crosshair move for interactive indicators (Best practice from docs)
             chart.subscribeCrosshairMove((param) => {
                 if (param.time) {
@@ -1891,6 +1894,11 @@
                             width: width,
                             height: height,
                         });
+                        
+                        // Re-render Volume Profile on resize
+                        if (volumeProfileData) {
+                            requestAnimationFrame(renderVolumeProfile);
+                        }
                         
                         // Smooth fit content with animation
                         requestAnimationFrame(() => {
@@ -2324,112 +2332,49 @@
         }
         
         // ============================================================
-        // VOLUME PROFILE (Custom Plugin)
+        // VOLUME PROFILE (HTML Canvas Overlay)
         // ============================================================
         
-        // Custom Volume Profile Plugin - Draws horizontal histogram bars on the right side
-        class VolumeProfilePrimitive {
-            constructor(candles, numBins = 30) {
-                this._candles = candles;
-                this._numBins = numBins;
-                this._bins = null;
-                this._maxVolume = 0;
-                this._calculate();
-            }
+        let volumeProfileCanvas = null;
+        let volumeProfileData = null;
+        
+        // Calculate Volume Profile bins
+        function calculateVolumeProfile(candles, numBins = 30) {
+            if (!candles || candles.length === 0) return null;
             
-            _calculate() {
-                if (!this._candles || this._candles.length === 0) return;
+            // Find price range
+            const prices = candles.flatMap(c => [c.high, c.low]);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const priceRange = maxPrice - minPrice;
+            const binSize = priceRange / numBins;
+            
+            // Initialize bins
+            const bins = Array(numBins).fill(0).map((_, i) => ({
+                priceLevel: minPrice + (i + 0.5) * binSize,
+                volume: 0,
+                minPrice: minPrice + i * binSize,
+                maxPrice: minPrice + (i + 1) * binSize
+            }));
+            
+            // Distribute volume
+            for (const candle of candles) {
+                const volume = candle.volume || 0;
+                const avgPrice = (candle.high + candle.low + candle.close) / 3;
+                const binIndex = Math.min(Math.floor((avgPrice - minPrice) / binSize), numBins - 1);
                 
-                // Find price range
-                const prices = this._candles.flatMap(c => [c.high, c.low]);
-                const minPrice = Math.min(...prices);
-                const maxPrice = Math.max(...prices);
-                const priceRange = maxPrice - minPrice;
-                const binSize = priceRange / this._numBins;
-                
-                // Initialize bins
-                this._bins = Array(this._numBins).fill(0).map((_, i) => ({
-                    priceLevel: minPrice + (i + 0.5) * binSize,
-                    volume: 0,
-                    minPrice: minPrice + i * binSize,
-                    maxPrice: minPrice + (i + 1) * binSize
-                }));
-                
-                // Distribute volume
-                for (const candle of this._candles) {
-                    const volume = candle.volume || 0;
-                    const avgPrice = (candle.high + candle.low + candle.close) / 3;
-                    const binIndex = Math.min(Math.floor((avgPrice - minPrice) / binSize), this._numBins - 1);
-                    
-                    if (binIndex >= 0 && binIndex < this._numBins) {
-                        this._bins[binIndex].volume += volume;
-                    }
+                if (binIndex >= 0 && binIndex < numBins) {
+                    bins[binIndex].volume += volume;
                 }
-                
-                this._maxVolume = Math.max(...this._bins.map(b => b.volume));
-                console.log(`📊 Volume Profile: ${this._numBins} bins, max volume: ${this._maxVolume.toFixed(2)}`);
             }
             
-            draw(target) {
-                if (!this._bins || this._maxVolume === 0) return;
-                
-                target.useBitmapCoordinateSpace(scope => {
-                    const ctx = scope.context;
-                    const pixelRatio = scope.horizontalPixelRatio;
-                    const width = scope.bitmapSize.width;
-                    const height = scope.bitmapSize.height;
-                    
-                    // Volume Profile width (20% of chart width)
-                    const profileWidth = width * 0.2;
-                    const profileLeft = width - profileWidth;
-                    
-                    // Draw each bin
-                    this._bins.forEach(bin => {
-                        if (bin.volume === 0) return;
-                        
-                        // Convert price to pixel Y coordinate
-                        const y1 = target.priceToCoordinate(bin.minPrice);
-                        const y2 = target.priceToCoordinate(bin.maxPrice);
-                        
-                        if (y1 === null || y2 === null) return;
-                        
-                        // Bar dimensions
-                        const barHeight = Math.abs(y2 - y1);
-                        const barY = Math.min(y1, y2) * pixelRatio;
-                        const normalizedVolume = bin.volume / this._maxVolume;
-                        const barWidth = profileWidth * normalizedVolume;
-                        const barX = profileLeft;
-                        
-                        // Draw bar with gradient
-                        const gradient = ctx.createLinearGradient(barX, 0, barX + barWidth, 0);
-                        const alpha = 0.3 + (normalizedVolume * 0.5); // 0.3 to 0.8 opacity
-                        gradient.addColorStop(0, `rgba(41, 98, 255, 0.1)`);
-                        gradient.addColorStop(1, `rgba(41, 98, 255, ${alpha})`);
-                        
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(barX, barY, barWidth, barHeight * pixelRatio);
-                        
-                        // Draw POC (Point of Control) - highest volume bar
-                        if (bin.volume === this._maxVolume) {
-                            ctx.strokeStyle = 'rgba(255, 193, 7, 0.8)'; // Yellow for POC
-                            ctx.lineWidth = 2 * pixelRatio;
-                            ctx.strokeRect(barX, barY, barWidth, barHeight * pixelRatio);
-                        }
-                    });
-                });
-            }
+            const maxVolume = Math.max(...bins.map(b => b.volume));
+            console.log(`📊 Volume Profile: ${numBins} bins, max volume: ${maxVolume.toFixed(2)}`);
             
-            updateCandles(candles) {
-                this._candles = candles;
-                this._calculate();
-            }
+            return { bins, maxVolume, minPrice, maxPrice };
         }
         
-        // Volume Profile series variable
-        let volumeProfilePrimitive = null;
-        let volumeProfileSeries = null;
-        
-        // Draw Volume Profile using custom primitive
+        // Draw Volume Profile on canvas overlay
         function drawVolumeProfile(candles) {
             if (!chart || !candles || candles.length === 0) {
                 console.warn('Cannot draw Volume Profile: missing data');
@@ -2437,42 +2382,103 @@
             }
             
             try {
-                // Remove old series if exists
-                if (volumeProfileSeries) {
-                    try {
-                        chart.removeSeries(volumeProfileSeries);
-                    } catch (e) {
-                        // Ignore
-                    }
-                    volumeProfileSeries = null;
-                    volumeProfilePrimitive = null;
+                // Calculate volume profile
+                volumeProfileData = calculateVolumeProfile(candles, 30);
+                if (!volumeProfileData || volumeProfileData.maxVolume === 0) {
+                    console.warn('No volume data for Volume Profile');
+                    return;
                 }
                 
-                // Create primitive
-                volumeProfilePrimitive = new VolumeProfilePrimitive(candles, 30);
-                
-                // Create invisible series to attach primitive
-                volumeProfileSeries = chart.addLineSeries({
-                    color: 'transparent',
-                    lineWidth: 0,
-                    lastValueVisible: false,
-                    priceLineVisible: false,
-                });
-                
-                // Attach primitive
-                volumeProfileSeries.attachPrimitive(volumeProfilePrimitive);
-                
-                // Add dummy data point to trigger rendering
-                if (candles.length > 0) {
-                    volumeProfileSeries.setData([{
-                        time: candles[candles.length - 1].time,
-                        value: candles[candles.length - 1].close
-                    }]);
+                // Create canvas overlay if not exists
+                if (!volumeProfileCanvas) {
+                    const chartContainer = document.getElementById('chart');
+                    volumeProfileCanvas = document.createElement('canvas');
+                    volumeProfileCanvas.style.position = 'absolute';
+                    volumeProfileCanvas.style.top = '0';
+                    volumeProfileCanvas.style.left = '0';
+                    volumeProfileCanvas.style.pointerEvents = 'none'; // Allow chart interactions
+                    volumeProfileCanvas.style.zIndex = '1'; // Above chart, below controls
+                    chartContainer.appendChild(volumeProfileCanvas);
                 }
                 
+                // Render Volume Profile
+                renderVolumeProfile();
                 console.log('✅ Volume Profile histogram rendered');
             } catch (error) {
                 console.error('Error drawing Volume Profile:', error);
+            }
+        }
+        
+        // Render Volume Profile bars on canvas
+        function renderVolumeProfile() {
+            if (!volumeProfileCanvas || !volumeProfileData || !chart) return;
+            
+            const chartContainer = document.getElementById('chart');
+            const rect = chartContainer.getBoundingClientRect();
+            
+            // Set canvas size to match chart
+            volumeProfileCanvas.width = rect.width * window.devicePixelRatio;
+            volumeProfileCanvas.height = rect.height * window.devicePixelRatio;
+            volumeProfileCanvas.style.width = rect.width + 'px';
+            volumeProfileCanvas.style.height = rect.height + 'px';
+            
+            const ctx = volumeProfileCanvas.getContext('2d');
+            ctx.clearRect(0, 0, volumeProfileCanvas.width, volumeProfileCanvas.height);
+            
+            // Get price scale for coordinate conversion
+            const timeScale = chart.timeScale();
+            const priceScale = candlestickSeries.priceScale();
+            
+            // Volume Profile width (15% of chart width, positioned on right)
+            const profileWidth = volumeProfileCanvas.width * 0.15;
+            const profileLeft = volumeProfileCanvas.width - profileWidth - 60 * window.devicePixelRatio; // Leave space for price axis
+            
+            // Draw each bin
+            volumeProfileData.bins.forEach(bin => {
+                if (bin.volume === 0) return;
+                
+                // Convert price to pixel Y coordinate
+                try {
+                    const y1 = priceScale.priceToCoordinate(bin.minPrice);
+                    const y2 = priceScale.priceToCoordinate(bin.maxPrice);
+                    
+                    if (y1 === null || y2 === null || isNaN(y1) || isNaN(y2)) return;
+                    
+                    // Bar dimensions
+                    const barHeight = Math.abs(y2 - y1) * window.devicePixelRatio;
+                    const barY = Math.min(y1, y2) * window.devicePixelRatio;
+                    const normalizedVolume = bin.volume / volumeProfileData.maxVolume;
+                    const barWidth = profileWidth * normalizedVolume;
+                    
+                    // Draw bar with gradient
+                    const gradient = ctx.createLinearGradient(profileLeft, 0, profileLeft + barWidth, 0);
+                    const alpha = 0.3 + (normalizedVolume * 0.5); // 0.3 to 0.8 opacity
+                    gradient.addColorStop(0, `rgba(41, 98, 255, 0.1)`);
+                    gradient.addColorStop(1, `rgba(41, 98, 255, ${alpha})`);
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(profileLeft, barY, barWidth, barHeight);
+                    
+                    // Draw POC (Point of Control) - highest volume bar
+                    if (bin.volume === volumeProfileData.maxVolume) {
+                        ctx.strokeStyle = 'rgba(255, 193, 7, 0.8)'; // Yellow for POC
+                        ctx.lineWidth = 2 * window.devicePixelRatio;
+                        ctx.strokeRect(profileLeft, barY, barWidth, barHeight);
+                    }
+                } catch (e) {
+                    // Skip bins with invalid coordinates
+                }
+            });
+        }
+        
+        // Re-render Volume Profile when chart is scrolled/zoomed
+        function setupVolumeProfileUpdates() {
+            if (chart) {
+                chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                    if (volumeProfileData) {
+                        requestAnimationFrame(renderVolumeProfile);
+                    }
+                });
             }
         }
         
@@ -2703,14 +2709,12 @@
                     resistanceLine = null;
                 }
                 
-                // Clear Volume Profile series
-                if (volumeProfileSeries) {
-                    try {
-                        chart.removeSeries(volumeProfileSeries);
-                    } catch (e) { /* ignore */ }
-                    volumeProfileSeries = null;
-                    volumeProfilePrimitive = null;
+                // Clear Volume Profile canvas data
+                if (volumeProfileCanvas) {
+                    const ctx = volumeProfileCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, volumeProfileCanvas.width, volumeProfileCanvas.height);
                 }
+                volumeProfileData = null;
                 
                 console.log('Setting candlestick data...');
                 // Use setData for initial load, update() for real-time (Best practice)
