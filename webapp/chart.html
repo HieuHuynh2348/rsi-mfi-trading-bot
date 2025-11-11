@@ -1872,10 +1872,8 @@
                             height: height,
                         });
                         
-                        // Smooth fit content with animation
-                        requestAnimationFrame(() => {
-                            chart.timeScale().fitContent();
-                        });
+                        // DON'T call fitContent() on resize - preserve user's zoom/pan state
+                        // Only fitContent() on first load (handled in loadChartData)
                     }
                 }, 150);
             };
@@ -2597,11 +2595,9 @@
                 
                 console.log('✅ Chart updated successfully');
                 
-                // Reconnect WebSocket for real-time updates
-                if (typeof connectWebSocket === 'function') {
-                    console.log('🔄 Reconnecting WebSocket for real-time updates...');
-                    connectWebSocket();
-                }
+                // DON'T reconnect WebSocket here - it causes constant reconnections
+                // WebSocket connects once after initial load and auto-reconnects on close
+                // See initialization section (line ~3210) for proper WebSocket setup
                 
                 // Smooth fade out loading
                 setTimeout(() => {
@@ -3010,8 +3006,15 @@
         // WebSocket connection function (global scope)
         function connectWebSocket() {
             try {
-                // Close existing connection
+                // Check if already connected - prevent duplicate connections
+                if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+                    console.log('⚠️ WebSocket already connected or connecting, skipping...');
+                    return;
+                }
+                
+                // Close existing connection if any
                 if (ws) {
+                    console.log('Closing previous WebSocket connection...');
                     ws.close();
                     ws = null;
                 }
@@ -3219,31 +3222,9 @@
                 connectWebSocket();
             }, 2000); // Wait 2s for initial data to load
             
-            // Reconnect WebSocket when timeframe changes
-            const originalTimeframeBtns = document.querySelectorAll('.tf-btn');
-            originalTimeframeBtns.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    // Close existing WebSocket
-                    if (ws) {
-                        ws.close();
-                        ws = null;
-                    }
-                    
-                    // Clear reconnect timeout
-                    if (wsReconnectTimeout) {
-                        clearTimeout(wsReconnectTimeout);
-                        wsReconnectTimeout = null;
-                    }
-                    
-                    // Reset reconnect attempts
-                    wsReconnectAttempts = 0;
-                    
-                    // Reconnect with new timeframe after chart data loads
-                    setTimeout(() => {
-                        connectWebSocket();
-                    }, 1500);
-                });
-            });
+            // NOTE: Timeframe change WebSocket reconnection is handled by
+            // TimeframeSwitcher.onChange callback (see component initialization section)
+            // Removed duplicate event listeners to prevent multiple reconnections
             
             // Cleanup WebSocket on page unload
             window.addEventListener('beforeunload', () => {
@@ -3379,12 +3360,41 @@
                         defaultTimeframe: '1h',
                         onChange: (timeframe) => {
                             console.log('⏱️ Timeframe changed:', timeframe);
+                            
+                            // Update current timeframe
                             if (typeof currentTimeframe !== 'undefined') {
                                 currentTimeframe = timeframe;
                             }
+                            
+                            // Reload chart data with new timeframe
                             if (typeof loadChartData === 'function') {
                                 loadChartData(timeframe);
                             }
+                            
+                            // Reconnect WebSocket with new timeframe after data loads
+                            setTimeout(() => {
+                                // Close existing WebSocket
+                                if (ws) {
+                                    console.log('🔌 Closing WebSocket for timeframe change...');
+                                    ws.close();
+                                    ws = null;
+                                }
+                                
+                                // Clear reconnect timeout
+                                if (wsReconnectTimeout) {
+                                    clearTimeout(wsReconnectTimeout);
+                                    wsReconnectTimeout = null;
+                                }
+                                
+                                // Reset reconnect attempts
+                                wsReconnectAttempts = 0;
+                                
+                                // Reconnect with new timeframe
+                                if (typeof connectWebSocket === 'function') {
+                                    console.log('🔄 Reconnecting WebSocket with new timeframe...');
+                                    connectWebSocket();
+                                }
+                            }, 1000); // Wait 1s for chart data to load
                         }
                     });
                     console.log('✅ Timeframe switcher initialized');
