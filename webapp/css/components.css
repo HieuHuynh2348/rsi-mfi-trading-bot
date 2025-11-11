@@ -14,8 +14,8 @@
     right: 0;
     background: var(--secondary-bg);
     border-top: 1px solid var(--border-color);
-    padding: var(--space-sm) var(--space-md);
-    padding-bottom: calc(var(--space-sm) + var(--safe-area-inset-bottom));
+    padding: 4px var(--space-md); /* Reduced padding for tighter layout */
+    padding-bottom: calc(4px + var(--safe-area-inset-bottom));
     z-index: var(--z-sticky);
     /* GPU acceleration */
     transform: translateZ(0);
@@ -39,8 +39,8 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 10px 12px;
-    min-height: var(--touch-target-min);
+    padding: 8px 10px; /* Reduced padding */
+    min-height: 40px; /* Reduced from 44px */
     color: var(--text-secondary);
     font-size: var(--font-sm);
     font-weight: var(--weight-medium);

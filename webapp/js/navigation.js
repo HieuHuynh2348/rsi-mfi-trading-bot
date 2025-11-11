@@ -17,8 +17,8 @@ class NavigationController {
     init() {
         this.createBottomNav();
         this.setupEventListeners();
-        this.setupSwipeGestures();
-        console.log('✅ Navigation system initialized');
+        // this.setupSwipeGestures(); // DISABLED: Conflicts with chart zoom/pan/pinch gestures
+        console.log('✅ Navigation system initialized (swipe gestures disabled)');
     }
     
     /**

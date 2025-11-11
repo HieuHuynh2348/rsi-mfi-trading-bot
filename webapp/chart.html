@@ -300,8 +300,8 @@
         
         /* TAB CONTENT WRAPPERS */
         [data-tab-content] {
-            min-height: calc(100vh - 165px - 60px);
-            padding-bottom: 60px; /* Space for compact bottom nav */
+            min-height: calc(100vh - 165px - 52px);
+            padding-bottom: 52px; /* Space for ultra-compact bottom nav */
         }
         
         [data-tab-content="chart"] {
@@ -372,8 +372,8 @@
         
         #chartContainer {
             width: 100%;
-            /* Add space for compact bottom navigation (60px + safe area) */
-            height: calc(100vh - 165px - 60px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+            /* Add space for ultra-compact bottom navigation (~52px total) */
+            height: calc(100vh - 165px - 52px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
             position: relative;
             /* Optimized touch handling for mobile */
             touch-action: pan-x pan-y pinch-zoom;
@@ -391,8 +391,8 @@
         /* Mobile-specific chart optimizations */
         @media (max-width: 768px) {
             #chartContainer {
-                /* Reserve space for compact bottom nav + safe area */
-                height: calc(100vh - 165px - 60px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+                /* Reserve space for ultra-compact bottom nav */
+                height: calc(100vh - 165px - 52px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
                 /* Disable text selection on mobile */
                 -webkit-user-select: none;
                 -moz-user-select: none;
