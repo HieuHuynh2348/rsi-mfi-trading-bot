@@ -37,6 +37,7 @@
     <link rel="stylesheet" href="css/variables.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/ai-tab.css">
     
     <!-- Lightweight Charts Library v5.0 with fallback CDN -->
     <script 
@@ -396,40 +397,7 @@
             overflow-y: auto;
         }
         
-        #ai-analysis.active {
-            display: block;
-        }
-        
-        #ai-content {
-            color: #D1D4DC;
-            font-size: 17px;  /* Increased from 14px for better mobile readability */
-            line-height: 1.8;  /* Increased from 1.6 for better spacing */
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        #ai-loading {
-            text-align: center;
-            padding: 40px 20px;
-            color: #787B86;
-        }
-        
-        .ai-section {
-            background: rgba(37, 37, 37, 0.90);
-            padding: 20px 16px;  /* Increased vertical padding from 16px to 20px */
-            border-radius: 8px;
-            margin-bottom: 20px;  /* Increased from 16px for better separation */
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .ai-title {
-            font-size: 22px;  /* Increased from 16px for better mobile readability */
-            font-weight: 700;  /* Increased from 600 for better emphasis */
-            color: #2962FF;
-            margin-bottom: 14px;  /* Increased from 12px */
-            padding-bottom: 10px;  /* Increased from 8px */
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
+        /* OLD AI STYLES - Now handled by css/ai-tab.css */
         
         .indicator-section {
             background: rgba(37, 37, 37, 0.90);
@@ -862,42 +830,41 @@
         </div>
     </div>
     
-    <!-- AI Analysis Tab -->
+    <!-- AI Analysis Tab - Complete Rebuild v2.0 -->
     <div data-tab-content="ai" style="display: none; padding: 0; overflow: hidden; height: calc(100vh - 165px);">
-        <div id="ai-analysis" style="
+        <div class="ai-content-wrapper" style="
             height: 100%; 
             overflow-y: auto; 
             overflow-x: hidden;
-            background: var(--primary-bg); 
-            padding: var(--space-md);
             -webkit-overflow-scrolling: touch;
         ">
-            <div style="text-align: center; margin-bottom: var(--space-md);">
-                <button id="ai-analyze-btn" style="
-                    padding: 12px 24px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-                    transition: all 0.2s;
-                    min-height: 44px;
-                    display: block;
-                    margin: 0 auto;
-                    width: 90%;
-                    max-width: 300px;
-                ">
-                    🧠 Analyze with Gemini AI
-                </button>
-                <div style="color: var(--text-primary); margin-top: 16px; font-size: 14px; line-height: 1.6;">
-                    Get comprehensive market analysis powered by Gemini 2.0 Flash
+            <!-- Main Analyze Button -->
+            <button id="ai-analyze-btn">
+                <span class="ai-btn-content">
+                    <span class="ai-btn-icon">🧠</span>
+                    <span class="ai-btn-text">
+                        <span class="ai-btn-title">Analyze with Gemini AI</span>
+                        <span class="ai-btn-subtitle">BTCUSDT • 1h</span>
+                    </span>
+                </span>
+            </button>
+            
+            <!-- Status Card -->
+            <div id="ai-status-card">
+                <div class="ai-status-empty">
+                    <span class="ai-status-empty-icon">📊</span>
+                    <p>No analysis yet. Click the button above to get started!</p>
                 </div>
             </div>
-            <div id="ai-loading" style="margin-top: 20px;"></div>
-            <div id="ai-content" style="margin-top: 20px;"></div>
+            
+            <!-- Loading/Results Container -->
+            <div id="ai-loading-container"></div>
+            
+            <!-- Results Display (for future use) -->
+            <div id="ai-results"></div>
+            
+            <!-- History Preview -->
+            <div id="ai-history-preview"></div>
         </div>
     </div>
     
@@ -1187,108 +1154,9 @@
             }
         }
         
-        // AI Analyze button click handler
-        console.log('🔍 [AI TAB] Looking for AI button...');
-        const aiAnalyzeBtn = document.getElementById('ai-analyze-btn');
-        console.log('🔍 [AI TAB] Button found:', aiAnalyzeBtn ? 'YES ✅' : 'NO ❌');
-        
-        if (aiAnalyzeBtn) {
-            console.log('✅ [AI TAB] Registering click handler');
-            aiAnalyzeBtn.addEventListener('click', async () => {
-                console.log('🤖 [AI TAB] Button CLICKED!');
-                console.log('📊 [AI TAB] Symbol:', symbol);
-                console.log('⏰ [AI TAB] Timeframe:', currentTimeframe);
-                console.log('🔧 [AI TAB] triggerAIAnalysis:', typeof window.triggerAIAnalysis);
-                
-                // Show loading state
-                aiAnalyzeBtn.disabled = true;
-                aiAnalyzeBtn.innerHTML = '⏳ Analyzing...';
-                aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #666 0%, #555 100%)';
-                
-                const aiLoadingEl = document.getElementById('ai-loading');
-                const aiContentEl = document.getElementById('ai-content');
-                
-                // Show loading message
-                if (aiLoadingEl) {
-                    aiLoadingEl.innerHTML = `
-                        <div style="text-align: center; color: #2962FF;">
-                            <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">🤖 Analyzing with Gemini AI...</div>
-                            <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
-                                📊 Collecting market data<br>
-                                🧠 Processing indicators<br>
-                                🔮 Generating insights<br><br>
-                                <strong>This may take 10-20 seconds...</strong>
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                // Haptic feedback
-                if (tg.HapticFeedback) {
-                    tg.HapticFeedback.impactOccurred('medium');
-                }
-                
-                // Use new API instead of sendData()
-                window.triggerAIAnalysis(symbol, currentTimeframe)
-                    .then(result => {
-                        console.log('✅ AI Analysis triggered:', result);
-                        
-                        // Check if we have analysis data
-                        if (result.analysis) {
-                            // Display analysis results in WebApp
-                            displayAIAnalysis(result.analysis, aiLoadingEl);
-                        } else {
-                            // Show success message (sent to Telegram only)
-                            if (aiLoadingEl) {
-                                aiLoadingEl.innerHTML = `
-                                    <div style="text-align: center; color: #26A69A; padding: 32px 24px;">
-                                        <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-                                        <div style="font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #131722;">
-                                            Analysis Sent!
-                                        </div>
-                                        <div style="color: #787B86; font-size: 15px; line-height: 1.8; max-width: 320px; margin: 0 auto;">
-                                            Your <strong>Gemini AI analysis</strong> for <strong style="color: #2962FF;">${symbol}</strong> has been sent to your Telegram chat.
-                                            <br><br>
-                                            📱 <em>Check your chat for the results!</em>
-                                        </div>
-                                    </div>
-                                `;
-                            }
-                        }
-                        
-                        // Reset button
-                        setTimeout(() => {
-                            aiAnalyzeBtn.disabled = false;
-                            aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
-                            aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
-                        }, 2000);
-                    })
-                    .catch(error => {
-                        console.error('❌ AI Analysis error:', error);
-                        
-                        // Show error message
-                        if (aiLoadingEl) {
-                            aiLoadingEl.innerHTML = `
-                                <div style="text-align: center; color: #EF5350; padding: 32px 24px;">
-                                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">❌ Request Failed</div>
-                                    <div style="color: #787B86; font-size: 14px; line-height: 1.6;">
-                                        ${error.message}<br><br>
-                                        <strong>Please try again</strong>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        
-                        // Reset button
-                        setTimeout(() => {
-                            aiAnalyzeBtn.disabled = false;
-                            aiAnalyzeBtn.innerHTML = '🧠 Analyze with Gemini AI';
-                            aiAnalyzeBtn.style.background = 'linear-gradient(135deg, #2962FF 0%, #1E88E5 100%)';
-                        }, 2000);
-                    });
-                
-            });
-        }
+        // OLD AI BUTTON HANDLER - REMOVED
+        // Now handled by AITabController in ai-tab.js
+        console.log('ℹ️ AI tab now uses AITabController module');
         
         // Format AI analysis for display
         /**
@@ -2602,6 +2470,11 @@
                     updateIndicatorPanel({ rsi, mfi, stochRSI, volumeRatio });
                 }
                 
+                // Update AI tab context
+                if (window.aiTab) {
+                    window.aiTab.setContext(symbol, tf);
+                }
+                
                 // Update signal badge
                 updateSignalBadge(rsi, mfi);
                 
@@ -3426,6 +3299,7 @@
     <script src="js/navigation.js"></script>
     <script src="js/timeframe.js"></script>
     <script src="js/indicators.js"></script>
+    <script src="js/ai-tab.js"></script>
     
     <!-- Component Initialization - Run immediately -->
     <script>
@@ -3438,6 +3312,7 @@
             console.log('NavigationController:', typeof NavigationController);
             console.log('TimeframeSwitcher:', typeof TimeframeSwitcher);
             console.log('IndicatorPanel:', typeof IndicatorPanel);
+            console.log('AITabController:', typeof AITabController);
             
             // Enable NavigationController (now supports 4 tabs)
             if (typeof NavigationController !== 'undefined') {
@@ -3449,6 +3324,21 @@
                 }
             } else {
                 console.log('⚠️ NavigationController not found, using fallback');
+            }
+            
+            // Initialize AI Tab Controller
+            if (window.aiTab) {
+                try {
+                    window.aiTab.init();
+                    console.log('✅ AI Tab initialized');
+                    
+                    // Update AI tab context when symbol/timeframe changes
+                    if (typeof symbol !== 'undefined' && typeof currentTimeframe !== 'undefined') {
+                        window.aiTab.setContext(symbol, currentTimeframe);
+                    }
+                } catch (e) {
+                    console.error('❌ AI Tab initialization error:', e);
+                }
             }
             
             // Initialize Timeframe Switcher
