@@ -265,6 +265,62 @@ def get_analysis_history():
         logger.error(f"❌ History API error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/candles', methods=['GET'])
+def get_candles():
+    """
+    API endpoint to get candle data for indicators
+    Query params: symbol (required), interval (required), limit (optional, default=100)
+    """
+    from flask import request
+    
+    try:
+        symbol = request.args.get('symbol')
+        interval = request.args.get('interval')
+        limit = request.args.get('limit', default=100, type=int)
+        
+        logger.info(f"📊 Candles API called: symbol={symbol}, interval={interval}, limit={limit}")
+        
+        if not symbol or not interval:
+            return jsonify({'success': False, 'error': 'Missing symbol or interval parameter'}), 400
+        
+        # Get binance client from bot
+        from main import bot as trading_bot
+        
+        if trading_bot and hasattr(trading_bot, 'binance_client'):
+            binance = trading_bot.binance_client
+            
+            # Fetch candles from Binance
+            candles_data = binance.get_klines(symbol, interval, limit=limit)
+            
+            # Format candles for frontend
+            candles = []
+            for candle in candles_data:
+                candles.append({
+                    'time': candle[0],  # Open time
+                    'open': float(candle[1]),
+                    'high': float(candle[2]),
+                    'low': float(candle[3]),
+                    'close': float(candle[4]),
+                    'volume': float(candle[5])
+                })
+            
+            logger.info(f"✅ Returned {len(candles)} candles for {symbol} {interval}")
+            
+            return jsonify({
+                'success': True,
+                'symbol': symbol,
+                'interval': interval,
+                'count': len(candles),
+                'candles': candles
+            })
+        else:
+            logger.error("❌ Binance client not found")
+            return jsonify({'success': False, 'error': 'Binance client not available'}), 503
+            
+    except Exception as e:
+        logger.error(f"❌ Candles API error: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/review-analysis', methods=['POST'])
 def review_analysis():
     """
