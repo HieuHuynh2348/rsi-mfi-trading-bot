@@ -253,44 +253,13 @@
         .price-up { color: #26A69A; }  /* TradingView green */
         .price-down { color: #EF5350; }  /* TradingView red */
         
-        /* OLD TAB SYSTEM - HIDDEN (using mobile bottom nav instead) */
+        /* HIDE OLD TAB SYSTEM - Using components.css .bottom-nav instead */
         #tabs {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            display: flex;
-            background: var(--primary-bg, #131722);
-            border-top: 1px solid var(--border-color, #2a2e39);
-            z-index: 200;
-            padding-bottom: env(safe-area-inset-bottom, 0);
+            display: none !important;
         }
         
         .tab-btn {
-            flex: 1;
-            padding: 10px 4px;
-            border: none;
-            background: transparent;
-            color: #787B86;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border-top: 2px solid transparent;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .tab-btn.active {
-            color: #2962FF;
-            border-top-color: #2962FF;
-        }
-        
-        .tab-btn:active {
-            background: rgba(41, 98, 255, 0.1);
+            display: none !important;
         }
         
         .tab-content {
@@ -788,6 +757,29 @@
         </button>
     </div>
     
+    <!-- Bottom Navigation (Using components.css .bottom-nav) -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-container">
+            <div class="nav-indicator" id="nav-indicator"></div>
+            <button class="nav-item active" data-tab="chart">
+                <span class="nav-item-icon">📈</span>
+                <span class="nav-item-label">Chart</span>
+            </button>
+            <button class="nav-item" data-tab="indicators">
+                <span class="nav-item-icon">📊</span>
+                <span class="nav-item-label">Indicators</span>
+            </button>
+            <button class="nav-item" data-tab="ai">
+                <span class="nav-item-icon">🤖</span>
+                <span class="nav-item-label">AI</span>
+            </button>
+            <button class="nav-item" data-tab="history">
+                <span class="nav-item-icon">📋</span>
+                <span class="nav-item-label">History</span>
+            </button>
+        </div>
+    </nav>
+    
     <!-- Timeframe Switcher Container (New Mobile Component) -->
     <div id="timeframe-container"></div>
     
@@ -957,18 +949,33 @@
             document.body.style.background = '#1a1a1a';
         }
         
-        // Tab switching
-        const tabBtns = document.querySelectorAll('.tab-btn');
+        // Tab switching with nav indicator animation
+        const navItems = document.querySelectorAll('.nav-item');
+        const navIndicator = document.getElementById('nav-indicator');
         const chartContainer = document.getElementById('chartContainer');
         let historyModule;
         
-        tabBtns.forEach(btn => {
+        // Initialize indicator position
+        function updateIndicatorPosition(activeItem) {
+            if (!navIndicator || !activeItem) return;
+            const container = activeItem.parentElement;
+            const items = Array.from(container.querySelectorAll('.nav-item'));
+            const index = items.indexOf(activeItem);
+            const width = 100 / items.length;
+            navIndicator.style.width = `calc(${width}% - 4px)`;
+            navIndicator.style.left = `calc(${width * index}% + 2px)`;
+        }
+        
+        navItems.forEach(btn => {
             btn.addEventListener('click', () => {
                 const tab = btn.dataset.tab;
                 
                 // Update active tab button
-                tabBtns.forEach(b => b.classList.remove('active'));
+                navItems.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                
+                // Animate indicator
+                updateIndicatorPosition(btn);
                 
                 // Hide all tab contents
                 document.querySelectorAll('[data-tab-content]').forEach(content => {
@@ -999,6 +1006,12 @@
                 }
             });
         });
+        
+        // Initialize indicator on first active item
+        const activeNav = document.querySelector('.nav-item.active');
+        if (activeNav) {
+            updateIndicatorPosition(activeNav);
+        }
         
         // Get parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
