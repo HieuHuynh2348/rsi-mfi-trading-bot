@@ -2389,49 +2389,49 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # This is the ACTION PLAN - Users see what Gemini recommends FIRST
             rec_emoji = "🟢" if rec == "BUY" else "🔴" if rec == "SELL" else "🟡" if rec == "HOLD" else "⚪"
             
-            summary = "═══════════════════════════════════\n"
-            summary += "🤖 <b>GEMINI AI ANALYSIS (v2.2)</b>\n"
-            summary += "═══════════════════════════════════\n\n"
-            summary += f"💎 <b>{symbol}</b>\n"
-            summary += f"📊 <b>Trading Style:</b> {style.upper()}\n\n"
-            summary += "───────────────────────────────────\n"
+            summary = "🤖 <b>GEMINI AI ANALYSIS v2.2</b>\n\n"
+            summary += f"💎 <b>{symbol}</b> | 📊 {style.upper()}\n\n"
             summary += f"{rec_emoji} <b>KHUYẾN NGHỊ:</b> {rec}\n"
             summary += f"🎯 <b>Độ Tin Cậy:</b> {conf}%\n"
-            summary += f"⚠️ <b>Mức Rủi Ro:</b> {risk}\n"
-            summary += "───────────────────────────────────\n\n"
+            summary += f"⚠️ <b>Mức Rủi Ro:</b> {risk}\n\n"
             
-            summary += "💰 <b>KẾ HOẠCH GIAO DỊCH (Từ Gemini AI):</b>\n\n"
-            summary += f"   📍 <b>Điểm Vào:</b> ${self.binance.format_price(symbol, entry)}\n"
-            summary += f"   🛑 <b>Cắt Lỗ:</b> ${self.binance.format_price(symbol, stop)}\n"
-            summary += f"   🎯 <b>Chốt Lời:</b>\n"
-            for i, target in enumerate(targets, 1):
-                summary += f"      • TP{i}: ${self.binance.format_price(symbol, target)}\n"
-            summary += f"   ⏱ <b>Thời Gian Nắm Giữ:</b> {period}\n\n"
-            summary += "═══════════════════════════════════"
+            # Only show trading plan if recommendation is actionable (BUY/SELL/HOLD)
+            if rec in ["BUY", "SELL", "HOLD"] and entry > 0:
+                summary += "💰 <b>KẾ HOẠCH GIAO DỊCH</b>\n"
+                summary += f"📍 <b>Điểm Vào:</b> ${self.binance.format_price(symbol, entry)}\n"
+                summary += f"🛑 <b>Cắt Lỗ:</b> ${self.binance.format_price(symbol, stop)}\n"
+                summary += f"🎯 <b>Chốt Lời:</b>\n"
+                for i, target in enumerate(targets, 1):
+                    summary += f"   • TP{i}: ${self.binance.format_price(symbol, target)}\n"
+                summary += f"⏱ <b>Thời Gian:</b> {period}\n\n"
+            elif rec == "WAIT":
+                summary += "⏸ <b>KHÔNG NÊN GIAO DỊCH</b>\n"
+                summary += "📋 Tín hiệu chưa rõ ràng, cần chờ xác nhận\n"
+                summary += "💡 Theo dõi thêm và đợi setup tốt hơn\n\n"
+            
+            summary += "<i>💡 Dữ liệu từ Gemini AI 2.0 Flash</i>"
             
             # Message 2: Technical Details
-            tech = "═══════════════════════════════════\n"
-            tech += "📊 <b>PHÂN TÍCH KỸ THUẬT CHI TIẾT</b>\n"
-            tech += "═══════════════════════════════════\n\n"
+            tech = "📊 <b>PHÂN TÍCH KỸ THUẬT CHI TIẾT</b>\n\n"
             tech += f"💎 <b>{symbol}</b>\n\n"
             
             # Data used
             data_used = analysis.get('data_used', {})
-            tech += "<b>🔍 Các Chỉ Báo Được Sử Dụng:</b>\n"
-            tech += f"   • RSI+MFI: {data_used.get('rsi_mfi_consensus', 'N/A')}\n"
-            tech += f"   • Stoch+RSI: {data_used.get('stoch_rsi_consensus', 'N/A')}\n"
+            tech += "🔍 <b>Chỉ Báo Sử Dụng:</b>\n"
+            tech += f"• RSI+MFI: {data_used.get('rsi_mfi_consensus', 'N/A')}\n"
+            tech += f"• Stoch+RSI: {data_used.get('stoch_rsi_consensus', 'N/A')}\n"
             
             pump_score = data_used.get('pump_score', 0)
             if pump_score >= 80:
-                tech += f"   • 🚀 Tín Hiệu Pump: {pump_score:.0f}% (Độ Tin Cậy Cao)\n"
+                tech += f"• 🚀 Pump: {pump_score:.0f}% (Cao)\n"
             elif pump_score > 0:
-                tech += f"   • Tín Hiệu Pump: {pump_score:.0f}%\n"
+                tech += f"• Pump: {pump_score:.0f}%\n"
             
-            tech += f"   • Giá Hiện Tại: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
+            tech += f"• Giá: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
             
             # === NEW v2.2: Add Asset Type Context ===
             asset_type = analysis.get('asset_type', 'UNKNOWN')
-            tech += f"<b>🎯 Asset Type (v2.2):</b> {asset_type}\n"
+            tech += f"🎯 <b>Asset Type:</b> {asset_type}\n"
             
             # Helper function to escape HTML special characters
             def escape_html(text):
@@ -2446,103 +2446,103 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # Add asset-specific context
             sector = analysis.get('sector_analysis', {})
             if sector and sector.get('sector') != 'Unknown':
-                tech += f"   • Sector: {escape_html(sector.get('sector', ''))}\n"
-                tech += f"   • Sector Momentum: {escape_html(sector.get('sector_momentum', ''))}\n"
-                tech += f"   • Rotation Risk: {escape_html(sector.get('rotation_risk', ''))}\n\n"
+                tech += f"• Sector: {escape_html(sector.get('sector', ''))}\n"
+                tech += f"• Momentum: {escape_html(sector.get('sector_momentum', ''))}\n"
+                tech += f"• Rotation Risk: {escape_html(sector.get('rotation_risk', ''))}\n\n"
             
             corr = analysis.get('correlation_analysis', {})
             if corr and corr.get('btc_correlation', 0) > 0:
-                tech += f"<b>🔗 Correlation Analysis:</b>\n"
-                tech += f"   • BTC Correlation: {corr.get('btc_correlation', 0)}%\n"
-                tech += f"   • ETH Correlation: {corr.get('eth_correlation', 0)}%\n"
-                tech += f"   • Independent Move Probability: {corr.get('independent_move_probability', 50)}%\n\n"
+                tech += f"🔗 <b>Correlation:</b>\n"
+                tech += f"• BTC: {corr.get('btc_correlation', 0)}%\n"
+                tech += f"• ETH: {corr.get('eth_correlation', 0)}%\n"
+                tech += f"• Independent: {corr.get('independent_move_probability', 50)}%\n\n"
             
             fund = analysis.get('fundamental_analysis', {})
             if fund and fund.get('health_score', 0) >= 0:
-                tech += f"<b>💪 Fundamental Analysis:</b>\n"
-                tech += f"   • Health Score: {fund.get('health_score', 0)}/100\n"
-                tech += f"   • Tokenomics: {escape_html(fund.get('tokenomics', 'Unknown'))}\n"
-                tech += f"   • Centralization Risk: {escape_html(fund.get('centralization_risk', 'Medium'))}\n"
-                tech += f"   • Ecosystem: {escape_html(fund.get('ecosystem_strength', 'Moderate'))}\n\n"
+                tech += f"💪 <b>Fundamental:</b>\n"
+                tech += f"• Health: {fund.get('health_score', 0)}/100\n"
+                tech += f"• Tokenomics: {escape_html(fund.get('tokenomics', 'Unknown'))}\n"
+                tech += f"• Risk: {escape_html(fund.get('centralization_risk', 'Medium'))}\n"
+                tech += f"• Ecosystem: {escape_html(fund.get('ecosystem_strength', 'Moderate'))}\n\n"
             
             sizing = analysis.get('position_sizing_recommendation', {})
             if sizing and sizing.get('position_size_percent'):
-                tech += f"<b>📊 Position Sizing (v2.2):</b>\n"
-                tech += f"   • Position Size: {escape_html(sizing.get('position_size_percent', ''))}\n"
-                tech += f"   • Risk Per Trade: {escape_html(sizing.get('risk_per_trade', ''))}\n"
-                tech += f"   • Leverage: {escape_html(sizing.get('recommended_leverage', ''))}\n"
+                tech += f"📊 <b>Position Sizing:</b>\n"
+                tech += f"• Size: {escape_html(sizing.get('position_size_percent', ''))}\n"
+                tech += f"• Risk: {escape_html(sizing.get('risk_per_trade', ''))}\n"
+                tech += f"• Leverage: {escape_html(sizing.get('recommended_leverage', ''))}\n"
                 if sizing.get('liquidity_notes'):
-                    tech += f"   • Liquidity: {escape_html(sizing.get('liquidity_notes', ''))}\n"
+                    tech += f"• Liquidity: {escape_html(sizing.get('liquidity_notes', ''))}\n"
                 tech += "\n"
             
             # Macro context for BTC or altcoins
             macro = analysis.get('macro_context', {})
             if macro:
                 if asset_type == 'BTC':
-                    tech += f"<b>🏛️ BTC Macro Context:</b>\n"
-                    tech += f"   • Dominance: {escape_html(macro.get('btc_dominance', 'N/A'))}\n"
-                    tech += f"   • Institutional: {escape_html(macro.get('institutional_flows', 'N/A'))}\n"
-                    tech += f"   • ETF Status: {escape_html(macro.get('etf_status', 'N/A'))}\n"
-                    tech += f"   • Whale Activity: {escape_html(macro.get('whale_activity', 'N/A'))}\n\n"
+                    tech += f"🏛️ <b>BTC Macro:</b>\n"
+                    tech += f"• Dominance: {escape_html(macro.get('btc_dominance', 'N/A'))}\n"
+                    tech += f"• Flows: {escape_html(macro.get('institutional_flows', 'N/A'))}\n"
+                    tech += f"• ETF: {escape_html(macro.get('etf_status', 'N/A'))}\n"
+                    tech += f"• Whale: {escape_html(macro.get('whale_activity', 'N/A'))}\n\n"
                 elif asset_type in ['ETH', 'LARGE_CAP_ALT', 'MID_CAP_ALT']:
-                    tech += f"<b>🔗 Altcoin Context:</b>\n"
-                    tech += f"   • Sector Status: {escape_html(macro.get('sector_rotation_status', 'N/A'))}\n"
-                    tech += f"   • BTC Dependency: {escape_html(macro.get('btc_dependency', 'N/A'))}\n"
+                    tech += f"🔗 <b>Altcoin Context:</b>\n"
+                    tech += f"• Sector: {escape_html(macro.get('sector_rotation_status', 'N/A'))}\n"
+                    tech += f"• BTC Depend: {escape_html(macro.get('btc_dependency', 'N/A'))}\n"
                     if macro.get('project_catalysts'):
-                        tech += f"   • Catalysts: {escape_html(macro.get('project_catalysts', ''))}\n"
-                    tech += f"   • Liquidity: {escape_html(macro.get('liquidity_assessment', 'N/A'))}\n\n"
+                        tech += f"• Catalysts: {escape_html(macro.get('project_catalysts', ''))}\n"
+                    tech += f"• Liquidity: {escape_html(macro.get('liquidity_assessment', 'N/A'))}\n\n"
             
             # Scores
             tech_score = analysis.get('technical_score', 0)
             fund_score = analysis.get('fundamental_score', 0)
             
-            tech += "<b>📈 Điểm Đánh Giá:</b>\n"
-            tech += f"   • Kỹ Thuật: {tech_score}/100\n"
-            tech += f"   • Cơ Bản: {fund_score}/100\n"
-            tech += f"   • Tổng Hợp: {(tech_score + fund_score)/2:.0f}/100\n\n"
+            tech += "📈 <b>Điểm Đánh Giá:</b>\n"
+            tech += f"• Kỹ Thuật: {tech_score}/100\n"
+            tech += f"• Cơ Bản: {fund_score}/100\n"
+            tech += f"• Tổng: {(tech_score + fund_score)/2:.0f}/100\n\n"
             
             # Market sentiment
             sentiment = analysis.get('market_sentiment', 'NEUTRAL')
             sentiment_emoji = "🟢" if sentiment == "BULLISH" else "🔴" if sentiment == "BEARISH" else "🟡"
-            sentiment_vn = "TĂNG GIÁ" if sentiment == "BULLISH" else "GIẢM GIÁ" if sentiment == "BEARISH" else "TRUNG LẬP"
-            tech += f"<b>💭 Tâm Lý Thị Trường:</b> {sentiment_emoji} {sentiment_vn}\n\n"
+            sentiment_vn = "Tăng" if sentiment == "BULLISH" else "Giảm" if sentiment == "BEARISH" else "Trung Lập"
+            tech += f"💭 <b>Tâm Lý:</b> {sentiment_emoji} {sentiment_vn}\n\n"
             
             # Key points
-            tech += "<b>🎯 Điểm Chính:</b>\n"
+            tech += "🎯 <b>Điểm Chính:</b>\n"
             for point in analysis.get('key_points', []):
                 # Escape HTML characters in key points
                 safe_point = (str(point).replace('&', '&amp;')
                                        .replace('<', '&lt;')
                                        .replace('>', '&gt;')
                                        .replace('"', '&quot;'))
-                tech += f"   ✓ {safe_point}\n"
+                tech += f"✓ {safe_point}\n"
             
             # Conflicting signals
             conflicts = analysis.get('conflicting_signals', [])
             if conflicts:
-                tech += "\n<b>⚠️ Tín Hiệu Mâu Thuẫn:</b>\n"
+                tech += "\n⚠️ <b>Tín Hiệu Mâu Thuẫn:</b>\n"
                 for conflict in conflicts:
                     safe_conflict = (str(conflict).replace('&', '&amp;')
                                                   .replace('<', '&lt;')
                                                   .replace('>', '&gt;')
                                                   .replace('"', '&quot;'))
-                    tech += f"   • {safe_conflict}\n"
+                    tech += f"• {safe_conflict}\n"
             
             # Warnings
             warnings = analysis.get('warnings', [])
             if warnings:
-                tech += "\n<b>🚨 Cảnh Báo:</b>\n"
+                tech += "\n🚨 <b>Cảnh Báo:</b>\n"
                 for warning in warnings:
                     safe_warning = (str(warning).replace('&', '&amp;')
                                                 .replace('<', '&lt;')
                                                 .replace('>', '&gt;')
                                                 .replace('"', '&quot;'))
-                    tech += f"   ⚠️ {safe_warning}\n"
+                    tech += f"⚠️ {safe_warning}\n"
             
             # Historical Analysis
             hist_analysis = analysis.get('historical_analysis', {})
             if hist_analysis:
-                tech += "\n<b>📊 Phân Tích Dữ Liệu Lịch Sử:</b>\n\n"
+                tech += "\n📊 <b>Dữ Liệu Lịch Sử:</b>\n\n"
                 
                 # Helper to escape HTML in historical data
                 def safe_text(text):
@@ -2556,66 +2556,61 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 # 1H Context
                 h1 = hist_analysis.get('h1_context', {})
                 if h1:
-                    tech += "<b>⏰ Khung 1H (7 ngày):</b>\n"
+                    tech += "⏰ <b>1H (7 ngày):</b>\n"
                     if h1.get('rsi_interpretation'):
-                        tech += f"   • RSI: {safe_text(h1['rsi_interpretation'])}\n"
+                        tech += f"• RSI: {safe_text(h1['rsi_interpretation'])}\n"
                     if h1.get('volume_trend'):
-                        tech += f"   • Volume: {safe_text(h1['volume_trend'])}\n"
+                        tech += f"• Volume: {safe_text(h1['volume_trend'])}\n"
                     if h1.get('price_position'):
-                        tech += f"   • Vị trí: {safe_text(h1['price_position'])}\n"
+                        tech += f"• Vị trí: {safe_text(h1['price_position'])}\n"
                     if h1.get('institutional_insights'):
-                        tech += f"   • Institutional: {safe_text(h1['institutional_insights'])}\n"
+                        tech += f"• Institutional: {safe_text(h1['institutional_insights'])}\n"
                     tech += "\n"
                 
                 # 4H Context
                 h4 = hist_analysis.get('h4_context', {})
                 if h4:
-                    tech += "<b>⏰ Khung 4H (30 ngày):</b>\n"
+                    tech += "⏰ <b>4H (30 ngày):</b>\n"
                     if h4.get('rsi_interpretation'):
-                        tech += f"   • RSI: {safe_text(h4['rsi_interpretation'])}\n"
+                        tech += f"• RSI: {safe_text(h4['rsi_interpretation'])}\n"
                     if h4.get('volume_trend'):
-                        tech += f"   • Volume: {safe_text(h4['volume_trend'])}\n"
+                        tech += f"• Volume: {safe_text(h4['volume_trend'])}\n"
                     if h4.get('price_position'):
-                        tech += f"   • Vị trí: {safe_text(h4['price_position'])}\n"
+                        tech += f"• Vị trí: {safe_text(h4['price_position'])}\n"
                     if h4.get('institutional_insights'):
-                        tech += f"   • Institutional: {safe_text(h4['institutional_insights'])}\n"
+                        tech += f"• Institutional: {safe_text(h4['institutional_insights'])}\n"
                     tech += "\n"
                 
                 # 1D Context
                 d1 = hist_analysis.get('d1_context', {})
                 if d1:
-                    tech += "<b>⏰ Khung 1D (90 ngày):</b>\n"
+                    tech += "⏰ <b>1D (90 ngày):</b>\n"
                     if d1.get('rsi_mfi_correlation'):
-                        tech += f"   • RSI/MFI: {safe_text(d1['rsi_mfi_correlation'])}\n"
+                        tech += f"• RSI/MFI: {safe_text(d1['rsi_mfi_correlation'])}\n"
                     if d1.get('long_term_trend'):
-                        tech += f"   • Xu hướng: {safe_text(d1['long_term_trend'])}\n"
+                        tech += f"• Xu hướng: {safe_text(d1['long_term_trend'])}\n"
                     if d1.get('volatility_assessment'):
-                        tech += f"   • Biến động: {safe_text(d1['volatility_assessment'])}\n"
+                        tech += f"• Biến động: {safe_text(d1['volatility_assessment'])}\n"
                     if d1.get('institutional_insights'):
-                        tech += f"   • Institutional: {safe_text(d1['institutional_insights'])}\n"
+                        tech += f"• Institutional: {safe_text(d1['institutional_insights'])}\n"
             
-            tech += "\n═══════════════════════════════════"
+            tech += "\n<i>💡 Phân tích đa khung thời gian</i>"
             
             # Message 3: AI Reasoning
-            reasoning = "═══════════════════════════════════\n"
-            reasoning += "🧠 <b>PHÂN TÍCH CHI TIẾT TỪ AI</b>\n"
-            reasoning += "═══════════════════════════════════\n\n"
+            reasoning = "🧠 <b>PHÂN TÍCH CHI TIẾT TỪ AI</b>\n\n"
             reasoning += f"💎 <b>{symbol}</b>\n\n"
             reasoning += analysis.get('reasoning_vietnamese', 'Không có phân tích chi tiết.')
-            reasoning += f"\n\n───────────────────────────────────\n"
-            reasoning += f"⏰ <b>Thời Gian Phân Tích:</b> {analysis.get('analyzed_at', 'N/A')}\n"
-            reasoning += f"🤖 <b>Mô Hình AI:</b> Gemini 2.0 Flash\n"
-            reasoning += "───────────────────────────────────\n\n"
+            reasoning += f"\n\n⏰ <b>Thời gian:</b> {analysis.get('analyzed_at', 'N/A')}\n"
+            reasoning += f"🤖 <b>Model:</b> Gemini 2.0 Flash\n\n"
             reasoning += "<i>⚠️ Đây là phân tích AI, không phải tư vấn tài chính.\n"
-            reasoning += "Luôn DYOR (Do Your Own Research) trước khi đầu tư.</i>\n"
-            reasoning += "═══════════════════════════════════"
+            reasoning += "Luôn DYOR (Do Your Own Research) trước khi đầu tư.</i>"
             
             # Return in proper order: technical details first, then summary, then reasoning
             # This allows users to understand the analysis BEFORE seeing entry/TP/SL recommendations
             # Store split_long_message function for external use
             self._split_message = split_long_message
             
-            return tech, summary, reasoning
+            return summary, tech, reasoning
             
         except Exception as e:
             logger.error(f"Error formatting response: {e}")
