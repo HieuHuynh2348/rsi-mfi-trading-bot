@@ -1434,6 +1434,9 @@
         let chart = null;
         let candlestickSeries = null;
         let volumeSeries = null;
+        let ema33Series = null;  // EMA 33 (short-term)
+        let ema99Series = null;  // EMA 99 (medium-term)
+        let ema144Series = null; // EMA 144 (long-term)
         let currentTimeframe = initialTimeframe;
         let isChartReady = false;
         
@@ -1705,8 +1708,12 @@
                         secondsVisible: false,
                         rightOffset: 5,
                         barSpacing: 10,
+                        minBarSpacing: 0.5,  // Allow maximum zoom in (0.5px per bar)
                         fixLeftEdge: false,
                         fixRightEdge: false,
+                        lockVisibleTimeRangeOnResize: false,  // Allow flexible zoom
+                        rightBarStaysOnScroll: true,  // Keep latest bar visible
+                        shiftVisibleRangeOnNewBar: true,  // Auto-scroll on new bar
                     },
                     localization: {
                         // Apply professional price formatter
@@ -1772,6 +1779,46 @@
                     formatter: (volume) => formatVolume(volume),
                 },
             });
+            
+            // ============================================================
+            // ADD EMA SERIES (33, 99, 144)
+            // ============================================================
+            console.log('Adding EMA series...');
+            
+            // EMA 33 (Short-term) - Yellow
+            ema33Series = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#FFA726',  // Orange/Yellow
+                lineWidth: 2,
+                lineStyle: 0,  // Solid
+                crosshairMarkerVisible: true,
+                lastValueVisible: true,
+                priceLineVisible: false,
+                title: 'EMA 33',
+            });
+            
+            // EMA 99 (Medium-term) - Purple
+            ema99Series = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#AB47BC',  // Purple
+                lineWidth: 2,
+                lineStyle: 0,  // Solid
+                crosshairMarkerVisible: true,
+                lastValueVisible: true,
+                priceLineVisible: false,
+                title: 'EMA 99',
+            });
+            
+            // EMA 144 (Long-term) - Cyan
+            ema144Series = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#26C6DA',  // Cyan
+                lineWidth: 2,
+                lineStyle: 0,  // Solid
+                crosshairMarkerVisible: true,
+                lastValueVisible: true,
+                priceLineVisible: false,
+                title: 'EMA 144',
+            });
+            
+            console.log('EMA series added');
             
             console.log('✅ Chart initialized successfully');
             isChartReady = true;
@@ -2010,13 +2057,13 @@
         }
         
         // ============================================================
-        // SUPPORT/RESISTANCE & FVG INDICATORS (144 Period)
+        // SUPPORT/RESISTANCE & VOLUME PROFILE INDICATORS
         // ============================================================
         
-        // Store S/R and VWAP price lines for cleanup
+        // Store S/R and Volume Profile lines for cleanup
         let supportLine = null;
         let resistanceLine = null;
-        let vwapLine = null;
+        let vwapLine = null;  // Now stores Volume Profile lines (array)
         
         // Calculate Support and Resistance levels (144-period)
         function calculateSupportResistance(candles, period = 144) {
@@ -2191,74 +2238,192 @@
         // VWAP INDICATOR (Volume Weighted Average Price)
         // ============================================================
         
-        // Calculate VWAP (Volume Weighted Average Price)
-        // VWAP = Σ(Typical Price × Volume) / Σ(Volume)
-        // Typical Price = (High + Low + Close) / 3
-        function calculateVWAP(candles, period = null) {
-            if (!candles || candles.length === 0) {
-                console.warn('No candles for VWAP calculation');
-                return null;
+        // ============================================================
+        // EMA CALCULATIONS (Exponential Moving Average)
+        // ============================================================
+        
+        // Calculate EMA (Exponential Moving Average)
+        // EMA formula: EMA = Price(t) × k + EMA(y) × (1 − k)
+        // where k = 2 / (period + 1)
+        function calculateEMA(prices, period) {
+            if (!prices || prices.length < period) {
+                console.warn(`Not enough data for EMA ${period}`);
+                return [];
             }
             
-            // Use all candles if no period specified (session VWAP)
-            const data = period ? candles.slice(-period) : candles;
+            const k = 2 / (period + 1);
+            const emaData = [];
             
-            if (data.length === 0) {
-                console.warn('Not enough candles for VWAP');
-                return null;
+            // First EMA is simple average
+            let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+            emaData.push(ema);
+            
+            // Calculate subsequent EMAs
+            for (let i = period; i < prices.length; i++) {
+                ema = prices[i] * k + ema * (1 - k);
+                emaData.push(ema);
             }
             
-            let cumulativePV = 0;  // Price × Volume
-            let cumulativeVolume = 0;
-            
-            for (const candle of data) {
-                // Typical Price = (High + Low + Close) / 3
-                const typicalPrice = (candle.high + candle.low + candle.close) / 3;
-                const volume = candle.volume || 0;
-                
-                cumulativePV += typicalPrice * volume;
-                cumulativeVolume += volume;
-            }
-            
-            if (cumulativeVolume === 0) {
-                console.warn('Zero cumulative volume, cannot calculate VWAP');
-                return null;
-            }
-            
-            const vwap = cumulativePV / cumulativeVolume;
-            
-            console.log(`📊 VWAP: ${vwap.toFixed(2)} (Period: ${period || 'session'}, Candles: ${data.length})`);
-            
-            return vwap;
+            return emaData;
         }
         
-        // Draw VWAP line on chart
-        function drawVWAP(vwapPrice) {
-            if (!candlestickSeries || !vwapPrice) {
-                console.warn('Cannot draw VWAP: missing series or price');
+        // Update EMA series on chart
+        function updateEMASeries(candles) {
+            if (!candles || candles.length === 0) {
+                console.warn('No candles for EMA calculation');
                 return;
             }
             
             try {
-                // Remove existing VWAP line
-                if (vwapLine) {
-                    candlestickSeries.removePriceLine(vwapLine);
-                    vwapLine = null;
+                const closes = candles.map(c => c.close);
+                const times = candles.map(c => c.time);
+                
+                // Calculate EMAs
+                const ema33Values = calculateEMA(closes, 33);
+                const ema99Values = calculateEMA(closes, 99);
+                const ema144Values = calculateEMA(closes, 144);
+                
+                // Prepare data for chart (skip initial period where EMA not calculated)
+                const ema33Data = times.slice(closes.length - ema33Values.length).map((time, i) => ({
+                    time: time,
+                    value: ema33Values[i]
+                }));
+                
+                const ema99Data = times.slice(closes.length - ema99Values.length).map((time, i) => ({
+                    time: time,
+                    value: ema99Values[i]
+                }));
+                
+                const ema144Data = times.slice(closes.length - ema144Values.length).map((time, i) => ({
+                    time: time,
+                    value: ema144Values[i]
+                }));
+                
+                // Update series
+                if (ema33Series && ema33Data.length > 0) {
+                    ema33Series.setData(ema33Data);
+                    console.log(`✅ EMA 33 updated (${ema33Data.length} points)`);
                 }
                 
-                // Draw VWAP line (blue, solid)
-                vwapLine = candlestickSeries.createPriceLine({
-                    price: vwapPrice,
-                    color: '#2962FF',  // TradingView blue
-                    lineWidth: 2,
-                    lineStyle: 0, // Solid (LightweightCharts.LineStyle.Solid = 0)
-                    axisLabelVisible: true,
-                    title: 'VWAP',
+                if (ema99Series && ema99Data.length > 0) {
+                    ema99Series.setData(ema99Data);
+                    console.log(`✅ EMA 99 updated (${ema99Data.length} points)`);
+                }
+                
+                if (ema144Series && ema144Data.length > 0) {
+                    ema144Series.setData(ema144Data);
+                    console.log(`✅ EMA 144 updated (${ema144Data.length} points)`);
+                }
+                
+            } catch (error) {
+                console.error('Error updating EMA series:', error);
+            }
+        }
+        
+        // ============================================================
+        // VOLUME PROFILE (replaced VWAP)
+        // ============================================================
+        
+        // Calculate Volume Profile - Distribution of volume across price levels
+        function calculateVolumeProfile(candles, numBins = 24) {
+            if (!candles || candles.length === 0) {
+                console.warn('No candles for Volume Profile');
+                return null;
+            }
+            
+            // Find price range
+            const prices = candles.flatMap(c => [c.high, c.low]);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            const priceRange = maxPrice - minPrice;
+            const binSize = priceRange / numBins;
+            
+            // Initialize bins
+            const bins = Array(numBins).fill(0).map((_, i) => ({
+                priceLevel: minPrice + (i + 0.5) * binSize,
+                volume: 0,
+                minPrice: minPrice + i * binSize,
+                maxPrice: minPrice + (i + 1) * binSize
+            }));
+            
+            // Distribute volume across price bins
+            for (const candle of candles) {
+                const volume = candle.volume || 0;
+                const avgPrice = (candle.high + candle.low + candle.close) / 3;
+                
+                // Find which bin this candle belongs to
+                const binIndex = Math.min(
+                    Math.floor((avgPrice - minPrice) / binSize),
+                    numBins - 1
+                );
+                
+                if (binIndex >= 0 && binIndex < numBins) {
+                    bins[binIndex].volume += volume;
+                }
+            }
+            
+            // Find max volume for normalization
+            const maxVolume = Math.max(...bins.map(b => b.volume));
+            
+            // Normalize volumes (0-1)
+            bins.forEach(bin => {
+                bin.normalizedVolume = maxVolume > 0 ? bin.volume / maxVolume : 0;
+            });
+            
+            console.log(`📊 Volume Profile calculated (${numBins} bins, max volume: ${maxVolume.toFixed(2)})`);
+            
+            return { bins, maxVolume, minPrice, maxPrice };
+        }
+        
+        // Draw Volume Profile as horizontal histogram using price lines
+        function drawVolumeProfile(volumeProfile) {
+            if (!candlestickSeries || !volumeProfile) {
+                console.warn('Cannot draw Volume Profile: missing data');
+                return;
+            }
+            
+            try {
+                // Remove existing volume profile lines (stored in vwapLine for cleanup)
+                if (vwapLine && Array.isArray(vwapLine)) {
+                    vwapLine.forEach(line => {
+                        try {
+                            candlestickSeries.removePriceLine(line);
+                        } catch (e) {
+                            // Ignore removal errors
+                        }
+                    });
+                }
+                
+                const profileLines = [];
+                const { bins } = volumeProfile;
+                
+                // Draw only significant bins (volume > 10% of max)
+                const significantBins = bins.filter(b => b.normalizedVolume > 0.1);
+                
+                significantBins.forEach(bin => {
+                    // Color intensity based on volume
+                    const opacity = Math.round(bin.normalizedVolume * 100);
+                    const color = `rgba(41, 98, 255, 0.${opacity})`; // Blue with varying opacity
+                    
+                    // Draw price line at this level
+                    const line = candlestickSeries.createPriceLine({
+                        price: bin.priceLevel,
+                        color: color,
+                        lineWidth: Math.max(1, Math.round(bin.normalizedVolume * 3)),
+                        lineStyle: 0, // Solid
+                        axisLabelVisible: false,
+                        title: '',
+                    });
+                    
+                    profileLines.push(line);
                 });
                 
-                console.log('✅ VWAP line drawn successfully');
+                // Store for cleanup
+                vwapLine = profileLines;
+                
+                console.log(`✅ Volume Profile drawn (${significantBins.length} levels)`);
             } catch (error) {
-                console.error('Error drawing VWAP line:', error);
+                console.error('Error drawing Volume Profile:', error);
             }
         }
         
@@ -2470,12 +2635,49 @@
                     color: c.close >= c.open ? '#26a69a80' : '#ef535080',
                 }));
                 
+                // ============================================================
+                // CLEAR OLD INDICATORS BEFORE LOADING NEW DATA
+                // ============================================================
+                console.log('Clearing old indicators...');
+                
+                // Clear S/R lines
+                if (supportLine) {
+                    try {
+                        candlestickSeries.removePriceLine(supportLine);
+                    } catch (e) { /* ignore */ }
+                    supportLine = null;
+                }
+                if (resistanceLine) {
+                    try {
+                        candlestickSeries.removePriceLine(resistanceLine);
+                    } catch (e) { /* ignore */ }
+                    resistanceLine = null;
+                }
+                
+                // Clear Volume Profile lines
+                if (vwapLine && Array.isArray(vwapLine)) {
+                    vwapLine.forEach(line => {
+                        try {
+                            candlestickSeries.removePriceLine(line);
+                        } catch (e) { /* ignore */ }
+                    });
+                    vwapLine = null;
+                }
+                
                 console.log('Setting candlestick data...');
                 // Use setData for initial load, update() for real-time (Best practice)
+                if (!candlestickSeries) {
+                    console.error('❌ Candlestick series is null!');
+                    throw new Error('Chart not initialized properly');
+                }
                 candlestickSeries.setData(candleData);
                 console.log('Candlestick data set successfully');
                 
                 console.log('Setting volume data...');
+                if (!volumeSeries) {
+                    console.error('❌ Volume series is null!');
+                    throw new Error('Chart not initialized properly');
+                }
                 volumeSeries.setData(volumeData);
                 console.log('Volume data set successfully');
                 
@@ -2490,7 +2692,7 @@
                 }));
                 
                 // ============================================================
-                // DRAW SUPPORT/RESISTANCE & VWAP INDICATORS
+                // DRAW INDICATORS: S/R, VOLUME PROFILE, EMAs
                 // ============================================================
                 
                 // Calculate and draw Support/Resistance levels (144 period)
@@ -2499,11 +2701,14 @@
                     drawSupportResistance(srLevels.support, srLevels.resistance);
                 }
                 
-                // Calculate and draw VWAP (session-based, all candles)
-                const vwapPrice = calculateVWAP(latestData.candles);
-                if (vwapPrice) {
-                    drawVWAP(vwapPrice);
+                // Calculate and draw Volume Profile (replaces VWAP)
+                const volumeProfile = calculateVolumeProfile(latestData.candles, 24);
+                if (volumeProfile) {
+                    drawVolumeProfile(volumeProfile);
                 }
+                
+                // Update EMA series (33, 99, 144)
+                updateEMASeries(latestData.candles);
                 
                 console.log('Fitting content...');
                 // Smooth animation for fit (Best practice)
