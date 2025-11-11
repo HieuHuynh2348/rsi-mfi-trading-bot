@@ -961,6 +961,10 @@ class TelegramCommandHandler:
                             """Split long message and send all parts with better error handling"""
                             max_length = 4000  # Telegram limit is 4096, use 4000 for safety
                             
+                            # Sanitize message for Telegram (remove unsupported HTML tags)
+                            if parse_mode == 'HTML':
+                                message = self.bot.sanitize_for_telegram(message)
+                            
                             if len(message) <= max_length:
                                 try:
                                     self.telegram_bot.send_message(

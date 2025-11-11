@@ -25,6 +25,57 @@ class TelegramBot:
         self.chat_id = chat_id
         logger.info("Telegram bot initialized")
     
+    @staticmethod
+    def sanitize_for_telegram(html_text: str) -> str:
+        """
+        Convert HTML text to Telegram-compatible format.
+        
+        Telegram supports: <b>, <i>, <u>, <s>, <code>, <pre>, <a>, <em>, <strong>
+        Unsupported: <ul>, <li>, <ol>, <div>, <span>, <p>, etc.
+        
+        Args:
+            html_text: HTML text from Gemini AI
+            
+        Returns:
+            Telegram-compatible HTML text
+        """
+        import re
+        
+        text = html_text
+        
+        # Convert <ul><li> lists to bullet points
+        # <ul><li>item1</li><li>item2</li></ul> → • item1\n• item2
+        text = re.sub(r'<ul[^>]*>\s*', '', text)  # Remove <ul> tags
+        text = re.sub(r'<li[^>]*>(.*?)</li>', r'• \1\n', text, flags=re.DOTALL)  # Convert <li> to bullets
+        text = re.sub(r'</ul>', '', text)  # Remove </ul>
+        
+        # Convert <ol><li> ordered lists to numbered bullets
+        # Find all <ol> blocks and number them
+        ol_pattern = r'<ol[^>]*>(.*?)</ol>'
+        def replace_ol(match):
+            ol_content = match.group(1)
+            items = re.findall(r'<li[^>]*>(.*?)</li>', ol_content, re.DOTALL)
+            numbered = '\n'.join(f'{i}. {item.strip()}' for i, item in enumerate(items, 1))
+            return numbered
+        text = re.sub(ol_pattern, replace_ol, text, flags=re.DOTALL)
+        
+        # Remove any remaining <li>, <ul>, <ol> tags (shouldn't be any now)
+        text = re.sub(r'</?li[^>]*>', '', text)
+        text = re.sub(r'</?ul[^>]*>', '', text)
+        text = re.sub(r'</?ol[^>]*>', '', text)
+        
+        # Remove unsupported tags but keep content
+        unsupported_tags = ['div', 'span', 'p', 'article', 'section', 'nav', 'header', 'footer', 'main']
+        for tag in unsupported_tags:
+            # <div>content</div> → content
+            text = re.sub(rf'</?{tag}[^>]*>', '', text)
+        
+        # Clean up excessive whitespace
+        text = re.sub(r'\n\n\n+', '\n\n', text)  # Multiple newlines → double newline
+        text = re.sub(r' +', ' ', text)  # Multiple spaces → single space
+        
+        return text.strip()
+    
     def send_message(self, message, parse_mode='HTML', reply_markup=None, chat_id=None):
         """
         Send a text message

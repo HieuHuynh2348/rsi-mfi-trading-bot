@@ -1918,6 +1918,36 @@ IMPORTANT GUIDELINES:
                         logger.error(f"❌ Regex extraction also failed: {extract_err}")
                         return None
             
+            # === CLEANUP: Remove unsupported HTML tags for Telegram ===
+            # Telegram only supports: <b>, <i>, <code>, <pre>, <a>, <s>
+            # Remove: <ul>, </ul>, <li>, </li>, <ol>, </ol>, <div>, </div>, <p>, </p>, <h1-6>, </h1-6>, etc.
+            def cleanup_html_tags(text):
+                """Remove unsupported HTML tags for Telegram API"""
+                if not isinstance(text, str):
+                    return text
+                
+                import re
+                # Remove unsupported tags and replace <li> with bullet points
+                text = re.sub(r'</?ul[^>]*>', '', text)  # Remove <ul> </ul>
+                text = re.sub(r'</?ol[^>]*>', '', text)  # Remove <ol> </ol>
+                text = re.sub(r'<li[^>]*>', '• ', text)  # Replace <li> with bullet
+                text = re.sub(r'</li>', '', text)  # Remove </li>
+                text = re.sub(r'</?div[^>]*>', '', text)  # Remove <div> </div>
+                text = re.sub(r'</?p[^>]*>', '\n', text)  # Replace <p> with newline
+                text = re.sub(r'</?h[1-6][^>]*>', '', text)  # Remove <h1-6> </h1-6>
+                text = re.sub(r'</?span[^>]*>', '', text)  # Remove <span> </span>
+                text = re.sub(r'<br\s*/?>', '\n', text)  # Replace <br> with newline
+                
+                return text
+            
+            # Clean up all string fields in analysis
+            if isinstance(analysis, dict):
+                for key, value in analysis.items():
+                    if isinstance(value, str):
+                        analysis[key] = cleanup_html_tags(value)
+                    elif isinstance(value, list):
+                        analysis[key] = [cleanup_html_tags(item) if isinstance(item, str) else item for item in value]
+            
             # Add metadata
             analysis['symbol'] = symbol
             analysis['analyzed_at'] = datetime.now().isoformat()
