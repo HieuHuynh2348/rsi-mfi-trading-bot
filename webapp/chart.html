@@ -280,6 +280,8 @@
         [data-tab-content="chart"] {
             padding-bottom: 0;
             min-height: 0; /* Chart has its own height calculation */
+            overflow: visible; /* Ensure no clipping of touch events */
+            position: relative;
         }
         
         #timeframes::-webkit-scrollbar {
@@ -332,8 +334,8 @@
             position: relative;
             margin: 0;
             padding: 0;
-            /* Optimized touch handling for mobile */
-            touch-action: pan-x pan-y pinch-zoom;
+            /* Optimized touch handling for mobile - allow all gestures */
+            touch-action: manipulation;
             -webkit-user-select: none;
             user-select: none;
             /* GPU acceleration for smoother scrolling */
@@ -343,6 +345,8 @@
             /* Better rendering on mobile */
             backface-visibility: hidden;
             -webkit-backface-visibility: hidden;
+            /* Ensure touch events are captured */
+            pointer-events: auto;
         }
         
         /* Mobile-specific chart optimizations */
@@ -1686,10 +1690,10 @@
                         rightOffset: 5,
                         barSpacing: 10,
                         minBarSpacing: 0.5,  // Allow maximum zoom in (0.5px per bar)
-                        fixLeftEdge: false,
-                        fixRightEdge: false,
-                        lockVisibleTimeRangeOnResize: true,  // IMPORTANT: Preserve zoom on resize
-                        rightBarStaysOnScroll: true,  // Keep latest bar visible when user scrolls
+                        fixLeftEdge: false,  // Allow free horizontal panning
+                        fixRightEdge: false,  // Allow free horizontal panning
+                        lockVisibleTimeRangeOnResize: false,  // Allow flexible interaction
+                        rightBarStaysOnScroll: false,  // Allow complete freedom to pan
                         shiftVisibleRangeOnNewBar: false,  // DON'T auto-scroll - let user control view
                     },
                     localization: {
@@ -1699,16 +1703,16 @@
                     handleScroll: {
                         mouseWheel: true,
                         pressedMouseMove: true,
-                        horzTouchDrag: true,  // Enable chart library's optimized touch handling
-                        vertTouchDrag: true,  // Enable chart library's optimized touch handling
+                        horzTouchDrag: true,  // Enable horizontal touch drag for panning timeline
+                        vertTouchDrag: false,  // Disable to prevent conflict with page scroll
                     },
                     handleScale: {
                         axisPressedMouseMove: true,
                         mouseWheel: true,
-                        pinch: true,  // Enable chart library's optimized pinch zoom
+                        pinch: true,  // Enable pinch zoom with 2 fingers
                     },
                     kineticScroll: {
-                        touch: true,  // Enable chart library's kinetic scrolling
+                        touch: true,  // Enable smooth kinetic scrolling on mobile
                         mouse: false,
                     },
                 });
