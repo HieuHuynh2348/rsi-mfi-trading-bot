@@ -1715,16 +1715,16 @@
                     handleScroll: {
                         mouseWheel: true,
                         pressedMouseMove: true,
-                        horzTouchDrag: true,  // Enable horizontal touch drag (Phase 5)
-                        vertTouchDrag: true,  // Enable vertical touch drag (Phase 5)
+                        horzTouchDrag: true,  // Enable chart library's optimized touch handling
+                        vertTouchDrag: true,  // Enable chart library's optimized touch handling
                     },
                     handleScale: {
                         axisPressedMouseMove: true,
                         mouseWheel: true,
-                        pinch: true,  // Enable pinch zoom for mobile (Phase 5)
+                        pinch: true,  // Enable chart library's optimized pinch zoom
                     },
                     kineticScroll: {
-                        touch: true,  // Enable kinetic scrolling on mobile (Phase 5)
+                        touch: true,  // Enable chart library's kinetic scrolling
                         mouse: false,
                     },
                 });
@@ -1820,90 +1820,10 @@
             });
             
             // ============================================================
-            // CONSOLIDATED MOBILE TOUCH HANDLING
+            // MOBILE OPTIMIZATION - Use chart library's built-in touch handling
+            // Removed custom touch handlers to prevent conflicts and auto-reset issues
+            // LightweightCharts v5.0 has excellent mobile touch support out-of-the-box
             // ============================================================
-            let touchStartTime = 0;
-            let touchTimer = null;
-            let touchStartDistance = 0;
-            let longPressTimer = null;
-            const LONG_PRESS_DURATION = 300; // 300ms for long-press
-            
-            // Single touchstart handler for all touch interactions
-            container.addEventListener('touchstart', (e) => {
-                touchStartTime = Date.now();
-                
-                if (e.touches.length === 2) {
-                    // Two-finger pinch zoom
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    touchStartDistance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    // Clear any existing timers
-                    if (touchTimer) clearTimeout(touchTimer);
-                    if (longPressTimer) clearTimeout(longPressTimer);
-                    
-                    // CRITICAL FIX: Prevent browser zoom to avoid chart position reset
-                    e.preventDefault();
-                } else if (e.touches.length === 1) {
-                    // Single touch - panning
-                    hapticFeedback('light');
-                    
-                    // Set timer for long-press detection
-                    longPressTimer = setTimeout(() => {
-                        hapticFeedback('medium');
-                        console.log('Long-press detected');
-                    }, LONG_PRESS_DURATION);
-                }
-                
-                // Allow event to propagate to chart library for proper handling
-            }, { passive: false }); // CRITICAL FIX: Changed to passive: false to allow preventDefault()
-            
-            // Single touchmove handler
-            container.addEventListener('touchmove', (e) => {
-                // Clear long-press timer on move
-                if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                }
-                
-                if (e.touches.length === 2) {
-                    // Pinch zoom in progress
-                    const dx = e.touches[0].clientX - e.touches[1].clientX;
-                    const dy = e.touches[0].clientY - e.touches[1].clientY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    // Trigger haptic feedback if pinch is significant
-                    if (Math.abs(distance - touchStartDistance) > 50) {
-                        hapticFeedback('light');
-                        touchStartDistance = distance;
-                    }
-                    
-                    // CRITICAL FIX: Prevent browser zoom/scroll to avoid chart position reset
-                    e.preventDefault();
-                }
-                
-                // Allow single-touch pan events to propagate to chart library
-            }, { passive: false }); // CRITICAL FIX: Changed to passive: false to allow preventDefault()
-            
-            // Single touchend handler
-            container.addEventListener('touchend', (e) => {
-                const touchDuration = Date.now() - touchStartTime;
-                
-                // Clear all timers
-                if (touchTimer) {
-                    clearTimeout(touchTimer);
-                    touchTimer = null;
-                }
-                if (longPressTimer) {
-                    clearTimeout(longPressTimer);
-                    longPressTimer = null;
-                }
-                
-                // Quick tap - light haptic
-                if (touchDuration < LONG_PRESS_DURATION && e.touches.length === 0) {
-                    hapticFeedback('light');
-                }
-            }, { passive: false }); // Changed to passive: false for consistency
             
             // Handle resize with debounce (Best practice from docs)
             let resizeTimeout;
@@ -2093,10 +2013,10 @@
         // SUPPORT/RESISTANCE & FVG INDICATORS (144 Period)
         // ============================================================
         
-        // Store S/R price lines for cleanup
+        // Store S/R and VWAP price lines for cleanup
         let supportLine = null;
         let resistanceLine = null;
-        let fvgMarkers = [];
+        let vwapLine = null;
         
         // Calculate Support and Resistance levels (144-period)
         function calculateSupportResistance(candles, period = 144) {
@@ -2264,6 +2184,81 @@
                 console.log(`✅ Drew ${recentFVGs.length} FVG zones`);
             } catch (error) {
                 console.error('Error drawing FVG zones:', error);
+            }
+        }
+        
+        // ============================================================
+        // VWAP INDICATOR (Volume Weighted Average Price)
+        // ============================================================
+        
+        // Calculate VWAP (Volume Weighted Average Price)
+        // VWAP = Σ(Typical Price × Volume) / Σ(Volume)
+        // Typical Price = (High + Low + Close) / 3
+        function calculateVWAP(candles, period = null) {
+            if (!candles || candles.length === 0) {
+                console.warn('No candles for VWAP calculation');
+                return null;
+            }
+            
+            // Use all candles if no period specified (session VWAP)
+            const data = period ? candles.slice(-period) : candles;
+            
+            if (data.length === 0) {
+                console.warn('Not enough candles for VWAP');
+                return null;
+            }
+            
+            let cumulativePV = 0;  // Price × Volume
+            let cumulativeVolume = 0;
+            
+            for (const candle of data) {
+                // Typical Price = (High + Low + Close) / 3
+                const typicalPrice = (candle.high + candle.low + candle.close) / 3;
+                const volume = candle.volume || 0;
+                
+                cumulativePV += typicalPrice * volume;
+                cumulativeVolume += volume;
+            }
+            
+            if (cumulativeVolume === 0) {
+                console.warn('Zero cumulative volume, cannot calculate VWAP');
+                return null;
+            }
+            
+            const vwap = cumulativePV / cumulativeVolume;
+            
+            console.log(`📊 VWAP: ${vwap.toFixed(2)} (Period: ${period || 'session'}, Candles: ${data.length})`);
+            
+            return vwap;
+        }
+        
+        // Draw VWAP line on chart
+        function drawVWAP(vwapPrice) {
+            if (!candlestickSeries || !vwapPrice) {
+                console.warn('Cannot draw VWAP: missing series or price');
+                return;
+            }
+            
+            try {
+                // Remove existing VWAP line
+                if (vwapLine) {
+                    candlestickSeries.removePriceLine(vwapLine);
+                    vwapLine = null;
+                }
+                
+                // Draw VWAP line (blue, solid)
+                vwapLine = candlestickSeries.createPriceLine({
+                    price: vwapPrice,
+                    color: '#2962FF',  // TradingView blue
+                    lineWidth: 2,
+                    lineStyle: 0, // Solid (LightweightCharts.LineStyle.Solid = 0)
+                    axisLabelVisible: true,
+                    title: 'VWAP',
+                });
+                
+                console.log('✅ VWAP line drawn successfully');
+            } catch (error) {
+                console.error('Error drawing VWAP line:', error);
             }
         }
         
@@ -2495,19 +2490,19 @@
                 }));
                 
                 // ============================================================
-                // DRAW SUPPORT/RESISTANCE & FVG INDICATORS (144 Period)
+                // DRAW SUPPORT/RESISTANCE & VWAP INDICATORS
                 // ============================================================
                 
-                // Calculate and draw Support/Resistance levels
+                // Calculate and draw Support/Resistance levels (144 period)
                 const srLevels = calculateSupportResistance(latestData.candles, 144);
                 if (srLevels) {
                     drawSupportResistance(srLevels.support, srLevels.resistance);
                 }
                 
-                // Detect and draw Fair Value Gaps
-                const fvgs = detectFairValueGaps(latestData.candles, 144);
-                if (fvgs && fvgs.length > 0) {
-                    drawFairValueGaps(fvgs);
+                // Calculate and draw VWAP (session-based, all candles)
+                const vwapPrice = calculateVWAP(latestData.candles);
+                if (vwapPrice) {
+                    drawVWAP(vwapPrice);
                 }
                 
                 console.log('Fitting content...');
@@ -2968,6 +2963,28 @@
                         }
                     };
                     
+                    // ============================================================
+                    // OPTIMIZED WEBSOCKET MESSAGE HANDLING FOR MOBILE
+                    // ============================================================
+                    let pendingUpdate = null;
+                    let updateScheduled = false;
+                    
+                    // Use requestAnimationFrame for smooth updates on mobile
+                    function scheduleChartUpdate(candleData, volumeData) {
+                        pendingUpdate = { candleData, volumeData };
+                        
+                        if (!updateScheduled) {
+                            updateScheduled = true;
+                            requestAnimationFrame(() => {
+                                if (pendingUpdate && candlestickSeries && volumeSeries && isChartReady) {
+                                    candlestickSeries.update(pendingUpdate.candleData);
+                                    volumeSeries.update(pendingUpdate.volumeData);
+                                }
+                                updateScheduled = false;
+                            });
+                        }
+                    }
+                    
                     ws.onmessage = (event) => {
                         try {
                             const data = JSON.parse(event.data);
@@ -3003,55 +3020,52 @@
                                     color: close >= open ? '#26a69a80' : '#ef535080'
                                 };
                                 
-                                // Update chart (use update() for real-time updates)
-                                if (candlestickSeries && volumeSeries && isChartReady) {
-                                    candlestickSeries.update(candleData);
-                                    volumeSeries.update(volumeData);
+                                // Schedule optimized chart update using requestAnimationFrame
+                                scheduleChartUpdate(candleData, volumeData);
+                                
+                                // Update price display immediately (lightweight operation)
+                                const prevClose = latestData.candles.length > 0 
+                                    ? latestData.candles[latestData.candles.length - 1].close 
+                                    : close;
+                                const priceChange = ((close - prevClose) / prevClose) * 100;
+                                updatePrice(close, priceChange);
+                                updatePriceChange(candleData);
+                                
+                                // Store latest candle with volume
+                                const candleWithVolume = {
+                                    time: time,
+                                    open: open,
+                                    high: validHigh,
+                                    low: validLow,
+                                    close: close,
+                                    volume: volume  // Store volume for MFI calculation
+                                };
+                                latestData.candles.push(candleWithVolume);
+                                if (latestData.candles.length > 500) {
+                                    latestData.candles.shift(); // Keep last 500
+                                }
+                                
+                                // Recalculate indicators on closed candles (only on candle close to save CPU)
+                                if (isClosed) {
+                                    const closes = latestData.candles.map(c => c.close);
+                                    const rsi = calculateSimpleRSI(closes, 6);
+                                    const stochRSI = calculateStochRSI(closes, 6, 6);
+                                    const mfi = calculateSimpleMFI(latestData.candles, 6);  // Pass full candles array with volume
                                     
-                                    // Update price display
-                                    const prevClose = latestData.candles.length > 0 
-                                        ? latestData.candles[latestData.candles.length - 1].close 
-                                        : close;
-                                    const priceChange = ((close - prevClose) / prevClose) * 100;
-                                    updatePrice(close, priceChange);
-                                    updatePriceChange(candleData);
+                                    // Calculate volume ratio
+                                    const volumes = latestData.candles.map(c => c.volume || 0);
+                                    const avgVolume = volumes.slice(0, -1).reduce((a, b) => a + b, 0) / (volumes.length - 1);
+                                    const volumeRatio = volume / avgVolume;
                                     
-                                    // Store latest candle with volume
-                                    const candleWithVolume = {
-                                        time: time,
-                                        open: open,
-                                        high: validHigh,
-                                        low: validLow,
-                                        close: close,
-                                        volume: volume  // Store volume for MFI calculation
-                                    };
-                                    latestData.candles.push(candleWithVolume);
-                                    if (latestData.candles.length > 500) {
-                                        latestData.candles.shift(); // Keep last 500
-                                    }
+                                    latestData.rsi = rsi;
+                                    latestData.mfi = mfi;
+                                    latestData.stochRSI = stochRSI;
+                                    latestData.volumeRatio = volumeRatio;
                                     
-                                    // Recalculate indicators on closed candles
-                                    if (isClosed) {
-                                        const closes = latestData.candles.map(c => c.close);
-                                        const rsi = calculateSimpleRSI(closes, 6);
-                                        const stochRSI = calculateStochRSI(closes, 6, 6);
-                                        const mfi = calculateSimpleMFI(latestData.candles, 6);  // Pass full candles array with volume
-                                        
-                                        // Calculate volume ratio
-                                        const volumes = latestData.candles.map(c => c.volume || 0);
-                                        const avgVolume = volumes.slice(0, -1).reduce((a, b) => a + b, 0) / (volumes.length - 1);
-                                        const volumeRatio = volume / avgVolume;
-                                        
-                                        latestData.rsi = rsi;
-                                        latestData.mfi = mfi;
-                                        latestData.stochRSI = stochRSI;
-                                        latestData.volumeRatio = volumeRatio;
-                                        
-                                        updateIndicatorDisplay(rsi, mfi, stochRSI, volumeRatio);
-                                        updateSignalBadge(rsi, mfi);
-                                        
-                                        console.log(`📊 Candle closed: ${close}, RSI: ${rsi.toFixed(2)}, MFI: ${mfi.toFixed(2)}, StochRSI: ${stochRSI.toFixed(2)}, Vol: ${volumeRatio.toFixed(2)}x`);
-                                    }
+                                    updateIndicatorDisplay(rsi, mfi, stochRSI, volumeRatio);
+                                    updateSignalBadge(rsi, mfi);
+                                    
+                                    console.log(`📊 Candle closed: ${close}, RSI: ${rsi.toFixed(2)}, MFI: ${mfi.toFixed(2)}, StochRSI: ${stochRSI.toFixed(2)}, Vol: ${volumeRatio.toFixed(2)}x`);
                                 }
                             }
                         } catch (error) {
