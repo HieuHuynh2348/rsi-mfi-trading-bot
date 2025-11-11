@@ -236,12 +236,22 @@ class NavigationController {
             return;
         }
         
-        const tg = window.Telegram?.WebApp;
-        const userId = tg?.initDataUnsafe?.user?.id || 6228875204;
+        // Use existing historyTab instance if available, or create new one
+        if (window.historyTab) {
+            this.historyModule = window.historyTab;
+            console.log('✅ Using existing History Tab instance');
+        } else {
+            const tg = window.Telegram?.WebApp;
+            const userId = tg?.initDataUnsafe?.user?.id || 6228875204;
+            
+            this.historyModule = new AnalysisHistory(userId);
+            window.historyTab = this.historyModule;
+            console.log('✅ Created new History Tab instance for user:', userId);
+        }
         
-        this.historyModule = new AnalysisHistory(userId);
-        this.historyModule.loadHistory(null, 7); // Load last 7 days, all symbols
-        console.log('✅ History module initialized');
+        // Initialize the History Tab (triggers loading)
+        this.historyModule.init();
+        console.log('✅ History Tab initialized and loading data...');
     }
     
     /**

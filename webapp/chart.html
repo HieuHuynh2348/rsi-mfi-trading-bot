@@ -3341,6 +3341,19 @@
                 }
             }
             
+            // Initialize History Tab Controller
+            if (typeof AnalysisHistory !== 'undefined' && tg.initDataUnsafe?.user?.id) {
+                try {
+                    window.historyTab = new AnalysisHistory(tg.initDataUnsafe.user.id);
+                    console.log('✅ History Tab instance created for user:', tg.initDataUnsafe.user.id);
+                } catch (e) {
+                    console.error('❌ History Tab initialization error:', e);
+                }
+            } else {
+                if (typeof AnalysisHistory === 'undefined') console.warn('⚠️ AnalysisHistory class not found');
+                if (!tg.initDataUnsafe?.user?.id) console.warn('⚠️ User ID not available');
+            }
+            
             // Initialize Timeframe Switcher
             const timeframeContainer = document.querySelector('#timeframe-container');
             console.log('Timeframe container:', timeframeContainer);

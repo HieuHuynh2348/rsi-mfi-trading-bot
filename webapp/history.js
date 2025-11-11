@@ -1,6 +1,7 @@
 /**
- * Analysis History Module
- * Displays past AI analyses with filtering and statistics
+ * Analysis History Tab Controller
+ * Modern UI/UX with glassmorphism design
+ * Version: 2.0 - Complete Rebuild
  */
 
 class AnalysisHistory {
@@ -9,12 +10,47 @@ class AnalysisHistory {
         this.history = [];
         this.filteredHistory = [];
         this.stats = null;
+        this.isLoading = false;
+        this.currentFilters = {};
+        
+        console.log('📜 AnalysisHistory initialized with userId:', userId);
+    }
+    
+    /**
+     * Initialize history tab
+     */
+    init() {
+        console.log('📜 Initializing History Tab...');
+        this.showLoading();
+        this.loadHistory();
+    }
+    
+    /**
+     * Show loading state
+     */
+    showLoading() {
+        const container = document.getElementById('history-container');
+        if (!container) return;
+        
+        container.innerHTML = `
+            <div class="history-loading">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Đang tải lịch sử phân tích...</div>
+            </div>
+        `;
     }
 
     /**
      * Load history from API
      */
     async loadHistory(symbol = null, days = 7) {
+        if (this.isLoading) {
+            console.log('⏳ Already loading...');
+            return;
+        }
+        
+        this.isLoading = true;
+        
         try {
             const params = new URLSearchParams({
                 user_id: this.userId,
@@ -25,31 +61,73 @@ class AnalysisHistory {
                 params.append('symbol', symbol);
             }
             
+            console.log('📡 Fetching history:', `/api/analysis-history?${params}`);
             const response = await fetch(`/api/analysis-history?${params}`);
             const data = await response.json();
             
+            console.log('📊 History data received:', data);
+            
             if (data.success) {
                 this.history = data.history || [];
-                this.stats = data.stats;
+                this.stats = data.stats || this.calculateStats();
                 this.filteredHistory = [...this.history];
                 this.render();
+                this.isLoading = false;
                 return true;
             } else {
-                console.error('Failed to load history:', data.error);
-                this.showError(data.error);
+                console.error('❌ Failed to load history:', data.error);
+                this.showError(data.error || 'Không thể tải lịch sử');
+                this.isLoading = false;
                 return false;
             }
         } catch (error) {
-            console.error('Error loading history:', error);
-            this.showError(error.message);
+            console.error('❌ Error loading history:', error);
+            this.showError(error.message || 'Lỗi kết nối đến server');
+            this.isLoading = false;
             return false;
         }
+    }
+    
+    /**
+     * Calculate stats if not provided by API
+     */
+    calculateStats() {
+        const wins = this.history.filter(h => h.tracking_result?.result === 'WIN').length;
+        const losses = this.history.filter(h => h.tracking_result?.result === 'LOSS').length;
+        const total = wins + losses;
+        const winRate = total > 0 ? (wins / total) * 100 : 0;
+        
+        const profits = this.history
+            .filter(h => h.tracking_result?.result === 'WIN')
+            .map(h => h.tracking_result?.pnl_percent || 0);
+        const avgProfit = profits.length > 0 
+            ? profits.reduce((a, b) => a + b, 0) / profits.length 
+            : 0;
+            
+        const losses_ = this.history
+            .filter(h => h.tracking_result?.result === 'LOSS')
+            .map(h => h.tracking_result?.pnl_percent || 0);
+        const avgLoss = losses_.length > 0
+            ? losses_.reduce((a, b) => a + b, 0) / losses_.length
+            : 0;
+        
+        return {
+            total: this.history.length,
+            wins,
+            losses,
+            win_rate: winRate,
+            avg_profit: avgProfit,
+            avg_loss: avgLoss
+        };
     }
 
     /**
      * Filter history by criteria
      */
     filterHistory(filters = {}) {
+        console.log('🔍 Filtering history with:', filters);
+        this.currentFilters = filters;
+        
         this.filteredHistory = this.history.filter(item => {
             // Filter by symbol
             if (filters.symbol && item.symbol !== filters.symbol) {
@@ -76,6 +154,7 @@ class AnalysisHistory {
             return true;
         });
         
+        console.log(`✅ Filtered: ${this.filteredHistory.length}/${this.history.length} items`);
         this.render();
     }
 
@@ -84,35 +163,48 @@ class AnalysisHistory {
      */
     render() {
         const container = document.getElementById('history-container');
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ history-container not found');
+            return;
+        }
+        
+        console.log('🎨 Rendering history UI...');
         
         // Clear container
         container.innerHTML = '';
         
+        // Create modern wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'history-wrapper';
+        
         // Render stats if available
-        if (this.stats) {
-            container.appendChild(this.renderStats());
+        if (this.stats && this.history.length > 0) {
+            wrapper.appendChild(this.renderStats());
         }
         
-        // Add Analytics Toggle Button
-        container.appendChild(this.renderAnalyticsButton());
+        // Render filters if history exists
+        if (this.history.length > 0) {
+            wrapper.appendChild(this.renderFilters());
+            
+            // Add Export CSV button
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'history-export-btn';
+            exportBtn.innerHTML = '<span class="btn-icon">📥</span><span class="btn-text">Export CSV</span>';
+            exportBtn.onclick = () => this.exportToCSV();
+            wrapper.appendChild(exportBtn);
+        }
         
-        // Render filters
-        container.appendChild(this.renderFilters());
-        
-        // Add Export CSV button
-        const exportBtn = document.createElement('button');
-        exportBtn.className = 'export-csv-btn';
-        exportBtn.innerHTML = '📥 Export CSV';
-        exportBtn.onclick = () => this.exportToCSV();
-        container.appendChild(exportBtn);
-        
-        // Render history list
-        if (this.filteredHistory.length === 0) {
-            container.appendChild(this.renderEmpty());
+        // Render history list or empty state
+        if (this.filteredHistory.length === 0 && this.history.length === 0) {
+            wrapper.appendChild(this.renderEmpty());
+        } else if (this.filteredHistory.length === 0) {
+            wrapper.appendChild(this.renderNoResults());
         } else {
-            container.appendChild(this.renderList());
+            wrapper.appendChild(this.renderList());
         }
+        
+        container.appendChild(wrapper);
+        console.log('✅ History UI rendered');
     }
 
     /**
@@ -172,76 +264,67 @@ class AnalysisHistory {
     /**
      * Render Analytics Toggle Button
      */
-    renderAnalyticsButton() {
-        const div = document.createElement('div');
-        div.innerHTML = `
-            <button class="analytics-toggle" onclick="historyModule.toggleAnalytics()">
-                📊 Advanced Analytics
-            </button>
-            <div id="analytics-container" style="display: none;"></div>
-        `;
-        return div;
-    }
-
-    /**
-     * Toggle Analytics View
-     */
-    toggleAnalytics() {
-        const analyticsContainer = document.getElementById('analytics-container');
-        const button = document.querySelector('.analytics-toggle');
-        
-        if (analyticsContainer.style.display === 'none') {
-            // Show analytics
-            analyticsContainer.style.display = 'block';
-            button.textContent = '📋 Back to History';
-            
-            // Initialize analytics module
-            if (!this.analyticsModule) {
-                this.analyticsModule = new AnalyticsModule(this.history);
-            } else {
-                this.analyticsModule.updateHistory(this.history);
-            }
-            
-            this.analyticsModule.renderAll('analytics-container');
-        } else {
-            // Hide analytics
-            analyticsContainer.style.display = 'none';
-            button.textContent = '📊 Advanced Analytics';
-        }
-    }
-
     /**
      * Render statistics card
      */
     renderStats() {
         const stats = this.stats;
         const div = document.createElement('div');
-        div.className = 'history-stats';
+        div.className = 'history-stats-card';
+        
+        const winRate = stats.win_rate || 0;
+        const winRateColor = winRate >= 60 ? '#4CAF50' : winRate >= 40 ? '#FFC107' : '#F44336';
+        
         div.innerHTML = `
+            <div class="stats-header">
+                <h3>📊 Thống Kê Tổng Quan</h3>
+                <div class="stats-period">Last 7 days</div>
+            </div>
             <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value">${stats.total || 0}</div>
-                    <div class="stat-label">Tổng Phân Tích</div>
+                <div class="stat-item">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.total || 0}</div>
+                        <div class="stat-label">Tổng Phân Tích</div>
+                    </div>
                 </div>
-                <div class="stat-card success">
-                    <div class="stat-value">${stats.wins || 0}</div>
-                    <div class="stat-label">Thắng</div>
+                <div class="stat-item success">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.wins || 0}</div>
+                        <div class="stat-label">Thắng</div>
+                    </div>
                 </div>
-                <div class="stat-card danger">
-                    <div class="stat-value">${stats.losses || 0}</div>
-                    <div class="stat-label">Thua</div>
+                <div class="stat-item danger">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${stats.losses || 0}</div>
+                        <div class="stat-label">Thua</div>
+                    </div>
                 </div>
-                <div class="stat-card primary">
-                    <div class="stat-value">${(stats.win_rate || 0).toFixed(1)}%</div>
-                    <div class="stat-label">Tỷ Lệ Thắng</div>
+                <div class="stat-item primary" style="--win-rate-color: ${winRateColor}">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${winRate.toFixed(1)}%</div>
+                        <div class="stat-label">Tỷ Lệ Thắng</div>
+                        <div class="stat-progress">
+                            <div class="stat-progress-bar" style="width: ${winRate}%; background: ${winRateColor}"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="stat-card success">
-                    <div class="stat-value">+${(stats.avg_profit || 0).toFixed(2)}%</div>
-                    <div class="stat-label">Lãi TB</div>
+                <div class="stat-item success">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-content">
+                        <div class="stat-value">+${(stats.avg_profit || 0).toFixed(2)}%</div>
+                        <div class="stat-label">Lãi Trung Bình</div>
+                    </div>
                 </div>
-                <div class="stat-card danger">
-                    <div class="stat-value">${(stats.avg_loss || 0).toFixed(2)}%</div>
-                    <div class="stat-label">Lỗ TB</div>
+                <div class="stat-item danger">
+                    <div class="stat-icon">📉</div>
+                    <div class="stat-content">
+                        <div class="stat-value">${(stats.avg_loss || 0).toFixed(2)}%</div>
+                        <div class="stat-label">Lỗ Trung Bình</div>
+                    </div>
                 </div>
             </div>
         `;
@@ -253,69 +336,62 @@ class AnalysisHistory {
      */
     renderFilters() {
         const div = document.createElement('div');
-        div.className = 'history-filters';
+        div.className = 'history-filters-card';
         
         // Get unique symbols
         const symbols = [...new Set(this.history.map(item => item.symbol))].sort();
         
         div.innerHTML = `
-            <div class="filter-row">
-                <select id="filter-symbol" class="filter-select">
-                    <option value="">Tất cả Symbols</option>
-                    ${symbols.map(s => `<option value="${s}">${s}</option>`).join('')}
-                </select>
+            <div class="filters-header">
+                <h4>🔍 Bộ Lọc</h4>
+                <button class="filter-reset-btn" onclick="window.historyTab?.resetFilters()">
+                    <span class="btn-icon">🔄</span> Reset
+                </button>
+            </div>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Symbol</label>
+                    <select class="history-filter-select" data-filter="symbol">
+                        <option value="">Tất cả</option>
+                        ${symbols.map(s => `<option value="${s}">${s}</option>`).join('')}
+                    </select>
+                </div>
                 
-                <select id="filter-recommendation" class="filter-select">
-                    <option value="">Tất cả Khuyến Nghị</option>
-                    <option value="BUY">🟢 BUY</option>
-                    <option value="SELL">🔴 SELL</option>
-                    <option value="WAIT">⚪ WAIT</option>
-                    <option value="HOLD">🟡 HOLD</option>
-                </select>
+                <div class="filter-group">
+                    <label class="filter-label">Khuyến Nghị</label>
+                    <select class="history-filter-select" data-filter="recommendation">
+                        <option value="">Tất cả</option>
+                        <option value="BUY">🟢 BUY</option>
+                        <option value="SELL">🔴 SELL</option>
+                        <option value="WAIT">⚪ WAIT</option>
+                        <option value="HOLD">🟡 HOLD</option>
+                    </select>
+                </div>
                 
-                <select id="filter-result" class="filter-select">
-                    <option value="">Tất cả Kết Quả</option>
-                    <option value="WIN">✅ WIN</option>
-                    <option value="LOSS">❌ LOSS</option>
-                    <option value="EXPIRED">⏱️ EXPIRED</option>
-                </select>
-                
-                <button id="filter-reset" class="btn-reset">🔄 Reset</button>
+                <div class="filter-group">
+                    <label class="filter-label">Kết Quả</label>
+                    <select class="history-filter-select" data-filter="result">
+                        <option value="">Tất cả</option>
+                        <option value="WIN">✅ WIN</option>
+                        <option value="LOSS">❌ LOSS</option>
+                        <option value="EXPIRED">⏱️ EXPIRED</option>
+                    </select>
+                </div>
             </div>
         `;
         
-        // Add event listeners
+        // Add event listeners after render
         setTimeout(() => {
-            document.getElementById('filter-symbol')?.addEventListener('change', (e) => {
-                this.filterHistory({
-                    symbol: e.target.value || undefined,
-                    recommendation: document.getElementById('filter-recommendation')?.value || undefined,
-                    result: document.getElementById('filter-result')?.value || undefined
+            div.querySelectorAll('.history-filter-select').forEach(select => {
+                select.addEventListener('change', () => {
+                    const filters = {};
+                    div.querySelectorAll('.history-filter-select').forEach(s => {
+                        if (s.value) {
+                            filters[s.dataset.filter] = s.value;
+                        }
+                    });
+                    this.filterHistory(filters);
                 });
-            });
-            
-            document.getElementById('filter-recommendation')?.addEventListener('change', (e) => {
-                this.filterHistory({
-                    symbol: document.getElementById('filter-symbol')?.value || undefined,
-                    recommendation: e.target.value || undefined,
-                    result: document.getElementById('filter-result')?.value || undefined
-                });
-            });
-            
-            document.getElementById('filter-result')?.addEventListener('change', (e) => {
-                this.filterHistory({
-                    symbol: document.getElementById('filter-symbol')?.value || undefined,
-                    recommendation: document.getElementById('filter-recommendation')?.value || undefined,
-                    result: e.target.value || undefined
-                });
-            });
-            
-            document.getElementById('filter-reset')?.addEventListener('click', () => {
-                document.getElementById('filter-symbol').value = '';
-                document.getElementById('filter-recommendation').value = '';
-                document.getElementById('filter-result').value = '';
-                this.filteredHistory = [...this.history];
-                this.render();
             });
         }, 100);
         
@@ -327,15 +403,56 @@ class AnalysisHistory {
      */
     renderEmpty() {
         const div = document.createElement('div');
-        div.className = 'history-empty';
+        div.className = 'history-empty-state';
         div.innerHTML = `
-            <div class="empty-icon">📊</div>
-            <div class="empty-title">Chưa Có Lịch Sử Phân Tích</div>
-            <div class="empty-text">
-                Thực hiện phân tích AI đầu tiên để bắt đầu lưu lịch sử.
+            <div class="empty-illustration">
+                <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                    <circle cx="60" cy="60" r="50" stroke="rgba(102, 126, 234, 0.3)" stroke-width="2" stroke-dasharray="5 5"/>
+                    <path d="M40 60 L50 70 L80 40" stroke="rgba(102, 126, 234, 0.5)" stroke-width="3" stroke-linecap="round" fill="none"/>
+                </svg>
+            </div>
+            <h3 class="empty-title">Chưa Có Lịch Sử Phân Tích</h3>
+            <p class="empty-text">
+                Thực hiện phân tích AI đầu tiên để bắt đầu theo dõi lịch sử và thống kê.
+            </p>
+            <div class="empty-hint">
+                💡 <strong>Mẹo:</strong> Chuyển sang tab AI để phân tích coin
             </div>
         `;
         return div;
+    }
+    
+    /**
+     * Render no results state (after filtering)
+     */
+    renderNoResults() {
+        const div = document.createElement('div');
+        div.className = 'history-empty-state';
+        div.innerHTML = `
+            <div class="empty-icon">🔍</div>
+            <h3 class="empty-title">Không Tìm Thấy Kết Quả</h3>
+            <p class="empty-text">
+                Không có phân tích nào khớp với bộ lọc hiện tại.
+            </p>
+            <button class="empty-action-btn" onclick="window.historyTab?.resetFilters()">
+                🔄 Xóa Bộ Lọc
+            </button>
+        `;
+        return div;
+    }
+    
+    /**
+     * Reset all filters
+     */
+    resetFilters() {
+        this.currentFilters = {};
+        this.filteredHistory = [...this.history];
+        
+        // Reset filter UI
+        const selects = document.querySelectorAll('.history-filter-select');
+        selects.forEach(select => select.value = '');
+        
+        this.render();
     }
 
     /**
@@ -562,10 +679,19 @@ class AnalysisHistory {
         if (!container) return;
         
         container.innerHTML = `
-            <div class="history-error">
-                <div class="error-icon">❌</div>
-                <div class="error-title">Lỗi Tải Lịch Sử</div>
-                <div class="error-text">${message}</div>
+            <div class="history-error-state">
+                <div class="error-illustration">
+                    <svg width="100" height="100" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#F44336" stroke-width="3"/>
+                        <line x1="35" y1="35" x2="65" y2="65" stroke="#F44336" stroke-width="3" stroke-linecap="round"/>
+                        <line x1="65" y1="35" x2="35" y2="65" stroke="#F44336" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h3 class="error-title">Lỗi Tải Lịch Sử</h3>
+                <p class="error-message">${message}</p>
+                <button class="error-retry-btn" onclick="window.historyTab?.loadHistory()">
+                    <span class="btn-icon">🔄</span> Thử Lại
+                </button>
             </div>
         `;
     }
