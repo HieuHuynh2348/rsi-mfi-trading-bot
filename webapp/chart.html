@@ -255,25 +255,42 @@
         
         /* OLD TAB SYSTEM - HIDDEN (using mobile bottom nav instead) */
         #tabs {
-            display: none !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            background: var(--primary-bg, #131722);
+            border-top: 1px solid var(--border-color, #2a2e39);
+            z-index: 200;
+            padding-bottom: env(safe-area-inset-bottom, 0);
         }
         
         .tab-btn {
             flex: 1;
-            padding: 12px;
+            padding: 10px 4px;
             border: none;
             background: transparent;
-            color: #666;
-            font-size: 14px;
+            color: #787B86;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
-            border-bottom: 2px solid transparent;
+            border-top: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            -webkit-tap-highlight-color: transparent;
         }
         
         .tab-btn.active {
             color: #2962FF;
-            border-bottom-color: #2962FF;
+            border-top-color: #2962FF;
+        }
+        
+        .tab-btn:active {
+            background: rgba(41, 98, 255, 0.1);
         }
         
         .tab-content {
@@ -753,10 +770,22 @@
     </div>
     
     <div id="tabs">
-        <button class="tab-btn active" data-tab="chart">Chart</button>
-        <button class="tab-btn" data-tab="indicators">Indicators</button>
-        <button class="tab-btn" data-tab="ai">AI Analysis</button>
-        <button class="tab-btn" data-tab="history">📊 History</button>
+        <button class="tab-btn active" data-tab="chart">
+            <span style="font-size: 18px;">📈</span>
+            <span>Chart</span>
+        </button>
+        <button class="tab-btn" data-tab="indicators">
+            <span style="font-size: 18px;">📊</span>
+            <span>Indicators</span>
+        </button>
+        <button class="tab-btn" data-tab="ai">
+            <span style="font-size: 18px;">🤖</span>
+            <span>AI</span>
+        </button>
+        <button class="tab-btn" data-tab="history">
+            <span style="font-size: 18px;">�</span>
+            <span>History</span>
+        </button>
     </div>
     
     <!-- Timeframe Switcher Container (New Mobile Component) -->
@@ -889,34 +918,6 @@
     <!-- History Tab -->
     <div data-tab-content="history" style="display: none; padding: 15px; overflow-y: auto;">
         <div id="history-container"></div>
-    </div>
-    <div data-tab-content="ai" style="display: none; padding: 0;">
-        <div id="ai-analysis" style="height: 100%; overflow-y: auto; background: #131722; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <button id="ai-analyze-btn" style="
-                    padding: 12px 24px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-                    transition: all 0.2s;
-                    min-height: 44px;
-                    display: block;
-                    margin: 0 auto;
-                ">
-                    🧠 Analyze with Gemini AI
-                </button>
-                <div style="color: #D1D4DC; margin-top: 16px; font-size: 14px; line-height: 1.6;">
-                    Get comprehensive market analysis powered by Gemini 2.0 Flash
-                </div>
-            </div>
-            <div id="ai-loading"></div>
-            <div id="ai-content"></div>
-        </div>
     </div>
     
     <script>
