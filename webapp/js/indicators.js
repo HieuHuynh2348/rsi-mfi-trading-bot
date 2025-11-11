@@ -416,7 +416,6 @@ class IndicatorsTabController {
                 stochRSI: null,
                 volumeRatio: null,
                 ema20: null,
-                macd: null,
                 price: 0
             };
         }
@@ -427,7 +426,6 @@ class IndicatorsTabController {
             stochRSI: this.calculateStochRSI(candles, 14),
             volumeRatio: this.calculateVolumeRatio(candles),
             ema20: this.calculateEMA(candles, 20),
-            macd: this.calculateMACD(candles),
             price: candles[candles.length - 1]?.close || 0
         };
     }
@@ -533,20 +531,6 @@ class IndicatorsTabController {
     }
 
     /**
-     * Calculate MACD
-     */
-    calculateMACD(candles) {
-        if (candles.length < 26) return null;
-
-        const ema12 = this.calculateEMA(candles, 12);
-        const ema26 = this.calculateEMA(candles, 26);
-
-        if (ema12 === null || ema26 === null) return null;
-
-        return ema12 - ema26;
-    }
-
-    /**
      * Get signal for indicator value
      */
     getSignal(indicator, value) {
@@ -561,8 +545,6 @@ class IndicatorsTabController {
                 return value > 80 ? 'bearish' : value < 20 ? 'bullish' : 'neutral';
             case 'volumeRatio':
                 return value > 2 ? 'bullish' : value < 0.5 ? 'bearish' : 'neutral';
-            case 'macd':
-                return value > 0 ? 'bullish' : value < 0 ? 'bearish' : 'neutral';
             default:
                 return 'neutral';
         }
@@ -644,78 +626,125 @@ class IndicatorsTabController {
         const wrapper = document.createElement('div');
         wrapper.className = 'indicators-wrapper';
 
-        // Render each timeframe
-        this.timeframes.forEach(tf => {
-            const data = this.indicators[tf];
-            const card = this.renderTimeframeCard(tf, data);
-            wrapper.appendChild(card);
-        });
-
-        content.innerHTML = '';
-        content.appendChild(wrapper);
-    }
-
-    /**
-     * Render a single timeframe card
-     */
-    renderTimeframeCard(timeframe, data) {
-        const card = document.createElement('div');
-        card.className = 'indicators-timeframe-card';
-
-        const isActive = timeframe === this.selectedTimeframe;
-        if (isActive) card.classList.add('active');
-
-        const rsiSignal = this.getSignal('rsi', data?.rsi);
-        const mfiSignal = this.getSignal('mfi', data?.mfi);
-        const stochSignal = this.getSignal('stochRSI', data?.stochRSI);
-        const volumeSignal = this.getSignal('volumeRatio', data?.volumeRatio);
-        const macdSignal = this.getSignal('macd', data?.macd);
-
-        card.innerHTML = `
-            <div class="timeframe-header">
-                <div class="timeframe-label">${timeframe.toUpperCase()}</div>
-                ${data?.price ? `<div class="timeframe-price">$${data.price.toFixed(2)}</div>` : ''}
-            </div>
-            <div class="indicators-grid">
-                <div class="indicator-item">
-                    <div class="indicator-name">RSI (6)</div>
-                    <div class="indicator-value ${rsiSignal}">
-                        ${data?.rsi !== null ? data.rsi.toFixed(1) : 'N/A'}
+        // Create multi-timeframe view for RSI, MFI, Stoch RSI
+        wrapper.innerHTML = `
+            <div class="multi-timeframe-overview">
+                <div class="overview-header">
+                    <h3>📊 Multi-Timeframe Analysis</h3>
+                    <div class="overview-symbol">${this.currentSymbol}</div>
+                </div>
+                
+                <!-- RSI Multi-Timeframe -->
+                <div class="indicator-multi-card">
+                    <div class="indicator-multi-header">
+                        <span class="indicator-icon">📈</span>
+                        <span class="indicator-title">RSI (6)</span>
+                        <span class="indicator-description">Relative Strength Index</span>
+                    </div>
+                    <div class="timeframe-values-grid">
+                        ${this.timeframes.map(tf => {
+                            const data = this.indicators[tf];
+                            const value = data?.rsi;
+                            const signal = this.getSignal('rsi', value);
+                            return `
+                                <div class="timeframe-value-item ${signal}">
+                                    <div class="timeframe-label">${tf.toUpperCase()}</div>
+                                    <div class="value ${signal}">${value !== null ? value.toFixed(1) : 'N/A'}</div>
+                                    <div class="signal-indicator ${signal}">
+                                        ${signal === 'bullish' ? '🟢 Oversold' : signal === 'bearish' ? '🔴 Overbought' : '⚪ Neutral'}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
-                <div class="indicator-item">
-                    <div class="indicator-name">MFI (6)</div>
-                    <div class="indicator-value ${mfiSignal}">
-                        ${data?.mfi !== null ? data.mfi.toFixed(1) : 'N/A'}
+
+                <!-- MFI Multi-Timeframe -->
+                <div class="indicator-multi-card">
+                    <div class="indicator-multi-header">
+                        <span class="indicator-icon">💰</span>
+                        <span class="indicator-title">MFI (6)</span>
+                        <span class="indicator-description">Money Flow Index</span>
+                    </div>
+                    <div class="timeframe-values-grid">
+                        ${this.timeframes.map(tf => {
+                            const data = this.indicators[tf];
+                            const value = data?.mfi;
+                            const signal = this.getSignal('mfi', value);
+                            return `
+                                <div class="timeframe-value-item ${signal}">
+                                    <div class="timeframe-label">${tf.toUpperCase()}</div>
+                                    <div class="value ${signal}">${value !== null ? value.toFixed(1) : 'N/A'}</div>
+                                    <div class="signal-indicator ${signal}">
+                                        ${signal === 'bullish' ? '🟢 Oversold' : signal === 'bearish' ? '🔴 Overbought' : '⚪ Neutral'}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
-                <div class="indicator-item">
-                    <div class="indicator-name">Stoch RSI</div>
-                    <div class="indicator-value ${stochSignal}">
-                        ${data?.stochRSI !== null ? data.stochRSI.toFixed(1) : 'N/A'}
+
+                <!-- Stoch RSI Multi-Timeframe -->
+                <div class="indicator-multi-card">
+                    <div class="indicator-multi-header">
+                        <span class="indicator-icon">📊</span>
+                        <span class="indicator-title">Stochastic RSI</span>
+                        <span class="indicator-description">Stoch RSI (14)</span>
+                    </div>
+                    <div class="timeframe-values-grid">
+                        ${this.timeframes.map(tf => {
+                            const data = this.indicators[tf];
+                            const value = data?.stochRSI;
+                            const signal = this.getSignal('stochRSI', value);
+                            return `
+                                <div class="timeframe-value-item ${signal}">
+                                    <div class="timeframe-label">${tf.toUpperCase()}</div>
+                                    <div class="value ${signal}">${value !== null ? value.toFixed(1) : 'N/A'}</div>
+                                    <div class="signal-indicator ${signal}">
+                                        ${signal === 'bullish' ? '🟢 Oversold' : signal === 'bearish' ? '🔴 Overbought' : '⚪ Neutral'}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
-                <div class="indicator-item">
-                    <div class="indicator-name">Volume Ratio</div>
-                    <div class="indicator-value ${volumeSignal}">
-                        ${data?.volumeRatio !== null ? data.volumeRatio.toFixed(2) + 'x' : 'N/A'}
-                    </div>
-                </div>
-                <div class="indicator-item">
-                    <div class="indicator-name">EMA (20)</div>
-                    <div class="indicator-value neutral">
-                        ${data?.ema20 !== null ? '$' + data.ema20.toFixed(2) : 'N/A'}
-                    </div>
-                </div>
-                <div class="indicator-item">
-                    <div class="indicator-name">MACD</div>
-                    <div class="indicator-value ${macdSignal}">
-                        ${data?.macd !== null ? data.macd.toFixed(2) : 'N/A'}
-                    </div>
+
+                <!-- Additional Indicators (Volume & EMA) -->
+                <div class="additional-indicators-grid">
+                    ${this.timeframes.map(tf => {
+                        const data = this.indicators[tf];
+                        const volumeSignal = this.getSignal('volumeRatio', data?.volumeRatio);
+                        return `
+                            <div class="additional-indicator-card">
+                                <div class="card-header">${tf.toUpperCase()}</div>
+                                <div class="additional-items">
+                                    <div class="additional-item">
+                                        <span class="item-label">Volume Ratio</span>
+                                        <span class="item-value ${volumeSignal}">
+                                            ${data?.volumeRatio !== null ? data.volumeRatio.toFixed(2) + 'x' : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div class="additional-item">
+                                        <span class="item-label">EMA (20)</span>
+                                        <span class="item-value neutral">
+                                            ${data?.ema20 !== null ? '$' + data.ema20.toFixed(2) : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <div class="additional-item">
+                                        <span class="item-label">Price</span>
+                                        <span class="item-value neutral">
+                                            ${data?.price ? '$' + data.price.toFixed(2) : 'N/A'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
 
-        return card;
+        content.innerHTML = '';
+        content.appendChild(wrapper);
     }
 }

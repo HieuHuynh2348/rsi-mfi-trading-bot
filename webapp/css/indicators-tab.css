@@ -145,9 +145,230 @@
     position: relative;
     z-index: 1;
     padding: 16px;
+}
+
+/* Multi-Timeframe Overview */
+.multi-timeframe-overview {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.overview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-radius: 16px;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+.overview-header h3 {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+
+.overview-symbol {
+    font-size: 20px;
+    font-weight: 700;
+    color: #667eea;
+    padding: 8px 16px;
+    background: rgba(102, 126, 234, 0.2);
+    border-radius: 8px;
+}
+
+/* Indicator Multi-Card */
+.indicator-multi-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.indicator-multi-card:hover {
+    border-color: rgba(102, 126, 234, 0.5);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+}
+
+.indicator-multi-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.indicator-multi-header .indicator-icon {
+    font-size: 32px;
+}
+
+.indicator-multi-header .indicator-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+}
+
+.indicator-multi-header .indicator-description {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-left: auto;
+}
+
+/* Timeframe Values Grid */
+.timeframe-values-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.timeframe-value-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.timeframe-value-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.timeframe-value-item.bullish {
+    border-color: rgba(76, 175, 80, 0.3);
+}
+
+.timeframe-value-item.bearish {
+    border-color: rgba(244, 67, 54, 0.3);
+}
+
+.timeframe-value-item .timeframe-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.timeframe-value-item .value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.timeframe-value-item .value.bullish {
+    color: #4CAF50;
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+}
+
+.timeframe-value-item .value.bearish {
+    color: #EF5350;
+    text-shadow: 0 0 10px rgba(244, 67, 54, 0.3);
+}
+
+.timeframe-value-item .value.neutral {
+    color: #9E9E9E;
+}
+
+.timeframe-value-item .signal-indicator {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.timeframe-value-item .signal-indicator.bullish {
+    color: #4CAF50;
+}
+
+.timeframe-value-item .signal-indicator.bearish {
+    color: #EF5350;
+}
+
+.timeframe-value-item .signal-indicator.neutral {
+    color: #9E9E9E;
+}
+
+/* Additional Indicators Grid */
+.additional-indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.additional-indicator-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.3s ease;
+}
+
+.additional-indicator-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.additional-indicator-card .card-header {
+    font-size: 16px;
+    font-weight: 700;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.additional-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.additional-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.additional-item .item-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+}
+
+.additional-item .item-value {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.additional-item .item-value.bullish {
+    color: #4CAF50;
+}
+
+.additional-item .item-value.bearish {
+    color: #EF5350;
+}
+
+.additional-item .item-value.neutral {
+    color: white;
+}
+
+/* Old styles kept for compatibility */
+.indicators-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
 }
 
 /* Timeframe Card */
@@ -249,10 +470,40 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .indicators-wrapper {
+    .timeframe-values-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .additional-indicators-grid {
         grid-template-columns: 1fr;
-        padding: 12px;
+        gap: 10px;
+    }
+
+    .overview-header {
+        flex-direction: column;
         gap: 12px;
+        text-align: center;
+    }
+
+    .overview-header h3 {
+        font-size: 20px;
+    }
+
+    .overview-symbol {
+        font-size: 18px;
+    }
+
+    .indicator-multi-header {
+        flex-wrap: wrap;
+    }
+
+    .indicator-multi-header .indicator-title {
+        font-size: 18px;
+    }
+
+    .timeframe-value-item .value {
+        font-size: 24px;
     }
 
     .indicators-grid {
@@ -290,6 +541,35 @@
 @media (max-width: 480px) {
     .indicators-wrapper {
         padding: 8px;
+    }
+
+    .timeframe-values-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .additional-indicators-grid {
+        gap: 8px;
+    }
+
+    .overview-header {
+        padding: 16px;
+    }
+
+    .overview-header h3 {
+        font-size: 18px;
+    }
+
+    .indicator-multi-card {
+        padding: 16px;
+    }
+
+    .timeframe-value-item {
+        padding: 12px;
+    }
+
+    .timeframe-value-item .value {
+        font-size: 22px;
     }
 
     .indicators-grid {
