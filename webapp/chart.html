@@ -61,23 +61,8 @@
     <style>
         /* ============================================================
            MOBILE-FIRST DESIGN WITH iOS/ANDROID OPTIMIZATION
+           Note: CSS variables are defined in css/variables.css
            ============================================================ */
-        
-        :root {
-            /* iOS Safe Area Support */
-            --safe-area-inset-top: env(safe-area-inset-top, 0px);
-            --safe-area-inset-right: env(safe-area-inset-right, 0px);
-            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
-            --safe-area-inset-left: env(safe-area-inset-left, 0px);
-            
-            /* Color Variables */
-            --bg-primary: #1a1a1a;
-            --bg-secondary: #1E222D;
-            --border-color: #2A2E39;
-            --text-primary: #ffffff;
-            --text-secondary: #D1D4DC;
-            --accent-blue: #2962FF;
-        }
         
         * {
             margin: 0;
@@ -99,8 +84,8 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: var(--bg-primary);
+            font-family: var(--font-family);
+            background: var(--primary-bg);
             color: var(--text-primary);
             overflow: hidden;
             /* iOS safe area padding */
@@ -124,8 +109,8 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            z-index: 1000;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
+            z-index: var(--z-toast);
+            transition: opacity var(--transition-normal), visibility var(--transition-normal);
         }
         
         #loading.hidden {
@@ -134,8 +119,8 @@
         }
         
         .spinner {
-            border: 4px solid rgba(54, 60, 78, 0.3);  /* TradingView grid color */
-            border-top: 4px solid #2962FF;  /* TradingView blue */
+            border: 4px solid var(--chart-grid-color);
+            border-top: 4px solid var(--accent-blue);
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -149,82 +134,82 @@
         }
         
         #header {
-            background: #1E222D;  /* TradingView panel BG */
-            padding: 8px 16px;
+            background: var(--secondary-bg);
+            padding: var(--space-sm) var(--space-md);
             display: flex;
             flex-direction: column;
             gap: 6px;
-            border-bottom: 1px solid #2A2E39;  /* TradingView border */
+            border-bottom: 1px solid var(--border-color);
             min-height: 60px;
         }
         
         #symbol-switcher {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-sm);
             flex-wrap: wrap;
         }
         
         #symbol-select {
             flex: 1;
             min-width: 150px;
-            background: #131722;
-            color: #D1D4DC;
-            border: 1px solid #2A2E39;
-            border-radius: 6px;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
             padding: 6px 10px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: var(--font-sm);
+            font-weight: var(--weight-semibold);
             cursor: pointer;
             outline: none;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
         }
         
         #symbol-select:hover {
-            background: #1A1E2B;
-            border-color: #2962FF;
+            background: var(--secondary-bg);
+            border-color: var(--accent-blue);
         }
         
         #symbol-select:focus {
-            border-color: #2962FF;
+            border-color: var(--accent-blue);
             box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2);
         }
         
         #custom-symbol-input {
             flex: 1;
             min-width: 150px;
-            background: #131722;
-            color: #D1D4DC;
-            border: 1px solid #2962FF;
-            border-radius: 6px;
+            background: var(--primary-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--accent-blue);
+            border-radius: var(--radius-md);
             padding: 6px 10px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: var(--font-sm);
+            font-weight: var(--weight-semibold);
             outline: none;
             text-transform: uppercase;
             display: none;
         }
         
         #custom-symbol-input:focus {
-            background: #1A1E2B;
+            background: var(--secondary-bg);
             box-shadow: 0 0 0 2px rgba(41, 98, 255, 0.2);
         }
         
         #custom-symbol-input::placeholder {
-            color: #787B86;
+            color: var(--text-secondary);
             text-transform: none;
         }
         
         .symbol-btn {
-            background: #2962FF;
+            background: var(--accent-blue);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: var(--radius-md);
             padding: 6px 14px;
-            font-size: 12px;
-            font-weight: 600;
+            font-size: var(--font-xs);
+            font-weight: var(--weight-semibold);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all var(--transition-fast);
             display: none;
         }
         
@@ -238,20 +223,20 @@
         }
         
         #symbol {
-            font-size: 11px;
-            font-weight: 500;
-            color: #787B86;  /* TradingView secondary text */
+            font-size: var(--font-xs);
+            font-weight: var(--weight-medium);
+            color: var(--text-secondary);
             letter-spacing: 0.02em;
         }
         
         #price {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: var(--font-lg);
+            font-weight: var(--weight-semibold);
             font-variant-numeric: tabular-nums;  /* Monospace numbers */
         }
         
-        .price-up { color: #26A69A; }  /* TradingView green */
-        .price-down { color: #EF5350; }  /* TradingView red */
+        .price-up { color: var(--accent-green); }
+        .price-down { color: var(--accent-red); }
         
         /* HIDE OLD TAB SYSTEM - Using components.css .bottom-nav instead */
         #tabs {
@@ -491,24 +476,24 @@
         }
         
         /* RSI Colors based on zones */
-        .rsi-oversold { color: #26A69A; }  /* Green - Buy zone */
-        .rsi-neutral { color: #2962FF; }    /* Blue - Neutral */
-        .rsi-overbought { color: #EF5350; } /* Red - Sell zone */
+        .rsi-oversold { color: var(--accent-green); }
+        .rsi-neutral { color: var(--accent-blue); }
+        .rsi-overbought { color: var(--accent-red); }
         
         /* MFI Colors based on zones */
-        .mfi-oversold { color: #26A69A; }   /* Green - Buy zone */
-        .mfi-neutral { color: #FF6D00; }     /* Orange - Neutral */
-        .mfi-overbought { color: #EF5350; }  /* Red - Sell zone */
+        .mfi-oversold { color: var(--accent-green); }
+        .mfi-neutral { color: var(--accent-orange); }
+        .mfi-overbought { color: var(--accent-red); }
         
-        /* Trend arrows - Reduced animation */
+        /* Trend arrows */
         .trend-arrow {
-            font-size: 16px;
+            font-size: var(--font-lg);
             display: inline-block;
         }
         
-        .trend-up { color: #26A69A; }
-        .trend-down { color: #EF5350; }
-        .trend-neutral { color: #777; opacity: 0.5; }
+        .trend-up { color: var(--accent-green); }
+        .trend-down { color: var(--accent-red); }
+        .trend-neutral { color: var(--text-tertiary); opacity: 0.5; }
         
         /* Optional subtle animation for important signals only */
         @keyframes pulse {
@@ -518,10 +503,10 @@
         
         /* Signal badge in indicators panel */
         #indicators .signal-badge {
-            padding: 12px 20px;
-            border-radius: 24px;
-            font-weight: bold;
-            font-size: 16px;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-pill);
+            font-weight: var(--weight-bold);
+            font-size: var(--font-lg);
             backdrop-filter: blur(8px);
             border: 2px solid;
             text-align: center;
@@ -530,20 +515,20 @@
         
         .signal-buy {
             background: rgba(38, 166, 154, 0.2);
-            color: #26A69A;
-            border-color: #26A69A;
+            color: var(--accent-green);
+            border-color: var(--accent-green);
         }
         
         .signal-sell {
             background: rgba(239, 83, 80, 0.2);
-            color: #EF5350;
-            border-color: #EF5350;
+            color: var(--accent-red);
+            border-color: var(--accent-red);
         }
         
         .signal-neutral {
             background: rgba(119, 119, 119, 0.2);
-            color: #aaa;
-            border-color: #777;
+            color: var(--text-secondary);
+            border-color: var(--text-tertiary);
         }
         
         /* ============================================================
@@ -879,26 +864,26 @@
     
     <!-- AI Analysis Tab -->
     <div data-tab-content="ai" style="display: none; padding: 0;">
-        <div id="ai-analysis" style="height: 100%; overflow-y: auto; background: #131722; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <button id="ai-analyze-btn" style="
-                    padding: 12px 24px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        <div id="ai-analysis" style="height: 100%; overflow-y: auto; background: var(--primary-bg); padding: var(--space-md);">
+            <div style="text-align: center; margin-bottom: var(--space-md);">
+                <button id="ai-analyze-btn" class="btn btn-primary" style="
+                    padding: var(--space-sm) var(--space-lg);
+                    background: linear-gradient(135deg, var(--accent-purple) 0%, #764ba2 100%);
                     color: white;
                     border: none;
-                    border-radius: 8px;
-                    font-size: 16px;
-                    font-weight: 600;
+                    border-radius: var(--radius-md);
+                    font-size: var(--font-md);
+                    font-weight: var(--weight-semibold);
                     cursor: pointer;
-                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-                    transition: all 0.2s;
-                    min-height: 44px;
+                    box-shadow: var(--shadow-md);
+                    transition: all var(--transition-fast);
+                    min-height: var(--touch-target-min);
                     display: block;
                     margin: 0 auto;
                 ">
                     🧠 Analyze with Gemini AI
                 </button>
-                <div style="color: #D1D4DC; margin-top: 16px; font-size: 14px; line-height: 1.6;">
+                <div style="color: var(--text-primary); margin-top: var(--space-md); font-size: var(--font-sm); line-height: 1.6;">
                     Get comprehensive market analysis powered by Gemini 2.0 Flash
                 </div>
             </div>
