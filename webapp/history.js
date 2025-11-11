@@ -185,13 +185,6 @@ class AnalysisHistory {
         // Render filters if history exists
         if (this.history.length > 0) {
             wrapper.appendChild(this.renderFilters());
-            
-            // Add Export CSV button
-            const exportBtn = document.createElement('button');
-            exportBtn.className = 'history-export-btn';
-            exportBtn.innerHTML = '<span class="btn-icon">📥</span><span class="btn-text">Export CSV</span>';
-            exportBtn.onclick = () => this.exportToCSV();
-            wrapper.appendChild(exportBtn);
         }
         
         // Render history list or empty state
@@ -207,63 +200,6 @@ class AnalysisHistory {
         console.log('✅ History UI rendered');
     }
 
-    /**
-     * Export history to CSV
-     */
-    exportToCSV() {
-        if (this.history.length === 0) {
-            alert('No data to export');
-            return;
-        }
-        
-        // CSV headers
-        const headers = [
-            'Date', 'Symbol', 'Recommendation', 'Confidence', 
-            'Entry', 'Stop Loss', 'TP1', 'TP2', 'TP3',
-            'Result', 'PnL %', 'Exit Price', 'Exit Reason',
-            'Manual Review'
-        ];
-        
-        // CSV rows
-        const rows = this.history.map(item => {
-            const response = item.ai_full_response || {};
-            const tracking = item.tracking_result || {};
-            const tps = response.take_profit || [];
-            
-            return [
-                new Date(item.created_at).toLocaleString(),
-                item.symbol,
-                response.recommendation || 'N/A',
-                response.confidence || 0,
-                response.entry_point || 0,
-                response.stop_loss || 0,
-                tps[0] || 0,
-                tps[1] || 0,
-                tps[2] || 0,
-                tracking.result || 'PENDING',
-                tracking.pnl_percent || 0,
-                tracking.exit_price || 0,
-                tracking.exit_reason || '',
-                tracking.manual_review || ''
-            ].map(v => `"${v}"`).join(',');
-        });
-        
-        // Create CSV content
-        const csv = [headers.join(','), ...rows].join('\n');
-        
-        // Download file
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `analysis-history-${Date.now()}.csv`;
-        link.click();
-        
-        alert('✅ CSV exported successfully!');
-    }
-
-    /**
-     * Render Analytics Toggle Button
-     */
     /**
      * Render statistics card
      */
