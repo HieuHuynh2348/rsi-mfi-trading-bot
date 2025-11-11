@@ -1704,6 +1704,12 @@
                     rightPriceScale: {
                         borderColor: '#2A2E39',  // TradingView border
                         textColor: '#D1D4DC',
+                        autoScale: true,  // Auto-adjust price scale to fit visible data
+                        scaleMargins: {
+                            top: 0.1,    // 10% margin at top
+                            bottom: 0.2, // 20% margin at bottom (for volume)
+                        },
+                        mode: LightweightCharts.PriceScaleMode.Normal,  // Normal (not logarithmic)
                     },
                     timeScale: {
                         borderColor: '#2A2E39',
@@ -1755,6 +1761,10 @@
                     precision: 2,
                     minMove: 0.01,
                 },
+                priceScaleId: 'right',  // Use right price scale explicitly
+                autoscaleInfoProvider: () => ({
+                    priceRange: null,  // Let chart calculate based on visible data
+                }),
             });
             console.log('Candlestick series added');
             
@@ -1798,6 +1808,7 @@
                 lastValueVisible: true,
                 priceLineVisible: false,
                 title: 'EMA 33',
+                priceScaleId: 'right',  // Use same scale as candlesticks
             });
             
             // EMA 99 (Medium-term) - Purple
@@ -1809,6 +1820,7 @@
                 lastValueVisible: true,
                 priceLineVisible: false,
                 title: 'EMA 99',
+                priceScaleId: 'right',  // Use same scale as candlesticks
             });
             
             // EMA 144 (Long-term) - Cyan
@@ -1820,6 +1832,7 @@
                 lastValueVisible: true,
                 priceLineVisible: false,
                 title: 'EMA 144',
+                priceScaleId: 'right',  // Use same scale as candlesticks
             });
             
             console.log('EMA series added');
