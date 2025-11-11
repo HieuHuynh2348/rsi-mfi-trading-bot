@@ -309,9 +309,10 @@ class TelegramCommandHandler:
                 
                 # Check usage limits for private chat users (not in groups)
                 if chat_type == 'private' and user_id:
-                    # Skip limit check for owner
-                    if user_id == config.OWNER_USER_ID:
-                        logger.info(f"👑 Owner user {user_id} (@{username}) - No limits applied")
+                    # Skip limit check for owner (check both User ID and Chat ID)
+                    is_owner = (user_id == config.OWNER_USER_ID or chat_id == config.OWNER_USER_ID)
+                    if is_owner:
+                        logger.info(f"👑 Owner detected (User: {user_id}, Chat: {chat_id}) - No limits applied")
                     else:
                         today = datetime.now().strftime('%Y-%m-%d')
                         
@@ -366,12 +367,13 @@ class TelegramCommandHandler:
                         usage_info = ""
                         user_badge = ""
                         
-                        # Add owner badge if owner
-                        if user_id == config.OWNER_USER_ID:
+                        # Add owner badge if owner (check both User ID and Chat ID)
+                        is_owner = (user_id == config.OWNER_USER_ID or chat_id == config.OWNER_USER_ID)
+                        if is_owner:
                             user_badge = " 👑 <b>OWNER</b>"
                         
                         if chat_type == 'private' and user_id in self.user_usage:
-                            usage_info = f"\n📊 <b>Usage Today:</b> {self.user_usage[user_id]['count']}/{self.daily_limit if user_id != config.OWNER_USER_ID else '∞'}"
+                            usage_info = f"\n📊 <b>Usage Today:</b> {self.user_usage[user_id]['count']}/{self.daily_limit if not is_owner else '∞'}"
                         
                         tracking_message = f"""
 📊 <b>Bot Usage Tracking</b>
