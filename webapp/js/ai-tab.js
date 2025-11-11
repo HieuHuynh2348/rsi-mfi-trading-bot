@@ -222,23 +222,6 @@ class AITabController {
                 </div>
             `;
             this.elements.loadingContainer.style.display = 'block';
-
-            // Attach toggle behavior for the full analysis toolbar
-            try {
-                const scrollWrap = this.elements.loadingContainer.querySelector('.ai-success-scroll');
-                const toggleBtn = scrollWrap && scrollWrap.querySelector('.ai-toggle-full');
-                if (toggleBtn && scrollWrap) {
-                    toggleBtn.addEventListener('click', () => {
-                        const isNow = scrollWrap.classList.toggle('show-all');
-                        toggleBtn.setAttribute('aria-expanded', isNow);
-                        toggleBtn.textContent = isNow ? 'Hide Full Analysis' : 'Show Full Analysis';
-                        // smooth scroll to toolbar so user can see content
-                        scrollWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    });
-                }
-            } catch (err) {
-                console.warn('AI UI toggle init error', err);
-            }
             
             // Animate steps
             this.animateLoadingSteps();
@@ -288,11 +271,7 @@ class AITabController {
                                 </svg>
                             </div>
                         </div>
-                        <div class="ai-success-scroll">
-                            <div class="ai-success-toolbar">
-                                <button class="ai-toggle-full" aria-expanded="false">Show Full Analysis</button>
-                            </div>
-                            <div class="ai-success-content">
+                        <div class="ai-success-content">
                             <h3>Analysis Complete!</h3>
                             
                             <!-- Recommendation -->
@@ -306,23 +285,23 @@ class AITabController {
                                 </div>
                             </div>
                             
-                            <!-- Key Levels -->
-                            ${data.entry_point || data.stop_loss || (data.take_profit && data.take_profit.length) ? `
+                            <!-- Key Levels (only if valid numbers > 0) -->
+                            ${(data.entry_point && data.entry_point > 0) || (data.stop_loss && data.stop_loss > 0) || (data.take_profit && data.take_profit.length > 0 && data.take_profit[0] > 0) ? `
                                 <div class="ai-levels">
                                     <h4>📊 Key Levels</h4>
-                                    ${data.entry_point ? `<div class="ai-level">Entry: <strong>$${data.entry_point.toLocaleString()}</strong></div>` : ''}
-                                    ${data.stop_loss ? `<div class="ai-level stop">Stop Loss: <strong>$${data.stop_loss.toLocaleString()}</strong></div>` : ''}
-                                    ${data.take_profit && data.take_profit.length ? `
+                                    ${data.entry_point && data.entry_point > 0 ? `<div class="ai-level">Entry: <strong>$${data.entry_point.toLocaleString()}</strong></div>` : ''}
+                                    ${data.stop_loss && data.stop_loss > 0 ? `<div class="ai-level stop">Stop Loss: <strong>$${data.stop_loss.toLocaleString()}</strong></div>` : ''}
+                                    ${data.take_profit && data.take_profit.length > 0 && data.take_profit[0] > 0 ? `
                                         <div class="ai-level profit">
                                             Take Profit: 
-                                            ${data.take_profit.map((tp, i) => `<strong>TP${i+1}: $${tp.toLocaleString()}</strong>`).join(' • ')}
+                                            ${data.take_profit.filter(tp => tp > 0).map((tp, i) => `<strong>TP${i+1}: $${tp.toLocaleString()}</strong>`).join(' • ')}
                                         </div>
                                     ` : ''}
                                 </div>
                             ` : ''}
                             
                             <!-- Risk Level -->
-                            ${data.risk_level ? `
+                            ${data.risk_level && data.risk_level !== 'N/A' ? `
                                 <div class="ai-risk">
                                     Risk Level: 
                                     <span class="ai-risk-badge ${data.risk_level.toLowerCase()}">
@@ -331,31 +310,50 @@ class AITabController {
                                 </div>
                             ` : ''}
                             
-                            <!-- Reasoning -->
-                            ${data.reasoning ? `
-                                <div class="ai-reasoning">
-                                    <h4>🧠 Full Analysis</h4>
-                                    <p>${this.formatReasoning(data.reasoning)}</p>
+                            <!-- Summary Section (messages.summary) -->
+                            ${data.messages && data.messages.summary ? `
+                                <div class="ai-section">
+                                    <div class="ai-section-header">
+                                        <h4>📊 Tổng quan</h4>
+                                    </div>
+                                    <div class="ai-section-content">
+                                        ${this.formatReasoning(data.messages.summary)}
+                                    </div>
                                 </div>
                             ` : ''}
                             
-                            <!-- Full Messages (if available) -->
-                            ${data.messages && data.messages.length ? `
-                                <div class="ai-full-messages">
-                                    <div class="ai-messages-toggle" onclick="this.parentElement.classList.toggle('expanded')">
-                                        <h4>📋 Detailed Breakdown (${data.messages.length} sections)</h4>
-                                        <span class="toggle-icon">▼</span>
+                            <!-- Technical Section (messages.technical) -->
+                            ${data.messages && data.messages.technical ? `
+                                <div class="ai-section">
+                                    <div class="ai-section-header">
+                                        <h4>🔧 Phân tích kỹ thuật</h4>
                                     </div>
-                                    <div class="ai-messages-content">
-                                        ${data.messages.map((msg, idx) => `
-                                            <div class="ai-message-section">
-                                                <div class="ai-message-header">Part ${idx + 1}</div>
-                                                <div class="ai-message-content">${this.formatReasoning(msg)}</div>
-                                            </div>
-                                        `).join('')}
+                                    <div class="ai-section-content">
+                                        ${this.formatReasoning(data.messages.technical)}
                                     </div>
                                 </div>
                             ` : ''}
+                            
+                            <!-- Reasoning Section (messages.reasoning or reasoning field) -->
+                            ${data.messages && data.messages.reasoning ? `
+                                <div class="ai-section">
+                                    <div class="ai-section-header">
+                                        <h4>🧠 Lý do khuyến nghị</h4>
+                                    </div>
+                                    <div class="ai-section-content">
+                                        ${this.formatReasoning(data.messages.reasoning)}
+                                    </div>
+                                </div>
+                            ` : (data.reasoning ? `
+                                <div class="ai-section">
+                                    <div class="ai-section-header">
+                                        <h4>🧠 Phân tích</h4>
+                                    </div>
+                                    <div class="ai-section-content">
+                                        ${this.formatReasoning(data.reasoning)}
+                                    </div>
+                                </div>
+                            ` : '')}
                             
                             <!-- Telegram Link -->
                             <div class="ai-success-action">
