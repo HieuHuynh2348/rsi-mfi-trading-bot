@@ -1714,7 +1714,7 @@
                     rightPriceScale: {
                         borderColor: '#2A2E39',  // TradingView border
                         textColor: '#D1D4DC',
-                        autoScale: true,  // Auto-adjust price scale to fit visible data
+                        autoScale: false,  // Allow manual price scale adjustment by user
                         scaleMargins: {
                             top: 0.1,    // 10% margin at top
                             bottom: 0.2, // 20% margin at bottom (for volume)
@@ -2634,7 +2634,25 @@
                     console.log('Fitting content (first load)...');
                     requestAnimationFrame(() => {
                         if (chart && isChartReady) {
+                            // Fit time scale
                             chart.timeScale().fitContent();
+                            
+                            // Auto-fit price scale on first load only
+                            // After this, user can manually adjust price scale
+                            if (candlestickSeries) {
+                                chart.priceScale('right').applyOptions({
+                                    autoScale: true,  // Enable auto-scale temporarily
+                                });
+                                
+                                // Disable auto-scale after initial fit so user can control
+                                setTimeout(() => {
+                                    chart.priceScale('right').applyOptions({
+                                        autoScale: false,  // Now user can manually adjust
+                                    });
+                                    console.log('Price scale now in manual mode');
+                                }, 500);
+                            }
+                            
                             console.log('Fit content completed');
                             isFirstLoad = false;  // Don't fit again unless explicitly reset
                         }
