@@ -3811,31 +3811,33 @@
     <script src="js/timeframe.js"></script>
     <script src="js/indicators.js"></script>
     
-    <!-- Component Initialization -->
+    <!-- Component Initialization - Run immediately -->
     <script>
-        // Initialize mobile components after DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 DOMContentLoaded fired - Initializing mobile components...');
-            console.log('Document ready state:', document.readyState);
-            console.log('NavigationController type:', typeof NavigationController);
-            console.log('TimeframeSwitcher type:', typeof TimeframeSwitcher);
-            console.log('IndicatorPanel type:', typeof IndicatorPanel);
+        console.log('🔧 Component initialization script loaded');
+        console.log('Document ready state:', document.readyState);
+        
+        // Function to initialize all mobile components
+        function initializeMobileComponents() {
+            console.log('🚀 Initializing mobile components...');
+            console.log('NavigationController:', typeof NavigationController);
+            console.log('TimeframeSwitcher:', typeof TimeframeSwitcher);
+            console.log('IndicatorPanel:', typeof IndicatorPanel);
             
             // Initialize Navigation
             if (typeof NavigationController !== 'undefined') {
                 try {
                     window.navigation = new NavigationController();
-                    console.log('✅ Navigation initialized successfully');
+                    console.log('✅ Navigation initialized');
                 } catch (e) {
-                    console.error('❌ Navigation initialization failed:', e);
+                    console.error('❌ Navigation error:', e);
                 }
             } else {
-                console.warn('⚠️ NavigationController class not found');
+                console.warn('⚠️ NavigationController not found');
             }
             
             // Initialize Timeframe Switcher
             const timeframeContainer = document.querySelector('#timeframe-container');
-            console.log('Timeframe container element:', timeframeContainer);
+            console.log('Timeframe container:', timeframeContainer);
             
             if (timeframeContainer && typeof TimeframeSwitcher !== 'undefined') {
                 try {
@@ -3843,26 +3845,22 @@
                         container: timeframeContainer,
                         defaultTimeframe: '1h',
                         onChange: (timeframe) => {
-                            console.log('⏱️ Timeframe changed to:', timeframe);
-                            // Update global currentTimeframe variable
+                            console.log('⏱️ Timeframe changed:', timeframe);
                             if (typeof currentTimeframe !== 'undefined') {
                                 currentTimeframe = timeframe;
                             }
-                            // Reload chart data with new timeframe
                             if (typeof loadChartData === 'function') {
                                 loadChartData(timeframe);
-                            } else {
-                                console.warn('loadChartData function not yet available');
                             }
                         }
                     });
-                    console.log('✅ Timeframe switcher initialized successfully');
+                    console.log('✅ Timeframe switcher initialized');
                 } catch (e) {
-                    console.error('❌ Timeframe switcher initialization failed:', e);
+                    console.error('❌ Timeframe error:', e);
                 }
             } else {
-                if (!timeframeContainer) console.warn('⚠️ #timeframe-container element not found');
-                if (typeof TimeframeSwitcher === 'undefined') console.warn('⚠️ TimeframeSwitcher class not found');
+                if (!timeframeContainer) console.warn('⚠️ Container not found');
+                if (typeof TimeframeSwitcher === 'undefined') console.warn('⚠️ TimeframeSwitcher not found');
             }
             
             // Initialize Indicator Panel
@@ -3870,18 +3868,21 @@
                 try {
                     window.indicatorPanel = new IndicatorPanel({
                         container: document.body,
-                        indicators: [] // Will be populated when chart loads
+                        indicators: []
                     });
-                    console.log('✅ Indicator panel initialized successfully');
+                    console.log('✅ Indicator panel initialized');
                 } catch (e) {
-                    console.error('❌ Indicator panel initialization failed:', e);
+                    console.error('❌ Indicator panel error:', e);
                 }
             } else {
-                console.warn('⚠️ IndicatorPanel class not found');
+                console.warn('⚠️ IndicatorPanel not found');
             }
             
-            console.log('🎉 Mobile components initialization complete');
-        });
+            console.log('🎉 Component initialization complete');
+        }
+        
+        // Run immediately since we're at end of body
+        initializeMobileComponents();
         
         // Update indicators when chart data loads
         function updateIndicatorPanel(data) {
