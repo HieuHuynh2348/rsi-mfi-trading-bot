@@ -375,6 +375,8 @@
             /* Add space for ultra-compact bottom navigation (~52px total) */
             height: calc(100vh - 165px - 52px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
             position: relative;
+            margin: 0;
+            padding: 0;
             /* Optimized touch handling for mobile */
             touch-action: pan-x pan-y pinch-zoom;
             -webkit-user-select: none;
@@ -911,7 +913,7 @@
     
     <!-- TAB CONTENT SECTIONS FOR MOBILE NAVIGATION -->
     <!-- Chart Tab (default visible) -->
-    <div data-tab-content="chart" style="display: block;">
+    <div data-tab-content="chart" style="display: block; padding: 0; margin: 0;">
         <div id="chartContainer"></div>
     </div>
     
@@ -936,7 +938,7 @@
     
     <!-- AI Analysis Tab -->
     <div data-tab-content="ai" style="display: none; padding: 0;">
-        <div id="ai-analysis" style="height: 100%; overflow-y: auto; padding-bottom: 80px;">
+        <div id="ai-analysis" style="height: 100%; overflow-y: auto; padding-bottom: 52px;">
             <div style="padding: 20px; text-align: center;">
                 <button id="ai-analyze-btn" style="
                     padding: 12px 24px;
