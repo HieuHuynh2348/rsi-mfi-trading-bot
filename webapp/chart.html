@@ -253,11 +253,9 @@
         .price-up { color: #26A69A; }  /* TradingView green */
         .price-down { color: #EF5350; }  /* TradingView red */
         
-        /* Tab system for chart/indicators */
+        /* OLD TAB SYSTEM - HIDDEN (using mobile bottom nav instead) */
         #tabs {
-            background: #252525;
-            display: flex;
-            border-bottom: 1px solid #333;
+            display: none !important;
         }
         
         .tab-btn {
@@ -286,15 +284,18 @@
             display: block;
         }
         
+        /* OLD TIMEFRAME BAR - HIDDEN (using mobile TimeframeSwitcher instead) */
         #timeframes {
-            background: #252525;
-            padding: 8px;
-            display: flex;
-            gap: 8px;
-            border-bottom: 1px solid #333;
-            overflow-x: auto;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
+            display: none !important;
+        }
+        
+        /* NEW MOBILE TIMEFRAME CONTAINER */
+        #timeframe-container {
+            padding: var(--space-md);
+            padding-top: var(--space-sm);
+            padding-bottom: var(--space-sm);
+            background: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
         }
         
         #timeframes::-webkit-scrollbar {
@@ -771,8 +772,8 @@
         <button class="tf-btn" data-tf="1d">1D</button>
     </div>
     
-    <!-- Fibonacci Drawing Tools -->
-    <div id="drawing-tools" style="display: flex; gap: 8px; padding: 8px 16px; background: rgba(35, 38, 47, 0.7); border-bottom: 1px solid #2A2E39; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+    <!-- OLD Fibonacci Drawing Tools - WILL BE REPLACED WITH FAB -->
+    <div id="drawing-tools" style="display: none;">
         <button id="delete-fib-btn" class="tool-btn" style="
             padding: 8px 16px;
             background: rgba(244, 67, 54, 0.1);
@@ -801,7 +802,8 @@
         </button>
     </div>
     
-    <div id="indicators">
+    <!-- OLD Indicators Panel - HIDDEN (using mobile IndicatorPanel instead) -->
+    <div id="indicators" style="display: none;">
         <div class="indicator-section">
             <div class="indicator-title">Technical Indicators</div>
             <div class="indicator-row">
