@@ -1104,12 +1104,51 @@
                 // Reload chart data
                 await loadChartData(currentTimeframe);
                 
+                // Reconnect WebSocket with new symbol after data loads
+                setTimeout(() => {
+                    // Close existing WebSocket if any
+                    if (ws) {
+                        console.log('🔌 Closing old WebSocket for symbol change...');
+                        ws.close();
+                        ws = null;
+                    }
+                    
+                    // Clear reconnect timeout
+                    if (wsReconnectTimeout) {
+                        clearTimeout(wsReconnectTimeout);
+                        wsReconnectTimeout = null;
+                    }
+                    
+                    // Reset reconnect attempts
+                    wsReconnectAttempts = 0;
+                    
+                    // Connect WebSocket with new symbol
+                    if (typeof connectWebSocket === 'function') {
+                        console.log(`🔄 Reconnecting WebSocket for ${symbol}...`);
+                        connectWebSocket();
+                    }
+                }, 1000); // Wait 1s for chart data to fully load
+                
                 hideLoading();
                 
                 // Success haptic
                 if (tg.HapticFeedback) {
                     tg.HapticFeedback.notificationOccurred('success');
                 }
+                
+                // Update indicators tab with new symbol
+                if (window.indicatorsTab && typeof window.indicatorsTab.setContext === 'function') {
+                    console.log(`📊 Updating indicators tab for ${symbol}`);
+                    window.indicatorsTab.setContext(symbol, currentTimeframe);
+                }
+                
+                // Update custom input if needed
+                if (!predefinedSymbols.includes(symbol)) {
+                    customSymbolInput.value = symbol.replace('USDT', '');
+                }
+                customSymbolInput.style.display = 'none';
+                applyCustomBtn.style.display = 'none';
+                
             } catch (error) {
                 hideLoading(); // Ensure loading is hidden on error
                 console.error('Error switching symbol:', error);
@@ -1707,7 +1746,14 @@
                         vertTouchDrag: false,  // Disable to prevent conflict with page scroll
                     },
                     handleScale: {
-                        axisPressedMouseMove: true,
+                        axisPressedMouseMove: {
+                            time: true,   // Allow dragging time scale
+                            price: true,  // Allow dragging price scale
+                        },
+                        axisDoubleClickReset: {
+                            time: true,   // Double-click to reset time scale
+                            price: true,  // Double-click to reset price scale
+                        },
                         mouseWheel: true,
                         pinch: true,  // Enable pinch zoom with 2 fingers
                     },
