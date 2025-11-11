@@ -1871,11 +1871,9 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
 7. **CONJUNCTION RULES (Based on Asset Type):**
    - For BTC: Confluence requires macro + technical (both critical)
    - For ETH/LARGE_CAPS: Confluence requires BTC alignment + technical (both important)
-   - For SMALL_CAPS/MEMES: Confluence requires strong technicals + liquidity + low BTC risk"""
-   - Bearish candles with long lower wicks = support testing
-   - Compare body size to average - larger bodies = stronger momentum
+   - For SMALL_CAPS/MEMES: Confluence requires strong technicals + liquidity + low BTC risk
 
-5. **Institutional Indicators (CRITICAL - Weight 40% - JSON FORMAT ABOVE):**
+8. **Institutional Indicators (CRITICAL - Weight 40% - JSON FORMAT ABOVE):**
    
    **READ THE JSON DATA CAREFULLY - Each field has specific meaning:**
    
