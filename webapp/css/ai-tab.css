@@ -678,6 +678,49 @@
     background: rgba(102, 126, 234, 0.7);
 }
 
+/* Success scroll wrapper and toolbar */
+.ai-success-scroll {
+    max-height: 70vh;
+    overflow: auto;
+    position: relative;
+    border-radius: 12px;
+}
+
+.ai-success-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 12;
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 16px;
+    background: linear-gradient(180deg, rgba(10,10,25,0.85), rgba(10,10,25,0.6));
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.ai-toggle-full {
+    background: rgba(102,126,234,0.12);
+    border: 1px solid rgba(102,126,234,0.2);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.ai-success-scroll.show-all .ai-reasoning {
+    max-height: 600px;
+}
+
+.ai-success-scroll .ai-reasoning {
+    max-height: 200px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease;
+}
+
+.ai-success-scroll.show-all .ai-messages-content {
+    max-height: 700px !important;
+}
+
 .ai-success-action {
     display: flex;
     align-items: center;

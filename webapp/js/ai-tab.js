@@ -222,6 +222,23 @@ class AITabController {
                 </div>
             `;
             this.elements.loadingContainer.style.display = 'block';
+
+            // Attach toggle behavior for the full analysis toolbar
+            try {
+                const scrollWrap = this.elements.loadingContainer.querySelector('.ai-success-scroll');
+                const toggleBtn = scrollWrap && scrollWrap.querySelector('.ai-toggle-full');
+                if (toggleBtn && scrollWrap) {
+                    toggleBtn.addEventListener('click', () => {
+                        const isNow = scrollWrap.classList.toggle('show-all');
+                        toggleBtn.setAttribute('aria-expanded', isNow);
+                        toggleBtn.textContent = isNow ? 'Hide Full Analysis' : 'Show Full Analysis';
+                        // smooth scroll to toolbar so user can see content
+                        scrollWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    });
+                }
+            } catch (err) {
+                console.warn('AI UI toggle init error', err);
+            }
             
             // Animate steps
             this.animateLoadingSteps();
@@ -271,7 +288,11 @@ class AITabController {
                                 </svg>
                             </div>
                         </div>
-                        <div class="ai-success-content">
+                        <div class="ai-success-scroll">
+                            <div class="ai-success-toolbar">
+                                <button class="ai-toggle-full" aria-expanded="false">Show Full Analysis</button>
+                            </div>
+                            <div class="ai-success-content">
                             <h3>Analysis Complete!</h3>
                             
                             <!-- Recommendation -->
