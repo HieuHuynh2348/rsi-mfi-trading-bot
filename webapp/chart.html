@@ -311,8 +311,8 @@
         
         #ai-content {
             color: #D1D4DC;
-            font-size: 14px;
-            line-height: 1.6;
+            font-size: 17px;  /* Increased from 14px for better mobile readability */
+            line-height: 1.8;  /* Increased from 1.6 for better spacing */
             white-space: pre-wrap;
             word-wrap: break-word;
         }
@@ -325,18 +325,18 @@
         
         .ai-section {
             background: rgba(37, 37, 37, 0.90);
-            padding: 16px;
+            padding: 20px 16px;  /* Increased vertical padding from 16px to 20px */
             border-radius: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;  /* Increased from 16px for better separation */
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .ai-title {
-            font-size: 16px;
-            font-weight: 600;
+            font-size: 22px;  /* Increased from 16px for better mobile readability */
+            font-weight: 700;  /* Increased from 600 for better emphasis */
             color: #2962FF;
-            margin-bottom: 12px;
-            padding-bottom: 8px;
+            margin-bottom: 14px;  /* Increased from 12px */
+            padding-bottom: 10px;  /* Increased from 8px */
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
@@ -521,6 +521,22 @@
             .legend-ohlcv {
                 font-size: 10px;
                 gap: 6px;
+            }
+            
+            /* AI Analysis mobile optimizations */
+            #ai-content {
+                font-size: 16px;  /* Slightly smaller than desktop but still readable */
+                line-height: 1.75;
+            }
+            
+            .ai-title {
+                font-size: 20px;  /* Slightly smaller for mobile */
+                font-weight: 700;
+            }
+            
+            .ai-section {
+                padding: 18px 14px;  /* Slightly reduced padding on mobile */
+                margin-bottom: 18px;
             }
         }
         
@@ -1826,8 +1842,8 @@
                     if (touchTimer) clearTimeout(touchTimer);
                     if (longPressTimer) clearTimeout(longPressTimer);
                     
-                    // Don't prevent default - let chart library handle zoom
-                    // e.preventDefault() removed to allow native pinch zoom
+                    // CRITICAL FIX: Prevent browser zoom to avoid chart position reset
+                    e.preventDefault();
                 } else if (e.touches.length === 1) {
                     // Single touch - panning
                     hapticFeedback('light');
@@ -1839,9 +1855,8 @@
                     }, LONG_PRESS_DURATION);
                 }
                 
-                // Allow event to propagate to chart library
-                // e.stopPropagation() removed
-            }, { passive: true }); // Changed to passive: true for better performance
+                // Allow event to propagate to chart library for proper handling
+            }, { passive: false }); // CRITICAL FIX: Changed to passive: false to allow preventDefault()
             
             // Single touchmove handler
             container.addEventListener('touchmove', (e) => {
@@ -1863,13 +1878,12 @@
                         touchStartDistance = distance;
                     }
                     
-                    // Don't prevent default - let chart handle zoom
-                    // e.preventDefault() removed
+                    // CRITICAL FIX: Prevent browser zoom/scroll to avoid chart position reset
+                    e.preventDefault();
                 }
                 
-                // Allow event to propagate to chart library
-                // e.stopPropagation() removed
-            }, { passive: true }); // Changed to passive: true
+                // Allow single-touch pan events to propagate to chart library
+            }, { passive: false }); // CRITICAL FIX: Changed to passive: false to allow preventDefault()
             
             // Single touchend handler
             container.addEventListener('touchend', (e) => {
@@ -1889,7 +1903,7 @@
                 if (touchDuration < LONG_PRESS_DURATION && e.touches.length === 0) {
                     hapticFeedback('light');
                 }
-            }, { passive: true });
+            }, { passive: false }); // Changed to passive: false for consistency
             
             // Handle resize with debounce (Best practice from docs)
             let resizeTimeout;
@@ -2073,6 +2087,184 @@
             console.log(`MFI(${period}): PosFlow=${posFlow.toFixed(2)}, NegFlow=${negFlow.toFixed(2)}, Ratio=${moneyFlowRatio.toFixed(2)}, MFI=${mfi.toFixed(2)}`);
             
             return Math.round(mfi * 100) / 100;
+        }
+        
+        // ============================================================
+        // SUPPORT/RESISTANCE & FVG INDICATORS (144 Period)
+        // ============================================================
+        
+        // Store S/R price lines for cleanup
+        let supportLine = null;
+        let resistanceLine = null;
+        let fvgMarkers = [];
+        
+        // Calculate Support and Resistance levels (144-period)
+        function calculateSupportResistance(candles, period = 144) {
+            if (candles.length < period) {
+                console.warn(`Not enough candles for S/R calculation (${candles.length}/${period})`);
+                return null;
+            }
+            
+            // Use last 144 candles
+            const recentData = candles.slice(-period);
+            
+            // Extract highs and lows
+            const highs = recentData.map(c => c.high);
+            const lows = recentData.map(c => c.low);
+            
+            // Resistance = Maximum high in period
+            const resistance = Math.max(...highs);
+            
+            // Support = Minimum low in period
+            const support = Math.min(...lows);
+            
+            console.log(`📊 S/R(${period}): Support=${support.toFixed(2)}, Resistance=${resistance.toFixed(2)}`);
+            
+            return { support, resistance };
+        }
+        
+        // Draw Support and Resistance lines on chart
+        function drawSupportResistance(support, resistance) {
+            if (!candlestickSeries || !support || !resistance) {
+                console.warn('Cannot draw S/R: missing series or values');
+                return;
+            }
+            
+            try {
+                // Remove existing S/R lines
+                if (supportLine) {
+                    candlestickSeries.removePriceLine(supportLine);
+                    supportLine = null;
+                }
+                if (resistanceLine) {
+                    candlestickSeries.removePriceLine(resistanceLine);
+                    resistanceLine = null;
+                }
+                
+                // Draw Support line (green, dashed)
+                supportLine = candlestickSeries.createPriceLine({
+                    price: support,
+                    color: '#26A69A',
+                    lineWidth: 2,
+                    lineStyle: 2, // Dashed (LightweightCharts.LineStyle.Dashed = 2)
+                    axisLabelVisible: true,
+                    title: 'Support',
+                });
+                
+                // Draw Resistance line (red, dashed)
+                resistanceLine = candlestickSeries.createPriceLine({
+                    price: resistance,
+                    color: '#EF5350',
+                    lineWidth: 2,
+                    lineStyle: 2, // Dashed
+                    axisLabelVisible: true,
+                    title: 'Resistance',
+                });
+                
+                console.log('✅ S/R lines drawn successfully');
+            } catch (error) {
+                console.error('Error drawing S/R lines:', error);
+            }
+        }
+        
+        // Detect Fair Value Gaps (FVG) - Price gaps with no trading
+        function detectFairValueGaps(candles, period = 144) {
+            if (candles.length < period + 2) {
+                console.warn(`Not enough candles for FVG detection (${candles.length}/${period + 2})`);
+                return [];
+            }
+            
+            const fvgs = [];
+            const recentData = candles.slice(-period);
+            
+            // Need 3 consecutive candles to detect FVG
+            for (let i = 2; i < recentData.length; i++) {
+                const prev = recentData[i - 2];  // Candle before gap
+                const curr = recentData[i - 1];  // Middle candle (ignored)
+                const next = recentData[i];      // Candle after gap
+                
+                // Bullish FVG: prev.high < next.low (gap up, price jumped)
+                // This indicates buying pressure, unfilled gap below
+                if (prev.high < next.low) {
+                    fvgs.push({
+                        type: 'bullish',
+                        top: next.low,
+                        bottom: prev.high,
+                        time: next.time,
+                        midpoint: (next.low + prev.high) / 2
+                    });
+                }
+                
+                // Bearish FVG: prev.low > next.high (gap down, price dropped)
+                // This indicates selling pressure, unfilled gap above
+                if (prev.low > next.high) {
+                    fvgs.push({
+                        type: 'bearish',
+                        top: prev.low,
+                        bottom: next.high,
+                        time: next.time,
+                        midpoint: (prev.low + next.high) / 2
+                    });
+                }
+            }
+            
+            console.log(`📊 Detected ${fvgs.length} FVG zones (${fvgs.filter(f => f.type === 'bullish').length} bullish, ${fvgs.filter(f => f.type === 'bearish').length} bearish)`);
+            
+            return fvgs;
+        }
+        
+        // Draw Fair Value Gaps on chart (using price lines)
+        function drawFairValueGaps(fvgs) {
+            if (!candlestickSeries || !fvgs || fvgs.length === 0) {
+                console.warn('Cannot draw FVG: missing series or no gaps');
+                return;
+            }
+            
+            try {
+                // Remove existing FVG markers
+                if (fvgMarkers.length > 0) {
+                    fvgMarkers.forEach(marker => {
+                        candlestickSeries.removePriceLine(marker.top);
+                        candlestickSeries.removePriceLine(marker.bottom);
+                    });
+                    fvgMarkers = [];
+                }
+                
+                // Draw only last 5 most recent FVGs to avoid clutter
+                const recentFVGs = fvgs.slice(-5);
+                
+                recentFVGs.forEach((fvg, index) => {
+                    const color = fvg.type === 'bullish' ? '#26A69A' : '#EF5350';
+                    const title = fvg.type === 'bullish' ? 'FVG↑' : 'FVG↓';
+                    
+                    // Draw top boundary (dotted)
+                    const topLine = candlestickSeries.createPriceLine({
+                        price: fvg.top,
+                        color: color,
+                        lineWidth: 1,
+                        lineStyle: 3, // Dotted (LightweightCharts.LineStyle.Dotted = 3)
+                        axisLabelVisible: false,
+                        title: `${title} ${index + 1}`,
+                    });
+                    
+                    // Draw bottom boundary (dotted)
+                    const bottomLine = candlestickSeries.createPriceLine({
+                        price: fvg.bottom,
+                        color: color,
+                        lineWidth: 1,
+                        lineStyle: 3, // Dotted
+                        axisLabelVisible: false,
+                        title: '',
+                    });
+                    
+                    // Store for cleanup
+                    fvgMarkers.push({ top: topLine, bottom: bottomLine });
+                });
+                
+                console.log(`✅ Drew ${recentFVGs.length} FVG zones`);
+            } catch (error) {
+                console.error('Error drawing FVG zones:', error);
+            }
         }
         
         // Load chart data
@@ -2301,6 +2493,22 @@
                     close: c.close,
                     volume: c.volume  // Store as 'volume' for MFI calculation
                 }));
+                
+                // ============================================================
+                // DRAW SUPPORT/RESISTANCE & FVG INDICATORS (144 Period)
+                // ============================================================
+                
+                // Calculate and draw Support/Resistance levels
+                const srLevels = calculateSupportResistance(latestData.candles, 144);
+                if (srLevels) {
+                    drawSupportResistance(srLevels.support, srLevels.resistance);
+                }
+                
+                // Detect and draw Fair Value Gaps
+                const fvgs = detectFairValueGaps(latestData.candles, 144);
+                if (fvgs && fvgs.length > 0) {
+                    drawFairValueGaps(fvgs);
+                }
                 
                 console.log('Fitting content...');
                 // Smooth animation for fit (Best practice)
