@@ -354,8 +354,8 @@
         
         #chartContainer {
             width: 100%;
-            /* Chart takes full viewport height minus header and timeframe */
-            height: calc(100vh - 165px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+            /* Chart height minus header, timeframe, and bottom nav space */
+            height: calc(100vh - 165px - 20px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
             position: relative;
             margin: 0;
             padding: 0;
