@@ -300,7 +300,7 @@
         
         /* TAB CONTENT WRAPPERS */
         [data-tab-content] {
-            min-height: calc(100vh - 165px);
+            min-height: calc(100vh - 165px - 20px);
             padding-bottom: 0; /* Bottom nav is fixed, no padding needed */
         }
         
@@ -376,7 +376,7 @@
         @media (max-width: 768px) {
             #chartContainer {
                 /* Full viewport height minus header and timeframe */
-                height: calc(100vh - 165px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+                height: calc(100vh - 165px - 20px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
                 /* Disable text selection on mobile */
                 -webkit-user-select: none;
                 -moz-user-select: none;
@@ -409,7 +409,7 @@
             display: none;  /* Hidden by default */
             padding: 20px;
             background: #1a1a1a;
-            height: calc(100vh - 165px);
+            height: calc(100vh - 165px - 20px);
             overflow-y: auto;
         }
         
@@ -421,7 +421,7 @@
             display: none;  /* Hidden by default */
             padding: 20px;
             background: #1a1a1a;
-            height: calc(100vh - 165px);
+            height: calc(100vh - 165px - 20px);
             overflow-y: auto;
         }
         
