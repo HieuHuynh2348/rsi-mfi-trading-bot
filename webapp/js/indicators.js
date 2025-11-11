@@ -346,7 +346,7 @@ class IndicatorsTabController {
             console.warn('⚠️ Indicators container not found');
             return;
         }
-        this.render();
+        // Don't call render() here, let setContext() handle it
     }
 
     /**
@@ -589,39 +589,21 @@ class IndicatorsTabController {
     }
 
     /**
-     * Render initial UI
-     */
-    render() {
-        if (!this.container) return;
-        
-        // Just ensure the container structure exists
-        const content = this.container.querySelector('#indicators-tab-content');
-        if (!content) {
-            this.container.innerHTML = `
-                <div style="margin-bottom: 20px;">
-                    <h3 style="color: var(--text-primary); font-size: var(--font-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-md);">
-                        Technical Indicators - Multi Timeframe
-                    </h3>
-                </div>
-                <div id="indicators-tab-content">
-                    <div class="indicators-empty">
-                        <div class="empty-icon">📊</div>
-                        <div class="empty-title">Chưa Có Dữ Liệu</div>
-                        <div class="empty-text">Chọn symbol để xem indicators</div>
-                    </div>
-                </div>
-            `;
-        }
-    }
-
-    /**
      * Render indicators for all timeframes
      */
     renderIndicators() {
-        if (!this.container) return;
+        if (!this.container) {
+            console.error('❌ Indicators container not found in renderIndicators()');
+            return;
+        }
         
         const content = this.container.querySelector('#indicators-tab-content');
-        if (!content) return;
+        if (!content) {
+            console.error('❌ #indicators-tab-content not found');
+            return;
+        }
+
+        console.log('✅ Rendering indicators for', Object.keys(this.indicators).length, 'timeframes');
 
         const wrapper = document.createElement('div');
         wrapper.className = 'indicators-wrapper';
