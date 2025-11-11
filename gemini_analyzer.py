@@ -2412,12 +2412,12 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             summary += "<i>💡 Dữ liệu từ Gemini AI 2.0 Flash</i>"
             
             # Message 2: Technical Details
-            tech = "📊 <b>PHÂN TÍCH KỸ THUẬT CHI TIẾT</b>\n\n"
+            tech = "📊 <b>PH&#202;N T&#205;CH K&#7926; THU&#7852;T CHI TI&#7870;T</b>\n\n"
             tech += f"💎 <b>{symbol}</b>\n\n"
             
             # Data used
             data_used = analysis.get('data_used', {})
-            tech += "🔍 <b>Chỉ Báo Sử Dụng:</b>\n"
+            tech += "🔍 <b>Ch&#7881; B&#225;o S&#7917; D&#7909;ng:</b>\n"
             tech += f"• RSI+MFI: {data_used.get('rsi_mfi_consensus', 'N/A')}\n"
             tech += f"• Stoch+RSI: {data_used.get('stoch_rsi_consensus', 'N/A')}\n"
             
@@ -2427,7 +2427,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             elif pump_score > 0:
                 tech += f"• Pump: {pump_score:.0f}%\n"
             
-            tech += f"• Giá: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
+            tech += f"• Gi&#225;: ${self.binance.format_price(symbol, data_used.get('current_price', 0))}\n\n"
             
             # === NEW v2.2: Add Asset Type Context ===
             asset_type = analysis.get('asset_type', 'UNKNOWN')

@@ -345,10 +345,6 @@
             transform: translateY(0);
         }
         
-        #fib-tool-btn:hover {
-            background: rgba(41, 98, 255, 0.2) !important;
-        }
-        
         #auto-fib-btn:hover {
             background: rgba(76, 175, 80, 0.3) !important;
         }
@@ -785,19 +781,6 @@
             transition: all 0.2s;
         ">
             🤖 Auto Fib
-        </button>
-        <button id="fib-tool-btn" class="tool-btn" style="
-            padding: 8px 16px;
-            background: rgba(41, 98, 255, 0.1);
-            border: 1px solid rgba(41, 98, 255, 0.3);
-            border-radius: 6px;
-            color: #2962FF;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        ">
-            📐 Manual
         </button>
         <button id="delete-fib-btn" class="tool-btn" style="
             padding: 8px 16px;
@@ -2111,42 +2094,21 @@
                     
                     // No action needed when crosshair leaves
                 }
-                
-                // Handle Fibonacci drawing interaction
-                if (isFibonacciDrawingMode && fibonacciPrimitive && param.point) {
-                    const price = candlestickSeries.coordinateToPrice(param.point.y);
-                    if (price !== null && param.time) {
-                        fibonacciPrimitive.updateDrawing(price, param.time);
-                    }
-                }
             });
             
-            // Subscribe to chart clicks for Fibonacci drawing
+            // Subscribe to chart clicks for Fibonacci selection/deletion
             chart.subscribeClick((param) => {
                 if (!param.point || !param.time) return;
                 
                 const price = candlestickSeries.coordinateToPrice(param.point.y);
                 if (price === null) return;
                 
-                if (isFibonacciDrawingMode && fibonacciPrimitive) {
-                    // Toggle between start and finish
-                    if (!fibonacciPrimitive._activeDrawing) {
-                        // Start new drawing
-                        fibonacciPrimitive.startDrawing(price, param.time);
-                        hapticFeedback('medium');
-                        showToast('📐 Fibonacci: Click again to finish', 'info');
-                    } else {
-                        // Finish drawing
-                        fibonacciPrimitive.finishDrawing();
-                        hapticFeedback('success');
-                        showToast('✅ Fibonacci retracement created', 'success');
-                    }
-                } else if (fibonacciPrimitive) {
-                    // Select/deselect existing drawings
+                // Only allow selection for deletion (no manual drawing)
+                if (fibonacciPrimitive) {
                     const wasSelected = fibonacciPrimitive.selectDrawingAt(price);
                     if (wasSelected) {
                         hapticFeedback('light');
-                        showToast('🎯 Drawing selected. Click Delete to remove', 'info');
+                        showToast('🎯 Fibonacci selected. Click Delete to remove', 'info');
                     }
                 }
             });
@@ -2819,7 +2781,6 @@
         }
         
         let fibonacciPrimitive = null;
-        let isFibonacciDrawingMode = false;
         let autoFibonacciEnabled = true; // Auto-detect by default
         
         // ============================================================
@@ -3542,36 +3503,6 @@
                     autoFibBtn.style.borderColor = 'rgba(76, 175, 80, 0.3)';
                     hapticFeedback('light');
                     showToast('🤖 Auto Fibonacci: Disabled', 'info');
-                }
-            });
-        }
-        
-        // Fibonacci manual drawing tool button
-        const fibToolBtn = document.getElementById('fib-tool-btn');
-        if (fibToolBtn) {
-            fibToolBtn.addEventListener('click', () => {
-                isFibonacciDrawingMode = !isFibonacciDrawingMode;
-                
-                if (isFibonacciDrawingMode) {
-                    fibToolBtn.style.background = 'rgba(41, 98, 255, 0.3)';
-                    fibToolBtn.style.borderColor = '#2962FF';
-                    hapticFeedback('medium');
-                    showToast('📐 Manual Fibonacci: Click two points to draw retracement', 'info');
-                    
-                    // Cancel any active drawing
-                    if (fibonacciPrimitive && fibonacciPrimitive._activeDrawing) {
-                        fibonacciPrimitive.cancelDrawing();
-                    }
-                } else {
-                    fibToolBtn.style.background = 'rgba(41, 98, 255, 0.1)';
-                    fibToolBtn.style.borderColor = 'rgba(41, 98, 255, 0.3)';
-                    hapticFeedback('light');
-                    
-                    // Cancel any active drawing
-                    if (fibonacciPrimitive && fibonacciPrimitive._activeDrawing) {
-                        fibonacciPrimitive.cancelDrawing();
-                        showToast('Drawing cancelled', 'info');
-                    }
                 }
             });
         }
