@@ -197,40 +197,56 @@ class NavigationController {
      * @param {string} tabName 
      */
     showTabContent(tabName) {
-        const chartContainer = document.getElementById('chartContainer');
-        
-        // Hide all sections
+        // Hide all tab content sections
         const sections = document.querySelectorAll('[data-tab-content]');
         sections.forEach(section => {
             section.style.display = 'none';
         });
         
-        if (chartContainer) {
-            chartContainer.style.display = 'none';
-        }
-        
         // Show selected section
-        if (tabName === 'chart') {
-            if (chartContainer) {
-                chartContainer.style.display = 'block';
+        const activeSection = document.querySelector(`[data-tab-content="${tabName}"]`);
+        if (activeSection) {
+            activeSection.style.display = 'block';
+            
+            // Special handling for chart tab
+            if (tabName === 'chart') {
+                const chartContainer = document.getElementById('chartContainer');
+                if (chartContainer) {
+                    // Ensure chart container is visible
+                    chartContainer.style.display = 'block';
+                    
+                    // CRITICAL: Resize chart after showing container
+                    // Chart needs to recalculate dimensions when container becomes visible
+                    setTimeout(() => {
+                        if (typeof chart !== 'undefined' && chart) {
+                            const width = chartContainer.clientWidth;
+                            const height = chartContainer.clientHeight;
+                            
+                            console.log(`📊 Resizing chart on tab show: ${width}x${height}`);
+                            
+                            chart.applyOptions({
+                                width: width,
+                                height: height,
+                            });
+                            
+                            // Trigger chart redraw
+                            chart.timeScale().scrollToPosition(0, false);
+                        }
+                    }, 50); // Small delay to ensure container is fully visible
+                }
             }
-        } else {
-            const activeSection = document.querySelector(`[data-tab-content="${tabName}"]`);
-            if (activeSection) {
-                activeSection.style.display = 'block';
-                
-                // Special handling for indicators tab
-                if (tabName === 'indicators' && window.indicatorsTab) {
-                    // Reload indicators when tab is shown
-                    if (typeof symbol !== 'undefined' && typeof currentTimeframe !== 'undefined') {
-                        window.indicatorsTab.setContext(symbol, currentTimeframe);
-                    }
+            
+            // Special handling for indicators tab
+            if (tabName === 'indicators' && window.indicatorsTab) {
+                // Reload indicators when tab is shown
+                if (typeof symbol !== 'undefined' && typeof currentTimeframe !== 'undefined') {
+                    window.indicatorsTab.setContext(symbol, currentTimeframe);
                 }
-                
-                // Special handling for history tab
-                if (tabName === 'history' && !this.historyModule) {
-                    this.initializeHistoryModule();
-                }
+            }
+            
+            // Special handling for history tab
+            if (tabName === 'history' && !this.historyModule) {
+                this.initializeHistoryModule();
             }
         }
     }
