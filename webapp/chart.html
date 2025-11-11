@@ -896,7 +896,58 @@
         <div id="history-container"></div>
     </div>
     
-    <div id="chartContainer"></div>
+    <!-- TAB CONTENT SECTIONS FOR MOBILE NAVIGATION -->
+    <!-- Chart Tab (default visible) -->
+    <div data-tab-content="chart" style="display: block;">
+        <div id="chartContainer"></div>
+    </div>
+    
+    <!-- Indicators Tab (old panel kept for reference, but hidden) -->
+    <div data-tab-content="indicators" style="display: none;">
+        <!-- Mobile IndicatorPanel will be shown here -->
+    </div>
+    
+    <!-- AI Analysis Tab -->
+    <div data-tab-content="ai" style="display: none;">
+        <div id="ai-analysis">
+            <div style="padding: 20px; text-align: center;">
+                <button id="ai-analysis-btn" style="
+                    padding: 12px 24px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                    transition: all 0.2s;
+                ">
+                    🧠 Analyze with Gemini AI
+                </button>
+                <div style="color: #787B86; margin-top: 20px; font-size: 14px; line-height: 1.6;">
+                    Get comprehensive market analysis powered by Gemini 2.0 Flash
+                </div>
+            </div>
+            <div id="ai-content"></div>
+        </div>
+    </div>
+    
+    <!-- Settings Tab -->
+    <div data-tab-content="settings" style="display: none;">
+        <div style="padding: 20px;">
+            <h3 style="color: var(--text-primary); margin-bottom: 16px;">Settings</h3>
+            <p style="color: var(--text-secondary);">Settings panel coming soon...</p>
+        </div>
+    </div>
+    
+    <!-- Info Tab -->
+    <div data-tab-content="info" style="display: none;">
+        <div style="padding: 20px;">
+            <h3 style="color: var(--text-primary); margin-bottom: 16px;">Info</h3>
+            <p style="color: var(--text-secondary);">App info coming soon...</p>
+        </div>
+    </div>
     
     <script>
         // Initialize Telegram WebApp
