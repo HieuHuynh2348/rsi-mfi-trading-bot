@@ -398,6 +398,155 @@
     font-weight: 600;
 }
 
+/* Recommendation Badge */
+.ai-recommendation {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.ai-rec-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.ai-rec-badge.buy {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(46, 125, 50, 0.2) 100%);
+    border: 2px solid #4CAF50;
+    color: #4CAF50;
+}
+
+.ai-rec-badge.sell {
+    background: linear-gradient(135deg, rgba(244, 67, 54, 0.2) 0%, rgba(211, 47, 47, 0.2) 100%);
+    border: 2px solid #EF5350;
+    color: #EF5350;
+}
+
+.ai-rec-badge.neutral,
+.ai-rec-badge.wait {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100%);
+    border: 2px solid #FFC107;
+    color: #FFC107;
+}
+
+.ai-confidence {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.ai-confidence strong {
+    color: white;
+    font-size: 16px;
+}
+
+/* Key Levels */
+.ai-levels {
+    margin: 20px 0;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+}
+
+.ai-levels h4 {
+    margin: 0 0 12px 0;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ai-level {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin: 6px 0;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.ai-level strong {
+    color: #667eea;
+    font-weight: 600;
+}
+
+.ai-level.stop strong {
+    color: #EF5350;
+}
+
+.ai-level.profit strong {
+    color: #4CAF50;
+}
+
+/* Risk Level */
+.ai-risk {
+    margin: 16px 0;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+.ai-risk-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 13px;
+    margin-left: 8px;
+}
+
+.ai-risk-badge.low {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4CAF50;
+}
+
+.ai-risk-badge.medium {
+    background: rgba(255, 193, 7, 0.2);
+    color: #FFC107;
+}
+
+.ai-risk-badge.high {
+    background: rgba(244, 67, 54, 0.2);
+    color: #EF5350;
+}
+
+/* Reasoning */
+.ai-reasoning {
+    margin: 20px 0;
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    text-align: left;
+}
+
+.ai-reasoning h4 {
+    margin: 0 0 12px 0;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ai-reasoning p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+    line-height: 1.8;
+}
+
 .ai-success-action {
     display: flex;
     align-items: center;

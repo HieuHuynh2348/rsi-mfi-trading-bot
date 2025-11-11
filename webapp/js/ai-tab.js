@@ -139,13 +139,14 @@ class AITabController {
                 symbol,
                 timeframe,
                 timestamp: Date.now(),
-                success: true
+                success: true,
+                analysis: result.analysis || null
             };
             this.state.analysisCount++;
             this.saveState();
             
-            // Show success
-            this.showSuccessState(symbol);
+            // Show success with full analysis data
+            this.showSuccessState(symbol, result);
             
             // Success haptic
             if (this.tg?.HapticFeedback) {
@@ -251,35 +252,122 @@ class AITabController {
     }
     
     /**
-     * Show success state
+     * Show success state with analysis results
      */
-    showSuccessState(symbol) {
+    showSuccessState(symbol, analysis) {
         if (this.elements.loadingContainer) {
-            this.elements.loadingContainer.innerHTML = `
-                <div class="ai-success-card">
-                    <div class="ai-success-icon">
-                        <div class="ai-checkmark">
-                            <svg viewBox="0 0 52 52">
-                                <circle class="ai-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
-                                <path class="ai-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
-                            </svg>
+            // Check if we have full analysis data
+            if (analysis && analysis.analysis) {
+                const data = analysis.analysis;
+                
+                // Display full analysis
+                this.elements.loadingContainer.innerHTML = `
+                    <div class="ai-success-card">
+                        <div class="ai-success-icon">
+                            <div class="ai-checkmark">
+                                <svg viewBox="0 0 52 52">
+                                    <circle class="ai-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                                    <path class="ai-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ai-success-content">
+                            <h3>Analysis Complete!</h3>
+                            
+                            <!-- Recommendation -->
+                            <div class="ai-recommendation">
+                                <div class="ai-rec-badge ${data.recommendation?.toLowerCase() || 'neutral'}">
+                                    ${data.recommendation === 'BUY' ? '🟢' : data.recommendation === 'SELL' ? '🔴' : '🟡'} 
+                                    <strong>${data.recommendation || 'NEUTRAL'}</strong>
+                                </div>
+                                <div class="ai-confidence">
+                                    Confidence: <strong>${data.confidence || 0}%</strong>
+                                </div>
+                            </div>
+                            
+                            <!-- Key Levels -->
+                            ${data.entry_point || data.stop_loss || (data.take_profit && data.take_profit.length) ? `
+                                <div class="ai-levels">
+                                    <h4>📊 Key Levels</h4>
+                                    ${data.entry_point ? `<div class="ai-level">Entry: <strong>$${data.entry_point.toLocaleString()}</strong></div>` : ''}
+                                    ${data.stop_loss ? `<div class="ai-level stop">Stop Loss: <strong>$${data.stop_loss.toLocaleString()}</strong></div>` : ''}
+                                    ${data.take_profit && data.take_profit.length ? `
+                                        <div class="ai-level profit">
+                                            Take Profit: 
+                                            ${data.take_profit.map((tp, i) => `<strong>TP${i+1}: $${tp.toLocaleString()}</strong>`).join(' • ')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Risk Level -->
+                            ${data.risk_level ? `
+                                <div class="ai-risk">
+                                    Risk Level: 
+                                    <span class="ai-risk-badge ${data.risk_level.toLowerCase()}">
+                                        ${data.risk_level}
+                                    </span>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Reasoning -->
+                            ${data.reasoning ? `
+                                <div class="ai-reasoning">
+                                    <h4>🧠 Analysis</h4>
+                                    <p>${this.formatReasoning(data.reasoning)}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Telegram Link -->
+                            <div class="ai-success-action">
+                                <span class="ai-telegram-icon">📱</span>
+                                <span>Detailed analysis sent to Telegram</span>
+                            </div>
                         </div>
                     </div>
-                    <div class="ai-success-content">
-                        <h3>Analysis Complete!</h3>
-                        <p>AI analysis for <strong>${symbol}</strong> has been sent to your Telegram chat.</p>
-                        <div class="ai-success-action">
-                            <span class="ai-telegram-icon">📱</span>
-                            <span>Check your Telegram for detailed results</span>
+                `;
+            } else {
+                // Fallback to simple success message
+                this.elements.loadingContainer.innerHTML = `
+                    <div class="ai-success-card">
+                        <div class="ai-success-icon">
+                            <div class="ai-checkmark">
+                                <svg viewBox="0 0 52 52">
+                                    <circle class="ai-checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                                    <path class="ai-checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="ai-success-content">
+                            <h3>Analysis Complete!</h3>
+                            <p>AI analysis for <strong>${symbol}</strong> has been sent to your Telegram chat.</p>
+                            <div class="ai-success-action">
+                                <span class="ai-telegram-icon">📱</span>
+                                <span>Check your Telegram for detailed results</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
+            }
+            
             this.elements.loadingContainer.style.display = 'block';
         }
         
         // Update status card
         this.updateStatusCard();
+    }
+    
+    /**
+     * Format reasoning text with line breaks
+     */
+    formatReasoning(text) {
+        if (!text) return '';
+        
+        // Convert newlines to <br>
+        return text
+            .replace(/\n\n/g, '<br><br>')
+            .replace(/\n/g, '<br>')
+            .substring(0, 500); // Limit length
     }
     
     /**
