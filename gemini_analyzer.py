@@ -2433,15 +2433,60 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             asset_type = analysis.get('asset_type', 'UNKNOWN')
             tech += f"🎯 <b>Asset Type:</b> {asset_type}\n"
             
-            # Helper function to escape HTML special characters
-            def escape_html(text):
-                """Escape HTML special characters to prevent parsing errors"""
+            # Helper function to encode Vietnamese characters to HTML entities
+            def encode_vietnamese(text):
+                """Encode Vietnamese characters to HTML entities to prevent Telegram parsing errors"""
                 if not isinstance(text, str):
                     text = str(text)
-                return (text.replace('&', '&amp;')
+                
+                # Vietnamese character mapping to HTML entities
+                vietnamese_map = {
+                    # Lowercase
+                    'à': '&#224;', 'á': '&#225;', 'ả': '&#7843;', 'ã': '&#227;', 'ạ': '&#7841;',
+                    'ă': '&#259;', 'ằ': '&#7857;', 'ắ': '&#7855;', 'ẳ': '&#7859;', 'ẵ': '&#7861;', 'ặ': '&#7863;',
+                    'â': '&#226;', 'ầ': '&#7847;', 'ấ': '&#7845;', 'ẩ': '&#7849;', 'ẫ': '&#7851;', 'ậ': '&#7853;',
+                    'đ': '&#273;',
+                    'è': '&#232;', 'é': '&#233;', 'ẻ': '&#7867;', 'ẽ': '&#7869;', 'ẹ': '&#7865;',
+                    'ê': '&#234;', 'ề': '&#7873;', 'ế': '&#7871;', 'ể': '&#7875;', 'ễ': '&#7877;', 'ệ': '&#7879;',
+                    'ì': '&#236;', 'í': '&#237;', 'ỉ': '&#7881;', 'ĩ': '&#297;', 'ị': '&#7883;',
+                    'ò': '&#242;', 'ó': '&#243;', 'ỏ': '&#7887;', 'õ': '&#245;', 'ọ': '&#7885;',
+                    'ô': '&#244;', 'ồ': '&#7891;', 'ố': '&#7889;', 'ổ': '&#7893;', 'ỗ': '&#7895;', 'ộ': '&#7897;',
+                    'ơ': '&#417;', 'ờ': '&#7901;', 'ớ': '&#7899;', 'ở': '&#7903;', 'ỡ': '&#7905;', 'ợ': '&#7907;',
+                    'ù': '&#249;', 'ú': '&#250;', 'ủ': '&#7911;', 'ũ': '&#361;', 'ụ': '&#7909;',
+                    'ư': '&#432;', 'ừ': '&#7915;', 'ứ': '&#7913;', 'ử': '&#7917;', 'ữ': '&#7919;', 'ự': '&#7921;',
+                    'ỳ': '&#7923;', 'ý': '&#253;', 'ỷ': '&#7927;', 'ỹ': '&#7929;', 'ỵ': '&#7925;',
+                    # Uppercase
+                    'À': '&#192;', 'Á': '&#193;', 'Ả': '&#7842;', 'Ã': '&#195;', 'Ạ': '&#7840;',
+                    'Ă': '&#258;', 'Ằ': '&#7856;', 'Ắ': '&#7854;', 'Ẳ': '&#7858;', 'Ẵ': '&#7860;', 'Ặ': '&#7862;',
+                    'Â': '&#202;', 'Ầ': '&#7846;', 'Ấ': '&#7844;', 'Ẩ': '&#7848;', 'Ẫ': '&#7850;', 'Ậ': '&#7852;',
+                    'Đ': '&#272;',
+                    'È': '&#200;', 'É': '&#201;', 'Ẻ': '&#7866;', 'Ẽ': '&#7868;', 'Ẹ': '&#7864;',
+                    'Ê': '&#202;', 'Ề': '&#7872;', 'Ế': '&#7870;', 'Ể': '&#7874;', 'Ễ': '&#7876;', 'Ệ': '&#7878;',
+                    'Ì': '&#204;', 'Í': '&#205;', 'Ỉ': '&#7880;', 'Ĩ': '&#296;', 'Ị': '&#7882;',
+                    'Ò': '&#210;', 'Ó': '&#211;', 'Ỏ': '&#7886;', 'Õ': '&#213;', 'Ọ': '&#7884;',
+                    'Ô': '&#212;', 'Ồ': '&#7890;', 'Ố': '&#7888;', 'Ổ': '&#7892;', 'Ỗ': '&#7894;', 'Ộ': '&#7896;',
+                    'Ơ': '&#416;', 'Ờ': '&#7900;', 'Ớ': '&#7898;', 'Ở': '&#7902;', 'Ỡ': '&#7904;', 'Ợ': '&#7906;',
+                    'Ù': '&#217;', 'Ú': '&#218;', 'Ủ': '&#7910;', 'Ũ': '&#360;', 'Ụ': '&#7908;',
+                    'Ư': '&#431;', 'Ừ': '&#7914;', 'Ứ': '&#7912;', 'Ử': '&#7916;', 'Ữ': '&#7918;', 'Ự': '&#7920;',
+                    'Ỳ': '&#7922;', 'Ý': '&#221;', 'Ỷ': '&#7926;', 'Ỹ': '&#7928;', 'Ỵ': '&#7924;',
+                }
+                
+                # First escape HTML special characters
+                text = (text.replace('&', '&amp;')
                            .replace('<', '&lt;')
                            .replace('>', '&gt;')
                            .replace('"', '&quot;'))
+                
+                # Then encode Vietnamese characters
+                for viet_char, html_entity in vietnamese_map.items():
+                    text = text.replace(viet_char, html_entity)
+                
+                return text
+            
+            # Legacy escape_html for backward compatibility (redirects to encode_vietnamese)
+            def escape_html(text):
+                """Deprecated: Use encode_vietnamese instead"""
+                return encode_vietnamese(text)
             
             # Add asset-specific context
             sector = analysis.get('sector_analysis', {})
@@ -2510,11 +2555,8 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             # Key points
             tech += "🎯 <b>&#272;i&#7875;m Ch&#237;nh:</b>\n"
             for point in analysis.get('key_points', []):
-                # Escape HTML characters in key points
-                safe_point = (str(point).replace('&', '&amp;')
-                                       .replace('<', '&lt;')
-                                       .replace('>', '&gt;')
-                                       .replace('"', '&quot;'))
+                # Encode Vietnamese and escape HTML characters in key points
+                safe_point = encode_vietnamese(str(point))
                 tech += f"✓ {safe_point}\n"
             
             # Conflicting signals
@@ -2522,10 +2564,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             if conflicts:
                 tech += "\n⚠️ <b>T&#237;n Hi&#7879;u M&#226;u Thu&#7849;n:</b>\n"
                 for conflict in conflicts:
-                    safe_conflict = (str(conflict).replace('&', '&amp;')
-                                                  .replace('<', '&lt;')
-                                                  .replace('>', '&gt;')
-                                                  .replace('"', '&quot;'))
+                    safe_conflict = encode_vietnamese(str(conflict))
                     tech += f"• {safe_conflict}\n"
             
             # Warnings
@@ -2533,10 +2572,7 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             if warnings:
                 tech += "\n🚨 <b>C&#7843;nh B&#225;o:</b>\n"
                 for warning in warnings:
-                    safe_warning = (str(warning).replace('&', '&amp;')
-                                                .replace('<', '&lt;')
-                                                .replace('>', '&gt;')
-                                                .replace('"', '&quot;'))
+                    safe_warning = encode_vietnamese(str(warning))
                     tech += f"⚠️ {safe_warning}\n"
             
             # Historical Analysis
@@ -2544,27 +2580,18 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
             if hist_analysis:
                 tech += "\n📊 <b>D&#7919; Li&#7879;u L&#7883;ch S&#7917;:</b>\n\n"
                 
-                # Helper to escape HTML in historical data
-                def safe_text(text):
-                    if not text:
-                        return ''
-                    return (str(text).replace('&', '&amp;')
-                                    .replace('<', '&lt;')
-                                    .replace('>', '&gt;')
-                                    .replace('"', '&quot;'))
-                
                 # 1H Context
                 h1 = hist_analysis.get('h1_context', {})
                 if h1:
                     tech += "⏰ <b>1H (7 ng&#224;y):</b>\n"
                     if h1.get('rsi_interpretation'):
-                        tech += f"• RSI: {safe_text(h1['rsi_interpretation'])}\n"
+                        tech += f"• RSI: {encode_vietnamese(h1['rsi_interpretation'])}\n"
                     if h1.get('volume_trend'):
-                        tech += f"• Volume: {safe_text(h1['volume_trend'])}\n"
+                        tech += f"• Volume: {encode_vietnamese(h1['volume_trend'])}\n"
                     if h1.get('price_position'):
-                        tech += f"• V&#7883; tr&#237;: {safe_text(h1['price_position'])}\n"
+                        tech += f"• V&#7883; tr&#237;: {encode_vietnamese(h1['price_position'])}\n"
                     if h1.get('institutional_insights'):
-                        tech += f"• Institutional: {safe_text(h1['institutional_insights'])}\n"
+                        tech += f"• Institutional: {encode_vietnamese(h1['institutional_insights'])}\n"
                     tech += "\n"
                 
                 # 4H Context
@@ -2572,13 +2599,13 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 if h4:
                     tech += "⏰ <b>4H (30 ng&#224;y):</b>\n"
                     if h4.get('rsi_interpretation'):
-                        tech += f"• RSI: {safe_text(h4['rsi_interpretation'])}\n"
+                        tech += f"• RSI: {encode_vietnamese(h4['rsi_interpretation'])}\n"
                     if h4.get('volume_trend'):
-                        tech += f"• Volume: {safe_text(h4['volume_trend'])}\n"
+                        tech += f"• Volume: {encode_vietnamese(h4['volume_trend'])}\n"
                     if h4.get('price_position'):
-                        tech += f"• V&#7883; tr&#237;: {safe_text(h4['price_position'])}\n"
+                        tech += f"• V&#7883; tr&#237;: {encode_vietnamese(h4['price_position'])}\n"
                     if h4.get('institutional_insights'):
-                        tech += f"• Institutional: {safe_text(h4['institutional_insights'])}\n"
+                        tech += f"• Institutional: {encode_vietnamese(h4['institutional_insights'])}\n"
                     tech += "\n"
                 
                 # 1D Context
@@ -2586,20 +2613,20 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
                 if d1:
                     tech += "⏰ <b>1D (90 ng&#224;y):</b>\n"
                     if d1.get('rsi_mfi_correlation'):
-                        tech += f"• RSI/MFI: {safe_text(d1['rsi_mfi_correlation'])}\n"
+                        tech += f"• RSI/MFI: {encode_vietnamese(d1['rsi_mfi_correlation'])}\n"
                     if d1.get('long_term_trend'):
-                        tech += f"• Xu h&#432;&#7899;ng: {safe_text(d1['long_term_trend'])}\n"
+                        tech += f"• Xu h&#432;&#7899;ng: {encode_vietnamese(d1['long_term_trend'])}\n"
                     if d1.get('volatility_assessment'):
-                        tech += f"• Bi&#7871;n &#273;&#7897;ng: {safe_text(d1['volatility_assessment'])}\n"
+                        tech += f"• Bi&#7871;n &#273;&#7897;ng: {encode_vietnamese(d1['volatility_assessment'])}\n"
                     if d1.get('institutional_insights'):
-                        tech += f"• Institutional: {safe_text(d1['institutional_insights'])}\n"
+                        tech += f"• Institutional: {encode_vietnamese(d1['institutional_insights'])}\n"
             
             tech += "\n<i>💡 Ph&#226;n t&#237;ch &#273;a khung th&#7901;i gian</i>"
             
             # Message 3: AI Reasoning
             reasoning = "🧠 <b>PH&#202;N T&#205;CH CHI TI&#7870;T T&#7914; AI</b>\n\n"
             reasoning += f"💎 <b>{symbol}</b>\n\n"
-            reasoning += analysis.get('reasoning_vietnamese', 'Kh&#244;ng c&#243; ph&#226;n t&#237;ch chi ti&#7871;t.')
+            reasoning += encode_vietnamese(analysis.get('reasoning_vietnamese', 'Không có phân tích chi tiết.'))
             reasoning += f"\n\n⏰ <b>Th&#7901;i gian:</b> {analysis.get('analyzed_at', 'N/A')}\n"
             reasoning += f"🤖 <b>Model:</b> Gemini 2.0 Flash\n\n"
             reasoning += "<i>⚠️ &#272;&#226;y l&#224; ph&#226;n t&#237;ch AI, kh&#244;ng ph&#7843;i t&#432; v&#7845;n t&#224;i ch&#237;nh.\n"
