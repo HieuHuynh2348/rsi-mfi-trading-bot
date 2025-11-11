@@ -2,8 +2,21 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-    <title>Live Chart</title>
+    <!-- Enhanced mobile viewport with iOS optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    
+    <!-- PWA & Mobile Optimization -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1E222D">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Performance & Rendering -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="renderer" content="webkit">
+    
+    <title>Live Chart - Crypto Trading Analysis</title>
     
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -41,17 +54,63 @@
     </script>
     
     <style>
+        /* ============================================================
+           MOBILE-FIRST DESIGN WITH iOS/ANDROID OPTIMIZATION
+           ============================================================ */
+        
+        :root {
+            /* iOS Safe Area Support */
+            --safe-area-inset-top: env(safe-area-inset-top, 0px);
+            --safe-area-inset-right: env(safe-area-inset-right, 0px);
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-inset-left: env(safe-area-inset-left, 0px);
+            
+            /* Color Variables */
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #1E222D;
+            --border-color: #2A2E39;
+            --text-primary: #ffffff;
+            --text-secondary: #D1D4DC;
+            --accent-blue: #2962FF;
+        }
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            /* Improve tap performance on mobile */
+            -webkit-tap-highlight-color: transparent;
+            /* Prevent text selection on touch */
+            -webkit-touch-callout: none;
+        }
+        
+        html {
+            /* Smooth scrolling for better UX */
+            scroll-behavior: smooth;
+            /* Prevent horizontal scroll */
+            overflow-x: hidden;
+            /* iOS momentum scrolling */
+            -webkit-overflow-scrolling: touch;
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a1a;
-            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             overflow: hidden;
+            /* iOS safe area padding */
+            padding-top: var(--safe-area-inset-top);
+            padding-right: var(--safe-area-inset-right);
+            padding-bottom: var(--safe-area-inset-bottom);
+            padding-left: var(--safe-area-inset-left);
+            /* Prevent bounce effect on iOS */
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            /* Optimize font rendering */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         
         #loading {
@@ -290,6 +349,10 @@
             background: rgba(41, 98, 255, 0.2) !important;
         }
         
+        #auto-fib-btn:hover {
+            background: rgba(76, 175, 80, 0.3) !important;
+        }
+        
         #delete-fib-btn:hover {
             background: rgba(244, 67, 54, 0.2) !important;
         }
@@ -300,11 +363,51 @@
         
         #chartContainer {
             width: 100%;
-            height: calc(100vh - 165px);  /* header 60px + tabs 45px + timeframes 50px + borders */
+            height: calc(100vh - 165px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
             position: relative;
-            touch-action: pan-x pan-y;
+            /* Optimized touch handling for mobile */
+            touch-action: pan-x pan-y pinch-zoom;
             -webkit-user-select: none;
             user-select: none;
+            /* GPU acceleration for smoother scrolling */
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            will-change: transform;
+            /* Better rendering on mobile */
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+        
+        /* Mobile-specific chart optimizations */
+        @media (max-width: 768px) {
+            #chartContainer {
+                height: calc(100vh - 165px - var(--safe-area-inset-top) - var(--safe-area-inset-bottom));
+                /* Disable text selection on mobile */
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+            }
+            
+            /* Larger touch targets for mobile */
+            .tool-btn {
+                min-height: 44px; /* iOS recommended touch target */
+                padding: 10px 18px;
+            }
+            
+            .tf-btn {
+                min-height: 44px;
+                padding: 10px 18px;
+            }
+        }
+        
+        /* iOS notch support */
+        @supports (padding: max(0px)) {
+            #header {
+                padding-top: max(8px, var(--safe-area-inset-top));
+                padding-left: max(16px, var(--safe-area-inset-left));
+                padding-right: max(16px, var(--safe-area-inset-right));
+            }
         }
         
         #indicators {
@@ -669,7 +772,20 @@
     </div>
     
     <!-- Fibonacci Drawing Tools -->
-    <div id="drawing-tools" style="display: flex; gap: 8px; padding: 8px 16px; background: rgba(35, 38, 47, 0.7); border-bottom: 1px solid #2A2E39;">
+    <div id="drawing-tools" style="display: flex; gap: 8px; padding: 8px 16px; background: rgba(35, 38, 47, 0.7); border-bottom: 1px solid #2A2E39; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+        <button id="auto-fib-btn" class="tool-btn" style="
+            padding: 8px 16px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            border-radius: 6px;
+            color: #4CAF50;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        ">
+            🤖 Auto Fib
+        </button>
         <button id="fib-tool-btn" class="tool-btn" style="
             padding: 8px 16px;
             background: rgba(41, 98, 255, 0.1);
@@ -681,7 +797,7 @@
             cursor: pointer;
             transition: all 0.2s;
         ">
-            📐 Fibonacci
+            📐 Manual
         </button>
         <button id="delete-fib-btn" class="tool-btn" style="
             padding: 8px 16px;
@@ -1395,7 +1511,7 @@
             if (technicalAnalysis && technicalAnalysis.length > 50) {
                 html += `
                 <div class="ai-section" style="max-height: 450px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
-                    <div class="ai-title" style="font-size: 18px; font-weight: 700;">📊 Technical Analysis</div>
+                    <div class="ai-title" style="font-size: 18px; font-weight: 700;">📊 Phân tích Kỹ thuật chi tiết</div>
                     <div style="line-height: 1.8; font-size: 15px; padding: 4px 0;">${technicalAnalysis}</div>
                 </div>`;
             }
@@ -2704,6 +2820,174 @@
         
         let fibonacciPrimitive = null;
         let isFibonacciDrawingMode = false;
+        let autoFibonacciEnabled = true; // Auto-detect by default
+        
+        // ============================================================
+        // AUTO FIBONACCI DETECTION ALGORITHM
+        // ============================================================
+        
+        /**
+         * Detect swing highs and lows using pivot point algorithm
+         * A swing high is a peak where left and right neighbors are lower
+         * A swing low is a trough where left and right neighbors are higher
+         */
+        function detectSwingPoints(candles, lookback = 5) {
+            const swingHighs = [];
+            const swingLows = [];
+            
+            if (!candles || candles.length < lookback * 2 + 1) {
+                return { swingHighs, swingLows };
+            }
+            
+            // Iterate through candles, checking for pivot points
+            for (let i = lookback; i < candles.length - lookback; i++) {
+                const currentHigh = candles[i].high;
+                const currentLow = candles[i].low;
+                
+                // Check for swing high
+                let isSwingHigh = true;
+                for (let j = 1; j <= lookback; j++) {
+                    if (candles[i - j].high >= currentHigh || candles[i + j].high >= currentHigh) {
+                        isSwingHigh = false;
+                        break;
+                    }
+                }
+                
+                if (isSwingHigh) {
+                    swingHighs.push({
+                        index: i,
+                        price: currentHigh,
+                        time: candles[i].time
+                    });
+                }
+                
+                // Check for swing low
+                let isSwingLow = true;
+                for (let j = 1; j <= lookback; j++) {
+                    if (candles[i - j].low <= currentLow || candles[i + j].low <= currentLow) {
+                        isSwingLow = false;
+                        break;
+                    }
+                }
+                
+                if (isSwingLow) {
+                    swingLows.push({
+                        index: i,
+                        price: currentLow,
+                        time: candles[i].time
+                    });
+                }
+            }
+            
+            console.log(`📊 Auto Fib: Found ${swingHighs.length} swing highs and ${swingLows.length} swing lows`);
+            return { swingHighs, swingLows };
+        }
+        
+        /**
+         * Find most significant price move for Fibonacci retracement
+         * Returns the highest swing high and lowest swing low in recent data
+         */
+        function findSignificantMove(candles, recentBars = 100) {
+            if (!candles || candles.length < 50) {
+                return null;
+            }
+            
+            // Use only recent candles for relevance
+            const recentCandles = candles.slice(-Math.min(recentBars, candles.length));
+            
+            // Detect swing points with moderate lookback for reliability
+            const { swingHighs, swingLows } = detectSwingPoints(recentCandles, 5);
+            
+            if (swingHighs.length === 0 || swingLows.length === 0) {
+                console.log('⚠️ Auto Fib: Not enough swing points detected');
+                return null;
+            }
+            
+            // Find the most significant high and low
+            const highestSwing = swingHighs.reduce((max, swing) => 
+                swing.price > max.price ? swing : max, swingHighs[0]);
+            
+            const lowestSwing = swingLows.reduce((min, swing) => 
+                swing.price < min.price ? swing : min, swingLows[0]);
+            
+            // Calculate price range percentage
+            const priceRange = Math.abs(highestSwing.price - lowestSwing.price);
+            const midPrice = (highestSwing.price + lowestSwing.price) / 2;
+            const rangePercent = (priceRange / midPrice) * 100;
+            
+            // Only draw Fibonacci if move is significant (>3% range)
+            if (rangePercent < 3) {
+                console.log(`⚠️ Auto Fib: Price move too small (${rangePercent.toFixed(2)}%), skipping`);
+                return null;
+            }
+            
+            // Determine trend direction (which point came first)
+            const isUptrend = lowestSwing.index < highestSwing.index;
+            
+            console.log(`✅ Auto Fib: ${isUptrend ? 'Uptrend' : 'Downtrend'} detected, ${rangePercent.toFixed(2)}% move`);
+            
+            return {
+                startPrice: isUptrend ? lowestSwing.price : highestSwing.price,
+                startTime: isUptrend ? lowestSwing.time : highestSwing.time,
+                endPrice: isUptrend ? highestSwing.price : lowestSwing.price,
+                endTime: isUptrend ? highestSwing.time : lowestSwing.time,
+                rangePercent: rangePercent,
+                isUptrend: isUptrend
+            };
+        }
+        
+        /**
+         * Auto-draw Fibonacci retracement on chart
+         * Called after chart data loads
+         */
+        function autoDrawFibonacci(candles) {
+            if (!autoFibonacciEnabled || !fibonacciPrimitive || !candles || candles.length < 50) {
+                return;
+            }
+            
+            try {
+                const significantMove = findSignificantMove(candles, 100);
+                
+                if (!significantMove) {
+                    console.log('⏭️ Auto Fib: No significant move found, skipping');
+                    return;
+                }
+                
+                // Clear existing auto-drawn Fibonacci (keep manual drawings)
+                // This prevents clutter from multiple auto-draws
+                if (fibonacciPrimitive._drawings.length > 0) {
+                    // Check if last drawing is auto-drawn (approximate match)
+                    const lastDrawing = fibonacciPrimitive._drawings[fibonacciPrimitive._drawings.length - 1];
+                    const priceDiff = Math.abs(lastDrawing.startPrice - significantMove.startPrice);
+                    const isSimilar = priceDiff < (significantMove.startPrice * 0.01); // Within 1%
+                    
+                    if (isSimilar) {
+                        console.log('⏭️ Auto Fib: Similar drawing exists, skipping');
+                        return;
+                    }
+                }
+                
+                // Add the auto-detected Fibonacci retracement
+                fibonacciPrimitive._drawings.push({
+                    startPrice: significantMove.startPrice,
+                    startTime: significantMove.startTime,
+                    endPrice: significantMove.endPrice,
+                    endTime: significantMove.endTime
+                });
+                
+                console.log(`✅ Auto Fib: Drew ${significantMove.isUptrend ? 'uptrend' : 'downtrend'} retracement`);
+                console.log(`   From: $${significantMove.startPrice.toFixed(2)} to $${significantMove.endPrice.toFixed(2)}`);
+                
+                // Show toast notification
+                showToast(
+                    `📐 Auto Fibonacci: ${significantMove.isUptrend ? '📈 Uptrend' : '📉 Downtrend'} detected (${significantMove.rangePercent.toFixed(1)}% move)`,
+                    'info'
+                );
+                
+            } catch (error) {
+                console.error('❌ Auto Fib error:', error);
+            }
+        }
         
         // Load chart data
         async function loadChartData(tf) {
@@ -2971,7 +3255,7 @@
                 }));
                 
                 // ============================================================
-                // DRAW INDICATORS: S/R, EMAs
+                // DRAW INDICATORS: S/R, EMAs, AUTO FIBONACCI
                 // ============================================================
                 
                 // Calculate and draw Support/Resistance levels (144 period)
@@ -2982,6 +3266,11 @@
                 
                 // Update EMA series (33, 99, 144)
                 updateEMASeries(latestData.candles);
+                
+                // Auto-detect and draw Fibonacci retracement
+                if (autoFibonacciEnabled && fibonacciPrimitive) {
+                    autoDrawFibonacci(latestData.candles);
+                }
                 
                 // Only fit content on first load or when explicitly needed
                 // This prevents auto-reset when zooming/panning
@@ -3226,7 +3515,38 @@
         // FIBONACCI DRAWING TOOL BUTTONS
         // ============================================================
         
-        // Fibonacci tool button
+        // Auto Fibonacci toggle button
+        const autoFibBtn = document.getElementById('auto-fib-btn');
+        if (autoFibBtn) {
+            // Update button state on init
+            if (autoFibonacciEnabled) {
+                autoFibBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+                autoFibBtn.style.borderColor = '#4CAF50';
+            }
+            
+            autoFibBtn.addEventListener('click', () => {
+                autoFibonacciEnabled = !autoFibonacciEnabled;
+                
+                if (autoFibonacciEnabled) {
+                    autoFibBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+                    autoFibBtn.style.borderColor = '#4CAF50';
+                    hapticFeedback('success');
+                    showToast('🤖 Auto Fibonacci: Enabled', 'success');
+                    
+                    // Immediately draw on current data
+                    if (latestData && latestData.candles && latestData.candles.length > 0) {
+                        autoDrawFibonacci(latestData.candles);
+                    }
+                } else {
+                    autoFibBtn.style.background = 'rgba(76, 175, 80, 0.1)';
+                    autoFibBtn.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                    hapticFeedback('light');
+                    showToast('🤖 Auto Fibonacci: Disabled', 'info');
+                }
+            });
+        }
+        
+        // Fibonacci manual drawing tool button
         const fibToolBtn = document.getElementById('fib-tool-btn');
         if (fibToolBtn) {
             fibToolBtn.addEventListener('click', () => {
@@ -3236,7 +3556,7 @@
                     fibToolBtn.style.background = 'rgba(41, 98, 255, 0.3)';
                     fibToolBtn.style.borderColor = '#2962FF';
                     hapticFeedback('medium');
-                    showToast('📐 Fibonacci mode: Click two points to draw retracement', 'info');
+                    showToast('📐 Manual Fibonacci: Click two points to draw retracement', 'info');
                     
                     // Cancel any active drawing
                     if (fibonacciPrimitive && fibonacciPrimitive._activeDrawing) {
