@@ -313,15 +313,33 @@ class AITabController {
                             <!-- Reasoning -->
                             ${data.reasoning ? `
                                 <div class="ai-reasoning">
-                                    <h4>🧠 Analysis</h4>
+                                    <h4>🧠 Full Analysis</h4>
                                     <p>${this.formatReasoning(data.reasoning)}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <!-- Full Messages (if available) -->
+                            ${data.messages && data.messages.length ? `
+                                <div class="ai-full-messages">
+                                    <div class="ai-messages-toggle" onclick="this.parentElement.classList.toggle('expanded')">
+                                        <h4>📋 Detailed Breakdown (${data.messages.length} sections)</h4>
+                                        <span class="toggle-icon">▼</span>
+                                    </div>
+                                    <div class="ai-messages-content">
+                                        ${data.messages.map((msg, idx) => `
+                                            <div class="ai-message-section">
+                                                <div class="ai-message-header">Part ${idx + 1}</div>
+                                                <div class="ai-message-content">${this.formatReasoning(msg)}</div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
                                 </div>
                             ` : ''}
                             
                             <!-- Telegram Link -->
                             <div class="ai-success-action">
                                 <span class="ai-telegram-icon">📱</span>
-                                <span>Detailed analysis sent to Telegram</span>
+                                <span>Complete analysis also sent to Telegram</span>
                             </div>
                         </div>
                     </div>
@@ -363,11 +381,10 @@ class AITabController {
     formatReasoning(text) {
         if (!text) return '';
         
-        // Convert newlines to <br>
+        // Convert newlines to <br> - NO LENGTH LIMIT
         return text
             .replace(/\n\n/g, '<br><br>')
-            .replace(/\n/g, '<br>')
-            .substring(0, 500); // Limit length
+            .replace(/\n/g, '<br>');
     }
     
     /**
