@@ -5,6 +5,9 @@ Handles all interactions with Binance API
 
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 import pandas as pd
 import logging
 from datetime import datetime, timedelta
@@ -17,6 +20,20 @@ class BinanceClient:
     def __init__(self, api_key, api_secret):
         """Initialize Binance client"""
         self.client = Client(api_key, api_secret)
+        # Ensure the underlying requests session has a sufficiently large connection pool
+        # to avoid "Connection pool is full" warnings when the application makes many
+        # concurrent requests (e.g., scanning hundreds of symbols).
+        try:
+            sess = getattr(self.client, 'session', None)
+            if isinstance(sess, requests.Session):
+                # Configure retries and larger pool sizes
+                retry_strategy = Retry(total=3, status_forcelist=[429, 500, 502, 503, 504], backoff_factor=0.3)
+                adapter = HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=retry_strategy)
+                sess.mount('https://', adapter)
+                sess.mount('http://', adapter)
+                logger.info('Configured HTTPAdapter for Binance client (pool_maxsize=50)')
+        except Exception as e:
+            logger.warning(f'Unable to configure Binance client session adapter: {e}')
         # Cache for symbol exchange info (to get precisions)
         self._symbol_info_cache = {}
         
