@@ -915,10 +915,21 @@
     </div>
     
     <!-- Indicators Tab -->
-    <div data-tab-content="indicators" style="display: none;">
-        <!-- Mobile IndicatorPanel will be dynamically shown here -->
-        <div style="padding: 20px; text-align: center; color: var(--text-secondary);">
-            <p>Drag indicator panel from bottom to view</p>
+    <div data-tab-content="indicators" style="display: none; padding: 20px; overflow-y: auto;">
+        <div style="margin-bottom: 20px;">
+            <h3 style="color: var(--text-primary); font-size: var(--font-lg); font-weight: var(--weight-semibold); margin-bottom: var(--space-md);">
+                Technical Indicators
+            </h3>
+        </div>
+        <div id="indicators-tab-content">
+            <!-- Indicators will be dynamically populated here -->
+            <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                <div style="font-size: 16px;">Loading indicators...</div>
+                <div style="font-size: 13px; margin-top: 8px; color: var(--text-tertiary);">
+                    Data will appear when chart loads
+                </div>
+            </div>
         </div>
     </div>
     
@@ -3915,20 +3926,9 @@
                 if (typeof TimeframeSwitcher === 'undefined') console.warn('⚠️ TimeframeSwitcher not found');
             }
             
-            // Initialize Indicator Panel
-            if (typeof IndicatorPanel !== 'undefined') {
-                try {
-                    window.indicatorPanel = new IndicatorPanel({
-                        container: document.body,
-                        indicators: []
-                    });
-                    console.log('✅ Indicator panel initialized');
-                } catch (e) {
-                    console.error('❌ Indicator panel error:', e);
-                }
-            } else {
-                console.warn('⚠️ IndicatorPanel not found');
-            }
+            // Indicator Panel - DISABLED (using static tab view instead)
+            // The drag panel is replaced with a simple tab view
+            console.log('ℹ️ Indicator drag panel disabled - using tab view');
             
             console.log('🎉 Component initialization complete');
         }
@@ -3938,17 +3938,14 @@
         
         // Update indicators when chart data loads
         function updateIndicatorPanel(data) {
-            if (!window.indicatorPanel) return;
-            
             const { rsi, mfi, stochRSI, volumeRatio } = data;
             
-            window.indicatorPanel.updateIndicators([
+            const indicators = [
                 {
                     id: 'rsi',
                     name: 'RSI (6)',
                     value: rsi ? rsi.toFixed(1) : 'N/A',
                     signal: rsi > 70 ? 'bearish' : rsi < 30 ? 'bullish' : 'neutral',
-                    enabled: true,
                     description: rsi > 70 ? 'Overbought zone' : rsi < 30 ? 'Oversold zone' : 'Neutral zone'
                 },
                 {
@@ -3956,7 +3953,6 @@
                     name: 'MFI (6)',
                     value: mfi ? mfi.toFixed(1) : 'N/A',
                     signal: mfi > 80 ? 'bearish' : mfi < 20 ? 'bullish' : 'neutral',
-                    enabled: true,
                     description: mfi > 80 ? 'Overbought zone' : mfi < 20 ? 'Oversold zone' : 'Neutral zone'
                 },
                 {
@@ -3964,7 +3960,6 @@
                     name: 'Stoch RSI',
                     value: stochRSI ? stochRSI.toFixed(1) : 'N/A',
                     signal: stochRSI > 80 ? 'bearish' : stochRSI < 20 ? 'bullish' : 'neutral',
-                    enabled: true,
                     description: stochRSI > 80 ? 'Overbought' : stochRSI < 20 ? 'Oversold' : 'Neutral'
                 },
                 {
@@ -3972,10 +3967,56 @@
                     name: 'Volume Ratio',
                     value: volumeRatio ? volumeRatio.toFixed(2) + 'x' : 'N/A',
                     signal: volumeRatio > 2 ? 'bullish' : volumeRatio < 0.5 ? 'bearish' : 'neutral',
-                    enabled: true,
                     description: volumeRatio > 2 ? 'High volume' : volumeRatio < 0.5 ? 'Low volume' : 'Normal volume'
                 }
-            ]);
+            ];
+            
+            // Update drag panel (if exists)
+            if (window.indicatorPanel) {
+                window.indicatorPanel.updateIndicators(indicators);
+            }
+            
+            // Update indicators tab content
+            const indicatorsTabContent = document.getElementById('indicators-tab-content');
+            if (indicatorsTabContent) {
+                indicatorsTabContent.innerHTML = indicators.map(indicator => `
+                    <div style="
+                        background: var(--secondary-bg);
+                        border: 1px solid var(--border-color);
+                        border-radius: var(--radius-lg);
+                        padding: 16px;
+                        margin-bottom: 12px;
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <span style="color: var(--text-primary); font-size: 15px; font-weight: 600;">
+                                ${indicator.name}
+                            </span>
+                            <span style="
+                                color: ${indicator.signal === 'bullish' ? 'var(--accent-green)' : indicator.signal === 'bearish' ? 'var(--accent-red)' : 'var(--text-secondary)'};
+                                font-size: 20px;
+                                font-weight: 700;
+                            ">
+                                ${indicator.value}
+                            </span>
+                        </div>
+                        <div style="
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            padding: 8px 12px;
+                            background: ${indicator.signal === 'bullish' ? 'rgba(38, 166, 154, 0.1)' : indicator.signal === 'bearish' ? 'rgba(239, 83, 80, 0.1)' : 'rgba(42, 46, 57, 0.5)'};
+                            border-radius: var(--radius-md);
+                        ">
+                            <span style="font-size: 18px;">
+                                ${indicator.signal === 'bullish' ? '🟢' : indicator.signal === 'bearish' ? '🔴' : '⚪'}
+                            </span>
+                            <span style="color: var(--text-secondary); font-size: 13px;">
+                                ${indicator.description}
+                            </span>
+                        </div>
+                    </div>
+                `).join('');
+            }
         }
     </script>
 </body>
