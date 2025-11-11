@@ -1,13 +1,22 @@
 # AI Response JSON Schema
 
-**Version:** 2.0  
+**Version:** 2.2 ENHANCED  
 **Model:** Gemini 2.0 Flash  
 **Format:** JSON  
-**Updated:** November 2025
+**Fields:** 23 total (15 original + 8 new)  
+**Updated:** November 11, 2025
 
 ## Overview
 
 This document defines the complete JSON schema for the AI response from Gemini 2.0 Flash when performing cryptocurrency trading analysis. The schema is tightly structured to ensure programmatic processing, database storage, and Telegram message formatting.
+
+**New in v2.2:**
+- Asset Type Detection (BTC/ETH/CAP_TIERS/MEME)
+- Sector Analysis (sector momentum, rotation risk, leadership)
+- Correlation Analysis (BTC/ETH strength and direction)
+- Fundamental Analysis (project health, tokenomics, centralization)
+- Position Sizing Recommendation (dynamic sizing with reasoning)
+- Macro Context (conditional BTC or Altcoin specific data)
 
 ## Complete JSON Schema
 
@@ -115,6 +124,180 @@ This document defines the complete JSON schema for the AI response from Gemini 2
     "minimum": 0,
     "maximum": 100,
     "description": "Fundamental score (0-100). Based on: volume strength (40%) + liquidity (30%) + market sentiment (30%). Less weight than technical for crypto trading"
+  },
+  
+  // === NEW FIELDS (v2.2 Enhancement) - 8 NEW FIELDS ===
+  
+  "asset_type": {
+    "type": "string",
+    "enum": ["BTC", "ETH", "LARGE_CAP_ALT", "MID_CAP_ALT", "SMALL_CAP_ALT", "MEME_COIN"],
+    "description": "Detected asset type. BTC/ETH = special analysis, LARGE_CAP (>$10B), MID_CAP ($1B-$10B), SMALL_CAP ($100M-$1B), MEME (<$100M or community). Determines analysis focus and position sizing."
+  },
+  
+  "sector_analysis": {
+    "type": "object",
+    "description": "Sector classification and momentum (included for altcoins)",
+    "properties": {
+      "sector": {
+        "type": "string",
+        "enum": ["LAYER_1", "LAYER_2", "DEFI", "AI", "GAMING", "MEME", "OTHER"],
+        "description": "Crypto sector classification"
+      },
+      "sector_momentum": {
+        "type": "string",
+        "enum": ["STRONG_BULL", "WEAK_BULL", "NEUTRAL", "WEAK_BEAR", "STRONG_BEAR"],
+        "description": "Current sector momentum vs broader market"
+      },
+      "sector_rotation_risk": {
+        "type": "string",
+        "enum": ["LOW", "MEDIUM", "HIGH"],
+        "description": "Risk of sector rotation away from this sector. HIGH = reduce holding period."
+      },
+      "sector_leadership": {
+        "type": "string",
+        "enum": ["SECTOR_LEADER", "SECTOR_AVERAGE", "SECTOR_LAGGARD"],
+        "description": "How this asset performs vs peers in sector"
+      }
+    }
+  },
+  
+  "correlation_analysis": {
+    "type": "object",
+    "description": "Correlation with major cryptocurrencies",
+    "properties": {
+      "btc_correlation": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "type": "string",
+            "enum": ["STRONG_POSITIVE", "MODERATE_POSITIVE", "WEAK_POSITIVE", "NEUTRAL", "WEAK_NEGATIVE", "MODERATE_NEGATIVE", "STRONG_NEGATIVE"],
+            "description": "Direction and strength of correlation with BTC"
+          },
+          "strength": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Correlation coefficient (0.0-1.0)"
+          }
+        }
+      },
+      "eth_correlation": {
+        "type": "object",
+        "description": "Same structure as btc_correlation",
+        "properties": {
+          "direction": {"type": "string"},
+          "strength": {"type": "number"}
+        }
+      },
+      "independent_move_probability": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Probability (%) this asset moves independently from BTC/ETH"
+      }
+    }
+  },
+  
+  "fundamental_analysis": {
+    "type": "object",
+    "description": "Project fundamentals assessment (altcoins focus)",
+    "properties": {
+      "project_health_score": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Overall project health (0-100). <40 = AVOID, 40-70 = risky, >70 = healthy"
+      },
+      "tokenomics_quality": {
+        "type": "string",
+        "enum": ["EXCELLENT", "GOOD", "FAIR", "POOR"],
+        "description": "Token distribution, emission schedule, lock-up periods quality"
+      },
+      "centralization_risk": {
+        "type": "string",
+        "enum": ["LOW", "MEDIUM", "HIGH"],
+        "description": "Risk from team/whale concentration, centralized governance"
+      },
+      "ecosystem_growth": {
+        "type": "string",
+        "enum": ["ACCELERATING", "STABLE", "DECLINING"],
+        "description": "Network/ecosystem growth trend over last 3 months"
+      }
+    }
+  },
+  
+  "position_sizing_recommendation": {
+    "type": "object",
+    "description": "Dynamic position sizing based on asset type and risk factors",
+    "properties": {
+      "risk_per_trade": {
+        "type": "number",
+        "minimum": 0.1,
+        "maximum": 5.0,
+        "description": "Recommended risk % per trade (0.1-5.0%). BTC: 1-2%, alts: 0.5-1.5%, microcaps: 0.1-0.5%"
+      },
+      "max_position_size_percent": {
+        "type": "number",
+        "minimum": 0.05,
+        "maximum": 5.0,
+        "description": "Maximum recommended position as % of portfolio. BTC: 3-5%, ETH: 2-3%, alts: <2%, meme: 0.1%"
+      },
+      "leverage_suggestion": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 10,
+        "description": "Suggested leverage multiplier (1=spot, 2-5=moderate, >5=high risk). Default 1 for safety."
+      },
+      "position_sizing_notes": {
+        "type": "string",
+        "description": "Reason for recommended size (e.g., 'Reduced 30% due to low liquidity')"
+      }
+    }
+  },
+  
+  "macro_context": {
+    "type": "object",
+    "description": "Macro context - conditional based on asset_type",
+    "properties": {
+      // FOR BTC ONLY:
+      "btc_dominance_trend": {
+        "type": "string",
+        "enum": ["RISING", "FALLING", "STABLE"],
+        "description": "BTC dominance trend. Rising = BTC strength, Falling = altseason potential"
+      },
+      "institutional_flows": {
+        "type": "string",
+        "enum": ["STRONG_INFLOW", "MODERATE_INFLOW", "NEUTRAL", "MODERATE_OUTFLOW", "STRONG_OUTFLOW"],
+        "description": "Institutional buying/selling pressure on BTC"
+      },
+      "etf_flow_signal": {
+        "type": "string",
+        "enum": ["BULLISH", "NEUTRAL", "BEARISH"],
+        "description": "ETF inflow direction signal for BTC momentum"
+      },
+      "miner_selling_pressure": {
+        "type": "string",
+        "enum": ["LOW", "MODERATE", "HIGH"],
+        "description": "Miner reserve level and selling pressure. LOW = bullish (fewer sellers)"
+      },
+      
+      // FOR ALTCOINS ONLY:
+      "sector_trend": {
+        "type": "string",
+        "enum": ["LEADING", "FOLLOWING", "LAGGING"],
+        "description": "How sector is performing vs rest of market"
+      },
+      "rotation_risk": {
+        "type": "string",
+        "enum": ["LOW", "MODERATE", "HIGH"],
+        "description": "Risk of sector rotation. HIGH = reduce position, shorten timeframe"
+      },
+      "liquidity_assessment": {
+        "type": "string",
+        "enum": ["EXCELLENT", "GOOD", "FAIR", "POOR"],
+        "description": "Daily volume and orderbook depth assessment for execution risk"
+      }
+    }
   },
   
   "historical_analysis": {

@@ -1,0 +1,254 @@
+{
+  "gemini_trading_prompt": {
+    "version": "2.2",
+    "updated_date": "2025-11-11",
+    "model": "Gemini 2.0 Flash",
+    "language": "English",
+    "output_language": "Vietnamese",
+    "sections": {
+      "section_0": {
+        "name": "Asset Type Detection",
+        "content": "🎯 ASSET TYPE DETECTION: {asset_type}\n• BTC: Bitcoin - Market leader, institutional focus, macro correlations\n• ETH: Ethereum - Smart contract platform, DeFi correlation, network metrics  \n• LARGE_CAP_ALT: Top 10 coins - Lower risk, institutional interest\n• MID_CAP_ALT: Rank 11-50 - Moderate risk, sector leadership potential\n• SMALL_CAP_ALT: Rank 51-200 - High risk, high growth potential\n• MEME_COIN: Community-driven - Extreme risk, pump/dump cycles\n\nANALYSIS FOCUS BASED ON ASSET TYPE:\n  • BTC: Institutional flows, dominance, macro correlations\n  • ETH: Network activity, DeFi TVL, staking metrics\n  • LARGE_CAP: Sector leadership, institutional adoption\n  • MID/SMALL_CAP: Project fundamentals, correlation, liquidity\n  • MEME: Pure technicals, community sentiment, volume spikes",
+        "conditional": false
+      },
+      "section_1": {
+        "name": "Trading Style Definition",
+        "content": "TRADING STYLE: [SCALPING | SWING]\n- If scalping: Focus on 1m-5m-15m timeframes, quick entries/exits, tight stop losses\n- If swing: Focus on 1h-4h-1D timeframes, position holding 2-7 days, wider stop losses",
+        "conditional": false
+      },
+      "section_2": {
+        "name": "Historical Performance Context",
+        "content": "HISTORICAL PERFORMANCE FOR {SYMBOL} (Last 7 days)\n\n📊 ACCURACY STATISTICS:\n  • Total Analyses: {count}\n  • Wins: {wins} | Losses: {losses}\n  • Win Rate: {win_rate}%\n  • Avg Profit: +{avg_profit}% | Avg Loss: {avg_loss}%\n\n✅ WINNING PATTERNS:\n  • RSI Range: {range} (avg: {avg})\n  • MFI Range: {range} (avg: {avg})\n  • Best VP Position: {position}\n  • Win Rate in This Setup: {rate}%\n\n❌ LOSING PATTERNS:\n  • RSI Range: {range}\n  • MFI Range: {range}\n  • Problem VP Position: {position}\n\n⚠️ CRITICAL: Use this historical data to:\n  1. Adjust confidence based on similar past setups\n  2. Warn if current conditions match previous losses\n  3. Increase confidence if conditions match previous wins\n  4. Suggest WAIT if win rate for this setup is <40%",
+        "conditional": true,
+        "condition": "user_has_history == true"
+      },
+      "section_3": {
+        "name": "Technical Indicators",
+        "subsections": {
+          "rsi_mfi_analysis": {
+            "content": "RSI + MFI Analysis:\n  1H: RSI=45.2, MFI=52.3, Signal=BUY\n  4H: RSI=38.9, MFI=41.1, Signal=NEUTRAL\n  1D: RSI=55.6, MFI=60.2, Signal=BUY\n  Consensus: BUY (Strength: 3/4)",
+            "format": "text"
+          },
+          "stochastic_rsi_analysis": {
+            "content": "Stochastic + RSI Analysis:\n  1H: RSI=45.2, Stoch=38.9, Signal=NEUTRAL\n  4H: RSI=38.9, Stoch=35.6, Signal=OVERSOLD\n  1D: RSI=55.6, Stoch=62.3, Signal=OVERBOUGHT\n  Consensus: WAIT (Strength: 2/4)",
+            "format": "text"
+          }
+        },
+        "conditional": false
+      },
+      "section_4": {
+        "name": "Pump Signal Analysis",
+        "content": "🚀 PUMP SIGNAL ANALYSIS\n\nHIGH CONFIDENCE PUMP DETECTED:\n  Final Score: 85%\n  Layer 1 (5m): 90% - Early detection\n  Layer 2 (1h/4h): 82% - Confirmation\n  Layer 3 (1D): 78% - Long-term trend\n  \n  Key Indicators:\n  - Volume spike: 3.2x\n  - Price change 5m: +8.45%\n  - RSI momentum: +15.3",
+        "conditional": true,
+        "condition": "pump_detected == true"
+      },
+      "section_5": {
+        "name": "Institutional Indicators",
+        "content": {
+          "volume_profile": {
+            "poc": 42500.00,
+            "vah": 43200.00,
+            "val": 41800.00,
+            "current_position": "VALUE_AREA",
+            "distance_to_poc_percent": -1.2,
+            "bias": "BULLISH",
+            "description": "Price is in VALUE_AREA, slightly below POC. Expect support."
+          },
+          "fair_value_gaps": {
+            "total_bullish_gaps": 5,
+            "total_bearish_gaps": 3,
+            "unfilled_bullish_gaps": 2,
+            "unfilled_bearish_gaps": 1,
+            "fill_rate_percent": 73.5,
+            "nearest_bullish_fvg": {
+              "gap_start": 42100.00,
+              "gap_end": 42300.00,
+              "distance_percent": -1.5
+            },
+            "nearest_bearish_fvg": {
+              "gap_start": 43500.00,
+              "gap_end": 43700.00,
+              "distance_percent": 2.1
+            }
+          },
+          "order_blocks": {
+            "total_bullish_ob": 8,
+            "total_bearish_ob": 5,
+            "active_swing_obs": 3,
+            "active_internal_obs": 4,
+            "mitigation_rate_percent": 45.2,
+            "nearest_swing_ob": {
+              "level": 42200.00,
+              "bias": "BULLISH",
+              "strength": 6,
+              "distance_percent": -1.2
+            }
+          },
+          "support_resistance": {
+            "nearest_support": {
+              "level": 42100.00,
+              "volume_ratio": 2.8,
+              "distance_percent": -1.5,
+              "zone_width": 300.00
+            },
+            "nearest_resistance": {
+              "level": 43600.00,
+              "volume_ratio": 2.4,
+              "distance_percent": 2.3,
+              "zone_width": 250.00
+            }
+          },
+          "smart_money_concepts": {
+            "swing_trend": "BULLISH",
+            "internal_trend": "BULLISH",
+            "structure_bias": "BULLISH_ALIGNED",
+            "trading_bias": "BUY",
+            "bias_confidence": 0.82,
+            "recent_bullish_bos": 3,
+            "recent_bearish_bos": 1,
+            "recent_bullish_choch": 0,
+            "recent_bearish_choch": 1,
+            "eqh_count": 2,
+            "eql_count": 1,
+            "swing_highs_count": 5,
+            "swing_lows_count": 4,
+            "bullish_bias_percent": 75.0,
+            "bias_reason": "Aligned swing/internal trends + recent BOS confirmation"
+          }
+        },
+        "format": "json",
+        "conditional": false
+      },
+      "section_6": {
+        "name": "Volume Analysis",
+        "content": "💧 VOLUME ANALYSIS\n  24h Volume: 2,450,000,000 USDT\n  24h Trades: 1,234,567\n  Base Volume: 58,234.5 BTC",
+        "conditional": false
+      },
+      "section_7": {
+        "name": "Historical Comparison",
+        "content": "📈 HISTORICAL COMPARISON (vs Last Week)\nWeek-over-Week Comparison:\n  Price: +12.45% ($40,500 → $45,516)\n  Volume: +8.23% change\n  RSI: +10.5 points change (35.2 → 45.7)\n\nD1 Previous Candle Analysis:\n  Type: 🟢 Bullish\n  Open: $44,200.00 | Close: $45,400.00\n  High: $45,800.00 | Low: $44,100.00\n  Body Size: $1,200.00\n  Upper Wick: $400.00 | Lower Wick: $100.00\n  Volume: 2,345,678",
+        "conditional": false
+      },
+      "section_8": {
+        "name": "Extended Historical Context",
+        "subsections": {
+          "h1_context": {
+            "content": "⏰ KHUNG 1H (7 NGÀY QUA - 168 nến):\n  \n  📈 Giá:\n    - Vùng: $41,200.00 - $46,500.00 (Range: 12.85%)\n    - Hiện tại: $43,600.00 (Vị trí: 65.3% của range)\n    - Trung bình: $43,200.00\n  \n  📊 Volume:\n    - Trung bình: 95,000,000\n    - Hiện tại: 125,000,000 (Tỷ lệ: 1.32x)\n    - Xu hướng: INCREASING\n  \n  🎯 RSI:\n    - Trung bình: 52.3\n    - Hiện tại: 45.6\n    - Dao động: 28.5 - 72.3\n  \n  📉 Xu hướng 7 ngày:\n    - Hướng: BULLISH (+9.45%)\n    - Độ biến động: 2.34%\n    - Tỷ lệ nến tăng: 68.5% (115/168 nến)\n\n  🏛️ Institutional Indicators (1H - 7 ngày):\n    • Volume Profile: POC=$43,200, VAH=$44,500, VAL=$41,800\n      Position: VALUE_AREA, Distance from POC: +1.17%\n    • Fair Value Gaps: 5 bullish, 2 bearish\n      Unfilled: 2 bullish, 1 bearish\n      Gap Density: 4.17%\n    • Order Blocks: 8 bullish, 3 bearish\n      Active: 3 bullish, 1 bearish\n      OB Density: 6.55%\n    • Smart Money Concepts: Structure Bias=BULLISH (72.5% bullish)\n      BOS: 5 bullish / 1 bearish\n      CHoCH: 0 bullish / 1 bearish",
+            "timeframe": "1H",
+            "period": "7 days"
+          },
+          "h4_context": {
+            "content": "⏰ KHUNG 4H (30 NGÀY QUA - 180 nến):\n  [Similar structure to 1H but with 30-day data and 4H indicators]",
+            "timeframe": "4H",
+            "period": "30 days"
+          },
+          "d1_context": {
+            "content": "⏰ KHUNG 1D (90 NGÀY QUA - 90 nến):\n  [Similar structure with 90-day data and 1D indicators]\n  Also includes: RSI/MFI correlation, long-term trend, volatility assessment",
+            "timeframe": "1D",
+            "period": "90 days"
+          }
+        },
+        "conditional": false
+      },
+      "section_9": {
+        "name": "24H Market Data",
+        "content": "═══════════════════════════════════════════\n📉 24H MARKET DATA\n═══════════════════════════════════════════\n  Price Change: +5.23%\n  24h High: $46,500.00\n  24h Low: $41,200.00\n  24h Volume: $2,450,000,000 USDT",
+        "conditional": false
+      },
+      "section_10a": {
+        "name": "BTC Macro Analysis",
+        "content": "═══════════════════════════════════════════\n🏛️ BITCOIN MACRO & INSTITUTIONAL ANALYSIS  \n═══════════════════════════════════════════\n\nDOMINANCE ANALYSIS:\n  • BTC Dominance Trend: {btc_dominance_trend} ({dominance_change}% change)\n  • Dominance Support: {dominance_support}% | Resistance: {dominance_resistance}%\n  • Market Leadership: {market_leadership_strength}\n\nINSTITUTIONAL FLOWS:\n  • Flow Direction: {institutional_flows}\n  • ETF Flows (24h): ${etf_flows_millions}M\n  • Whale Accumulation: {whale_accumulation_level}\n  • Miner Selling Pressure: {miner_pressure}\n\nMACRO CORRELATIONS:\n  • DXY (USD): {dxy_correlation}\n  • S&P 500: {sp500_correlation} \n  • Gold: {gold_correlation}\n  • Interest Rate Sensitivity: {rate_sensitivity}\n\nCRITICAL BTC-ONLY FACTORS:\n  1. Monitor dominance breaks for altcoin rotation signals\n  2. ETF flows >$500M/day = strong institutional support\n  3. Miner reserves <1M BTC = reduced selling pressure\n  4. Whale accumulation >10K BTC = bullish accumulation",
+        "conditional": true,
+        "condition": "asset_type == 'BTC'"
+      },
+      "section_10b": {
+        "name": "Altcoin Correlation Analysis",
+        "content": "═══════════════════════════════════════════\n🔗 ALTCOIN CORRELATION & SECTOR ANALYSIS\n═══════════════════════════════════════════\n\nCORRELATION MATRIX:\n  • BTC Correlation: {btc_correlation_direction} (Strength: {btc_correlation_strength}%)\n  • ETH Correlation: {eth_correlation_direction} (Strength: {eth_correlation_strength}%) \n  • Sector Correlation: {sector_correlation} (Strength: {sector_correlation_strength}%)\n  • Independent Move Probability: {independent_move_probability}%\n\nSECTOR ANALYSIS:\n  • Sector: {sector_type}\n  • Sector Momentum: {sector_momentum}\n  • Rotation Risk: {sector_rotation_risk}\n  • Leadership Position: {sector_leadership}\n\nMARKET CAP CONTEXT:\n  • Tier: {market_cap_tier}\n  • Liquidity Risk: {liquidity_risk_profile}\n  • Volatility Expectation: {volatility_expectation}\n  • Max Recommended Position: {max_position_size}%\n\nPROJECT FUNDAMENTALS:\n  • Health Score: {project_health_score}/100\n  • Tokenomics: {tokenomics_quality}\n  • Centralization Risk: {centralization_risk}\n  • Ecosystem Growth: {ecosystem_growth}\n\nALTCOIN-SPECIFIC RISKS:\n  1. High BTC correlation (>80%) = monitor BTC direction closely\n  2. Low liquidity = reduce position size by 50-70%\n  3. Small/micro cap = expect 2-3x normal volatility\n  4. Meme coins = automatic HIGH risk regardless of technicals",
+        "conditional": true,
+        "condition": "asset_type != 'BTC'"
+      },
+      "section_11": {
+        "name": "Cross-Symbol Pattern Recognition",
+        "content": "═══════════════════════════════════════════\n🌍 CROSS-SYMBOL PATTERN RECOGNITION\n═══════════════════════════════════════════\n\n🔮 MARKET REGIME: BULL\n  • Confidence: 85%\n  • EMA Trend: UP\n  • Volatility: MODERATE\n  • Volume: HIGH\n\n🎯 REGIME-BASED RECOMMENDATIONS:\n  • In BULL regime, favor long entries near support zones\n  • Watch for FVG fills for quick scalping opportunities\n  • Avoid shorting against the main trend\n\n📊 UNIVERSAL PATTERNS (Work across multiple symbols):\n  1. \"Price bounces from POC in uptrend\" Win Rate: 78% (245 trades)\n     • Symbols: BTC, ETH, SOL, AVAX\n\n⚠️ CRITICAL: Adjust your analysis based on market regime:\n  - BULL market → Favor BUY signals, tighter stops, look for dips to buy\n  - BEAR market → Favor SELL signals, avoid longs unless strong reversal\n  - SIDEWAYS → Range trading, buy support / sell resistance\n  - If universal patterns match current setup → Increase confidence",
+        "conditional": false
+      },
+      "section_12": {
+        "name": "Dynamic Risk Adjustments",
+        "content": "═══════════════════════════════════════════\n⚖️ DYNAMIC RISK ADJUSTMENTS & POSITION SIZING\n═══════════════════════════════════════════\n\nASSET-SPECIFIC RISK PARAMETERS:\n  • Risk Multiplier: {risk_multiplier}x (Base: 1.0x for BTC, up to 3.0x for micro caps)\n  • Liquidity Adjustment: {liquidity_adjustment}% position reduction\n  • Volatility Adjustment: {volatility_adjustment}% stop loss widening\n  • Correlation Penalty: {correlation_penalty}% size reduction\n\nRECOMMENDED POSITION SIZING:\n  • BTC: 3-5% of portfolio per trade\n  • ETH/Large Caps: 2-3% of portfolio  \n  • Mid Caps: 1-2% of portfolio\n  • Small Caps: 0.5-1% of portfolio\n  • Micro Caps: 0.1-0.5% of portfolio\n  • Meme Coins: 0.1% maximum\n\nMARKET REGIME ADJUSTMENTS:\n  • RISK_ON: Increase position sizes by 20% for alts\n  • RISK_OFF: Reduce position sizes by 50% for alts, focus on BTC\n  • ALTCOIN_SEASON: Increase altcoin allocation, reduce BTC focus\n  • BTC_DOMINANT: Focus on BTC, avoid low-correlation alts",
+        "conditional": false
+      },
+      "section_13": {
+        "name": "Important Guidelines",
+        "content": "IMPORTANT GUIDELINES:\n\n1. Reasoning MUST be in Vietnamese language (300-500 words)\n\n2. Analyze ALL technical indicators systematically:\n   - RSI+MFI consensus and individual timeframe signals\n   - Stochastic+RSI momentum across timeframes\n   - Volume patterns and 24h trading activity\n   - Pump detection signals (if >=80%, consider high risk/reward)\n   - Previous candle patterns on H4 and D1 (wick analysis, body size, bullish/bearish)\n   - HISTORICAL DATA ANALYSIS (CRITICAL)\n\n3. Historical Data Analysis (REQUIRED - Fill historical_analysis in JSON):\n   - 1H Context (7 days): Compare current RSI vs average RSI, volume trend, price position\n   - 4H Context (30 days): RSI context, volume pattern, price position\n   - 1D Context (90 days): RSI/MFI correlation, long-term trend, volatility assessment\n\n4. Candle Pattern Analysis (CRITICAL):\n   - D1/H4 previous candles show institutional behavior\n   - Large wicks indicate rejection or absorption zones\n   - Bullish candles with small upper wicks = continuation potential\n   - Bearish candles with long lower wicks = support testing\n\n5. Institutional Indicators (Weight 40%):\n   - Volume Profile: Position (PREMIUM/DISCOUNT/VALUE_AREA/AT_POC) + bias\n   - Fair Value Gaps: Unfilled gaps as price magnets (high fill_rate = reliable)\n   - Order Blocks: Active zones = strong S/R, high mitigation_rate = weaker zones\n   - Support/Resistance: High volume_ratio (>2x) = very strong zones\n   - Smart Money Concepts: Swing/internal trend alignment + trading bias\n\n6. Weight high-confidence pump signals (>=80%) heavily but note dump risk\n\n7. Be specific with entry/exit points based on current price and institutional zones\n\n8. Identify conflicting signals between different timeframes and indicator types explicitly\n\n9. Adjust recommendations based on trading style:\n   - Scalping: Tight stops (1-2%), quick 3-5% targets, 1-4 hour holding, focus on 4H FVG/OB\n   - Swing: Wider stops (3-5%), 10-20% targets, 3-7 day holding, focus on 1D Volume Profile/SMC\n\n10. Consider historical trends - strong week-over-week growth is bullish indicator\n\n11. Be conservative - if major conflicting signals exist, recommend WAIT\n\n12. Scoring methodology:\n    - Technical score = RSI+MFI (15%) + Stoch+RSI (15%) + Volume (10%) + Candles (10%) \n                       + Volume Profile (15%) + FVG (10%) + OB (10%) + S/R (10%) + SMC (15%)\n    - Fundamental score = volume strength (40%) + liquidity (30%) + market sentiment (30%)\n\n=== BTC-SPECIFIC GUIDELINES (Apply only for BTC) ===\n13. For BTC, weight institutional flows and ETF activity at 25% of fundamental score\n14. Monitor dominance trends - falling dominance often precedes altcoin season\n15. Use wider stops (4-6%) due to BTC's macro sensitivity and news volatility\n16. Consider miner selling pressure - high pressure requires stronger technical setup\n17. In BULL regimes with rising dominance, BTC often outperforms alts\n\n=== ALTCOIN-SPECIFIC GUIDELINES (Apply only for Altcoins) ===\n13. For altcoins, correlation analysis weights 30% of technical score\n14. Small/micro cap coins require 2x wider stops and reduced position sizes\n15. High BTC correlation (>70%) means wait for BTC direction confirmation\n16. Sector rotation risk = reduce holding period by 50%\n17. Meme coins automatically get HIGH risk and max 1% portfolio allocation\n18. Project health score <40 = avoid regardless of technical setup\n19. Low liquidity (<$10M daily) = avoid or max 0.5% position size\n\n=== UNIVERSAL ENHANCED GUIDELINES (Apply to all assets) ===\n20. AUTOMATICALLY DETECT asset type and adjust analysis focus accordingly\n21. APPLY dynamic risk multipliers based on market cap and liquidity\n22. CALCULATE position sizing based on asset type and risk parameters\n23. MONITOR sector rotation - avoid buying into weakening sectors\n24. USE correlation analysis to time entries with BTC/ETH movements\n25. CONSIDER market regime - align strategy with current market conditions\n26. ADJUST confidence scores based on asset-specific risk factors",
+        "conditional": false
+      },
+      "section_14": {
+        "name": "JSON Response Format",
+        "content": "Return ONLY valid JSON with this EXACT structure:\n\n{\n  \"recommendation\": \"BUY\" | \"SELL\" | \"HOLD\" | \"WAIT\",\n  \"confidence\": 0-100,\n  \"trading_style\": \"scalping\" | \"swing\",\n  \"entry_point\": <price>,\n  \"stop_loss\": <price>,\n  \"take_profit\": [<target1>, <target2>, <target3>],\n  \"expected_holding_period\": \"X hours/days\",\n  \"risk_level\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n  \"reasoning_vietnamese\": \"Phân tích chi tiết 300-500 từ\",\n  \"key_points\": [\"Point 1\", \"Point 2\", ...],\n  \"conflicting_signals\": [\"Signal 1\", \"Signal 2\", ...],\n  \"warnings\": [\"Warning 1\", ...],\n  \"market_sentiment\": \"BULLISH\" | \"BEARISH\" | \"NEUTRAL\",\n  \"technical_score\": 0-100,\n  \"fundamental_score\": 0-100,\n  \n  // NEW FIELDS FOR ASSET-SPECIFIC ANALYSIS\n  \"asset_type\": \"BTC\" | \"ETH\" | \"LARGE_CAP_ALT\" | \"MID_CAP_ALT\" | \"SMALL_CAP_ALT\" | \"MEME_COIN\",\n  \"sector_analysis\": {\n    \"sector\": \"LAYER_1\" | \"LAYER_2\" | \"DEFI\" | \"AI\" | \"GAMING\" | \"MEME\" | \"OTHER\",\n    \"sector_momentum\": \"STRONG_BULL\" | \"WEAK_BULL\" | \"NEUTRAL\" | \"WEAK_BEAR\" | \"STRONG_BEAR\",\n    \"sector_rotation_risk\": \"LOW\" | \"MEDIUM\" | \"HIGH\",\n    \"sector_leadership\": \"SECTOR_LEADER\" | \"SECTOR_AVERAGE\" | \"SECTOR_LAGGARD\"\n  },\n  \"correlation_analysis\": {\n    \"btc_correlation\": {\n      \"direction\": \"STRONG_POSITIVE\" | \"MODERATE_POSITIVE\" | \"WEAK_POSITIVE\" | \"NEUTRAL\" | \"WEAK_NEGATIVE\" | \"MODERATE_NEGATIVE\" | \"STRONG_NEGATIVE\",\n      \"strength\": 0.0-1.0\n    },\n    \"independent_move_probability\": 0-100\n  },\n  \"fundamental_analysis\": {\n    \"project_health_score\": 0-100,\n    \"tokenomics_quality\": \"EXCELLENT\" | \"GOOD\" | \"FAIR\" | \"POOR\",\n    \"centralization_risk\": \"LOW\" | \"MEDIUM\" | \"HIGH\"\n  },\n  \"position_sizing_recommendation\": {\n    \"risk_per_trade\": 0.1-2.0,\n    \"max_position_size_percent\": 0.1-5.0,\n    \"leverage_suggestion\": 1-10\n  },\n  \"historical_analysis\": {\n    \"h1_context\": {\n      \"rsi_interpretation\": \"...\",\n      \"volume_trend\": \"...\", \n      \"price_position\": \"...\",\n      \"institutional_insights\": \"...\"\n    },\n    \"h4_context\": {...},\n    \"d1_context\": {...}\n  }\n}",
+        "conditional": false
+      }
+    },
+    "conditional_logic": {
+      "asset_type_detection": {
+        "algorithm": "function detect_asset_type(symbol, market_cap, sector) {\n  if (symbol === 'BTC') return 'BTC';\n  else if (symbol === 'ETH') return 'ETH';\n  else if (market_cap > 10000000000) return 'LARGE_CAP_ALT';\n  else if (market_cap > 1000000000) return 'MID_CAP_ALT';\n  else if (market_cap > 100000000) return 'SMALL_CAP_ALT';\n  else if (sector === 'MEME') return 'MEME_COIN';\n  else return 'SMALL_CAP_ALT';\n}",
+        "parameters": {
+          "large_cap_threshold": 10000000000,
+          "mid_cap_threshold": 1000000000,
+          "small_cap_threshold": 100000000
+        }
+      },
+      "section_conditions": [
+        {
+          "section": "section_2",
+          "condition": "user_has_history",
+          "default": false
+        },
+        {
+          "section": "section_4",
+          "condition": "pump_detected",
+          "default": false
+        },
+        {
+          "section": "section_10a",
+          "condition": "asset_type == 'BTC'",
+          "default": false
+        },
+        {
+          "section": "section_10b",
+          "condition": "asset_type != 'BTC'",
+          "default": false
+        }
+      ]
+    },
+    "token_estimates": {
+      "base_prompt": 4000,
+      "with_btc_analysis": 1200,
+      "with_altcoin_analysis": 1500,
+      "with_history": 800,
+      "with_pump_detection": 500,
+      "max_total_tokens": 7000
+    },
+    "integration_notes": {
+      "dynamic_variables": [
+        "asset_type",
+        "symbol",
+        "trading_style",
+        "current_price",
+        "market_cap",
+        "sector",
+        "btc_dominance",
+        "institutional_flows",
+        "correlation_data",
+        "historical_performance"
+      ],
+      "required_data_sources": [
+        "market_data_api",
+        "technical_indicators",
+        "volume_profile_calculator",
+        "pump_detector",
+        "historical_performance_db",
+        "sector_classification_db"
+      ]
+    }
+  }
+}
