@@ -1688,9 +1688,9 @@
                         minBarSpacing: 0.5,  // Allow maximum zoom in (0.5px per bar)
                         fixLeftEdge: false,
                         fixRightEdge: false,
-                        lockVisibleTimeRangeOnResize: false,  // Allow flexible zoom
-                        rightBarStaysOnScroll: true,  // Keep latest bar visible
-                        shiftVisibleRangeOnNewBar: true,  // Auto-scroll on new bar
+                        lockVisibleTimeRangeOnResize: true,  // IMPORTANT: Preserve zoom on resize
+                        rightBarStaysOnScroll: true,  // Keep latest bar visible when user scrolls
+                        shiftVisibleRangeOnNewBar: false,  // DON'T auto-scroll - let user control view
                     },
                     localization: {
                         // Apply professional price formatter
@@ -2876,10 +2876,8 @@
                         width: container.clientWidth,
                         height: container.clientHeight,
                     });
-                    // Only fit content when viewport is stable
-                    if (data && data.isStateStable) {
-                        chart.timeScale().fitContent();
-                    }
+                    // DON'T call fitContent() - preserve user's zoom/pan state
+                    // Only fitContent() on first load (handled in loadChartData)
                 }
             });
             
