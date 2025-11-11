@@ -1,14 +1,14 @@
 /**
  * AI Analysis API Integration for WebApp
- * Replaces tg.sendData() with direct API calls
+ * Uses Telegram WebApp sendData for proper integration
  */
 
 // Override the AI analysis function
 window.triggerAIAnalysis = async function(symbol, timeframe) {
     const tg = window.Telegram?.WebApp;
     if (!tg) {
-        console.error('Telegram WebApp not available');
-        return;
+        console.error('❌ Telegram WebApp not available');
+        throw new Error('Telegram WebApp not initialized');
     }
     
     try {
@@ -18,44 +18,33 @@ window.triggerAIAnalysis = async function(symbol, timeframe) {
             throw new Error('Cannot get user ID from Telegram');
         }
         
-        // Prepare API request
-        const apiUrl = window.location.origin + '/api/ai-analysis';
-        const requestBody = {
+        console.log(`🤖 Triggering AI Analysis: symbol=${symbol}, timeframe=${timeframe}`);
+        
+        // Prepare data for Telegram bot
+        const analysisData = {
+            action: 'ai_analysis',
             user_id: userId,
             symbol: symbol,
             timeframe: timeframe || '1h'
         };
         
-        console.log(`📤 Calling AI Analysis API: ${apiUrl}`, requestBody);
+        console.log('📤 Sending data to Telegram bot:', analysisData);
         
-        // Call API
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody)
-        });
+        // Send data to bot via Telegram WebApp API
+        tg.sendData(JSON.stringify(analysisData));
         
-        const data = await response.json();
-        console.log('✅ API Response:', data);
-        
-        if (data.success) {
-            // Success haptic
-            if (tg.HapticFeedback) {
-                tg.HapticFeedback.notificationOccurred('success');
-            }
-            return { 
-                success: true, 
-                message: 'Analysis sent to Telegram',
-                analysis: data.analysis  // Return analysis data
-            };
-        } else {
-            throw new Error(data.error || 'API request failed');
+        // Success haptic
+        if (tg.HapticFeedback) {
+            tg.HapticFeedback.notificationOccurred('success');
         }
         
+        return { 
+            success: true, 
+            message: 'Analysis request sent to Telegram bot'
+        };
+        
     } catch (error) {
-        console.error('❌ AI Analysis API Error:', error);
+        console.error('❌ AI Analysis Error:', error);
         
         // Error haptic
         if (tg.HapticFeedback) {

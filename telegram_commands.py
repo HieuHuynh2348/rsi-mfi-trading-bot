@@ -3379,100 +3379,97 @@ class TelegramCommandHandler:
         def handle_webapp_data(message):
             """
             Handle data sent from WebApp
-            WebApp sends: ai_{symbol}_{timeframe}
+            Supports both old format: ai_{symbol}_{timeframe}
+            And new JSON format: {"action": "ai_analysis", "symbol": "BTCUSDT", "timeframe": "1h"}
             """
             try:
                 # Get data from webapp
                 webapp_data = message.web_app_data.data
                 logger.info(f"📱 WebApp data received: {webapp_data}")
                 
-                # Parse data: ai_BTCUSDT_1h
-                if webapp_data.startswith('ai_'):
-                    parts = webapp_data.split('_')
-                    if len(parts) >= 2:
-                        symbol = parts[1]
-                        timeframe = parts[2] if len(parts) > 2 else '1h'
-                        
-                        logger.info(f"🤖 Processing AI analysis request from WebApp: {symbol} @ {timeframe}")
-                        
-                        # Send processing message
-                        processing_msg = self.bot.send_message(
-                            f"🤖 <b>Analyzing {symbol}...</b>\n\n"
-                            f"⏳ Please wait 10-20 seconds for Gemini AI analysis..."
-                        )
-                        
-                        # Perform AI analysis with user_id for historical learning
+                symbol = None
+                timeframe = '1h'
+                
+                # Try to parse as JSON first (new format)
+                try:
+                    import json
+                    data = json.loads(webapp_data)
+                    if isinstance(data, dict) and data.get('action') == 'ai_analysis':
+                        symbol = data.get('symbol')
+                        timeframe = data.get('timeframe', '1h')
+                        logger.info(f"🤖 Parsed JSON request: symbol={symbol}, timeframe={timeframe}")
+                except (json.JSONDecodeError, ValueError):
+                    # Fall back to old format: ai_BTCUSDT_1h
+                    if webapp_data.startswith('ai_'):
+                        parts = webapp_data.split('_')
+                        if len(parts) >= 2:
+                            symbol = parts[1]
+                            timeframe = parts[2] if len(parts) > 2 else '1h'
+                            logger.info(f"🤖 Parsed old format: symbol={symbol}, timeframe={timeframe}")
+                
+                if not symbol:
+                    logger.error(f"❌ Could not parse webapp data: {webapp_data}")
+                    self.bot.send_message("❌ Invalid data format from WebApp")
+                    return
+                
+                logger.info(f"🤖 Processing AI analysis request from WebApp: {symbol} @ {timeframe}")
+                
+                # Send processing message
+                processing_msg = self.bot.send_message(
+                    f"🤖 <b>Analyzing {symbol}...</b>\n\n"
+                    f"⏳ Please wait 10-20 seconds for Gemini AI analysis..."
+                )
+                
+                # Perform AI analysis with user_id for historical learning
+                try:
+                    result = self.gemini_analyzer.analyze(
+                        symbol=symbol,
+                        pump_data=None,
+                        trading_style='swing',
+                        use_cache=True,
+                        user_id=message.from_user.id  # NEW: Pass user_id for history
+                    )
+                    
+                    if result:
+                        # Delete processing message
                         try:
-                            result = self.gemini_analyzer.analyze(
-                                symbol=symbol,
-                                pump_data=None,
-                                trading_style='swing',
-                                use_cache=True,
-                                user_id=message.from_user.id  # NEW: Pass user_id for history
+                            self.telegram_bot.delete_message(
+                                chat_id=message.chat.id,
+                                message_id=processing_msg.message_id
                             )
-                            
-                            if result:
-                                # Delete processing message
-                                try:
-                                    self.telegram_bot.delete_message(
-                                        chat_id=message.chat.id,
-                                        message_id=processing_msg.message_id
-                                    )
-                                except:
-                                    pass
-                                
-                                # Format and send AI analysis
-                                from format_analysis import format_gemini_analysis
-                                analysis_msg = format_gemini_analysis(symbol, result)
-                                
-                                # Create keyboard for webapp
-                                webapp_url = self.bot._get_webapp_url()
-                                if webapp_url:
-                                    cache_buster = int(time.time())
-                                    chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe={timeframe}&_t={cache_buster}"
-                                    logger.info(f"🔗 [webapp_data_handler] WebApp URL: {chart_webapp_url}")
-                                    keyboard = types.InlineKeyboardMarkup()
-                                    keyboard.row(
-                                        types.InlineKeyboardButton(
-                                            text=f"📊 View {symbol} Chart",
-                                            web_app=types.WebAppInfo(url=chart_webapp_url)
-                                        )
-                                    )
-                                else:
-                                    keyboard = None
-                                
-                                # Send analysis to chat
-                                self.bot.send_message(analysis_msg, reply_markup=keyboard)
-                                
-                                # Also send result back to WebApp using answerWebAppQuery
-                                # This will display in the webapp's AI Analysis tab
-                                try:
-                                    import json
-                                    # Telegram WebApp will receive this via window.Telegram.WebApp.onEvent('web_app_data_sent')
-                                    self.telegram_bot.answer_web_app_query(
-                                        web_app_query_id=message.web_app_data.button_text if hasattr(message.web_app_data, 'button_text') else None,
-                                        result=types.InlineQueryResultArticle(
-                                            id='1',
-                                            title=f'{symbol} AI Analysis',
-                                            input_message_content=types.InputTextMessageContent(
-                                                message_text=json.dumps({
-                                                    'success': True,
-                                                    'symbol': symbol,
-                                                    'analysis': result
-                                                })
-                                            )
-                                        )
-                                    )
-                                except Exception as e:
-                                    logger.error(f"Could not send to WebApp: {e}")
-                                
-                                logger.info(f"✅ AI analysis completed and sent for {symbol}")
-                            else:
-                                self.bot.send_message(f"❌ AI analysis failed for {symbol}")
-                                
-                        except Exception as e:
-                            logger.error(f"❌ AI analysis error: {e}")
-                            self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
+                        except:
+                            pass
+                        
+                        # Format and send AI analysis
+                        from format_analysis import format_gemini_analysis
+                        analysis_msg = format_gemini_analysis(symbol, result)
+                        
+                        # Create keyboard for webapp
+                        webapp_url = self.bot._get_webapp_url()
+                        if webapp_url:
+                            cache_buster = int(time.time())
+                            chart_webapp_url = f"{webapp_url}/webapp/chart.html?symbol={symbol}&timeframe={timeframe}&_t={cache_buster}"
+                            logger.info(f"🔗 [webapp_data_handler] WebApp URL: {chart_webapp_url}")
+                            keyboard = types.InlineKeyboardMarkup()
+                            keyboard.row(
+                                types.InlineKeyboardButton(
+                                    text=f"📊 View {symbol} Chart",
+                                    web_app=types.WebAppInfo(url=chart_webapp_url)
+                                )
+                            )
+                        else:
+                            keyboard = None
+                        
+                        # Send analysis to chat
+                        self.bot.send_message(analysis_msg, reply_markup=keyboard)
+                        
+                        logger.info(f"✅ AI analysis completed and sent for {symbol}")
+                    else:
+                        self.bot.send_message(f"❌ AI analysis failed for {symbol}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ AI analysis error: {e}")
+                    self.bot.send_message(f"❌ Error analyzing {symbol}: {str(e)}")
                     
             except Exception as e:
                 logger.error(f"Error handling webapp data: {e}")

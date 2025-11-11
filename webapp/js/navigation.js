@@ -22,28 +22,55 @@ class NavigationController {
     }
     
     /**
-     * Create bottom navigation bar HTML
+     * Create bottom navigation bar HTML with sliding indicator
      */
     createBottomNav() {
         const nav = document.createElement('div');
         nav.className = 'bottom-nav safe-bottom';
         nav.innerHTML = `
-            <div class="nav-item active" data-tab="chart">
-                <div class="nav-item-icon">📊</div>
-                <div class="nav-item-label">Chart</div>
-            </div>
-            <div class="nav-item" data-tab="indicators">
-                <div class="nav-item-icon">📈</div>
-                <div class="nav-item-label">Indicators</div>
-            </div>
-            <div class="nav-item" data-tab="ai">
-                <div class="nav-item-icon">🤖</div>
-                <div class="nav-item-label">AI</div>
+            <div class="bottom-nav-container">
+                <div class="nav-indicator"></div>
+                <div class="nav-item active" data-tab="chart">
+                    <div class="nav-item-icon">📊</div>
+                    <div class="nav-item-label">Chart</div>
+                </div>
+                <div class="nav-item" data-tab="indicators">
+                    <div class="nav-item-icon">📈</div>
+                    <div class="nav-item-label">Indicators</div>
+                </div>
+                <div class="nav-item" data-tab="ai">
+                    <div class="nav-item-icon">🤖</div>
+                    <div class="nav-item-label">AI</div>
+                </div>
             </div>
         `;
         
         document.body.appendChild(nav);
         this.navElement = nav;
+        this.indicator = nav.querySelector('.nav-indicator');
+        
+        // Set initial indicator position
+        setTimeout(() => this.updateIndicator(), 0);
+    }
+    
+    /**
+     * Update sliding indicator position
+     */
+    updateIndicator() {
+        if (!this.indicator) return;
+        
+        const activeItem = this.navElement.querySelector('.nav-item.active');
+        if (!activeItem) return;
+        
+        const container = this.navElement.querySelector('.bottom-nav-container');
+        const containerRect = container.getBoundingClientRect();
+        const itemRect = activeItem.getBoundingClientRect();
+        
+        const left = itemRect.left - containerRect.left;
+        const width = itemRect.width;
+        
+        this.indicator.style.transform = `translateX(${left}px)`;
+        this.indicator.style.width = `${width}px`;
     }
     
     /**
@@ -128,6 +155,9 @@ class NavigationController {
                 item.classList.remove('active');
             }
         });
+        
+        // Update sliding indicator
+        this.updateIndicator();
         
         // Hide/show content sections
         this.showTabContent(tabName);
