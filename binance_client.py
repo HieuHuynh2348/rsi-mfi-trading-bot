@@ -7,7 +7,8 @@ from binance.client import Client
 from binance.exceptions import BinanceAPIException
 import pandas as pd
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,52 @@ class BinanceClient:
         self.client = Client(api_key, api_secret)
         # Cache for symbol exchange info (to get precisions)
         self._symbol_info_cache = {}
+        
+        # Cache for klines data - reduce API calls
+        # {(symbol, interval): {'data': df, 'timestamp': datetime}}
+        self._klines_cache = {}
+        self._cache_duration = 60  # Cache for 60 seconds
+        
+        # Rate limiting - track API weight usage
+        self._last_request_time = 0
+        self._min_request_interval = 0.1  # Minimum 100ms between requests
+        
         logger.info("Binance client initialized")
+    
+    def _apply_rate_limit(self):
+        """Apply rate limiting between API requests"""
+        elapsed = time.time() - self._last_request_time
+        if elapsed < self._min_request_interval:
+            time.sleep(self._min_request_interval - elapsed)
+        self._last_request_time = time.time()
+    
+    def _get_cached_klines(self, symbol, interval):
+        """Get klines from cache if available and fresh"""
+        cache_key = (symbol, interval)
+        if cache_key in self._klines_cache:
+            cached = self._klines_cache[cache_key]
+            age = datetime.now() - cached['timestamp']
+            if age.total_seconds() < self._cache_duration:
+                logger.debug(f"Cache hit for {symbol} {interval} (age: {age.total_seconds():.1f}s)")
+                return cached['data']
+            else:
+                # Cache expired, remove it
+                del self._klines_cache[cache_key]
+        return None
+    
+    def _cache_klines(self, symbol, interval, df):
+        """Cache klines data"""
+        cache_key = (symbol, interval)
+        self._klines_cache[cache_key] = {
+            'data': df,
+            'timestamp': datetime.now()
+        }
+        # Keep cache size under control (max 100 entries)
+        if len(self._klines_cache) > 100:
+            # Remove oldest entry
+            oldest_key = min(self._klines_cache.keys(), 
+                           key=lambda k: self._klines_cache[k]['timestamp'])
+            del self._klines_cache[oldest_key]
 
     def _load_symbol_info(self, symbol):
         """Load and cache symbol info from exchange info for precision calculation"""
@@ -171,7 +217,7 @@ class BinanceClient:
     
     def get_klines(self, symbol, interval, limit=500):
         """
-        Get candlestick data for a symbol
+        Get candlestick data for a symbol with caching and rate limiting
         
         Args:
             symbol: Trading pair symbol
@@ -182,6 +228,14 @@ class BinanceClient:
             pandas DataFrame with OHLCV data
         """
         try:
+            # Check cache first
+            cached_data = self._get_cached_klines(symbol, interval)
+            if cached_data is not None:
+                return cached_data
+            
+            # Apply rate limiting before API call
+            self._apply_rate_limit()
+            
             klines = self.client.get_klines(
                 symbol=symbol,
                 interval=interval,
@@ -203,6 +257,10 @@ class BinanceClient:
             
             df.set_index('timestamp', inplace=True)
             
+            # Cache the data
+            self._cache_klines(symbol, interval, df)
+            
+            logger.debug(f"Fetched {symbol} {interval} from API (cached for {self._cache_duration}s)")
             return df
             
         except BinanceAPIException as e:
