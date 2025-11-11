@@ -863,37 +863,53 @@
     </div>
     
     <!-- AI Analysis Tab -->
-    <div data-tab-content="ai" style="display: none; padding: 0;">
-        <div id="ai-analysis" style="height: 100%; overflow-y: auto; background: var(--primary-bg); padding: var(--space-md);">
+    <div data-tab-content="ai" style="display: none; padding: 0; overflow: hidden; height: calc(100vh - 165px);">
+        <div id="ai-analysis" style="
+            height: 100%; 
+            overflow-y: auto; 
+            overflow-x: hidden;
+            background: var(--primary-bg); 
+            padding: var(--space-md);
+            -webkit-overflow-scrolling: touch;
+        ">
             <div style="text-align: center; margin-bottom: var(--space-md);">
-                <button id="ai-analyze-btn" class="btn btn-primary" style="
-                    padding: var(--space-sm) var(--space-lg);
-                    background: linear-gradient(135deg, var(--accent-purple) 0%, #764ba2 100%);
+                <button id="ai-analyze-btn" style="
+                    padding: 12px 24px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: white;
                     border: none;
-                    border-radius: var(--radius-md);
-                    font-size: var(--font-md);
-                    font-weight: var(--weight-semibold);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: 600;
                     cursor: pointer;
-                    box-shadow: var(--shadow-md);
-                    transition: all var(--transition-fast);
-                    min-height: var(--touch-target-min);
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+                    transition: all 0.2s;
+                    min-height: 44px;
                     display: block;
                     margin: 0 auto;
+                    width: 90%;
+                    max-width: 300px;
                 ">
                     🧠 Analyze with Gemini AI
                 </button>
-                <div style="color: var(--text-primary); margin-top: var(--space-md); font-size: var(--font-sm); line-height: 1.6;">
+                <div style="color: var(--text-primary); margin-top: 16px; font-size: 14px; line-height: 1.6;">
                     Get comprehensive market analysis powered by Gemini 2.0 Flash
                 </div>
             </div>
-            <div id="ai-loading"></div>
-            <div id="ai-content"></div>
+            <div id="ai-loading" style="margin-top: 20px;"></div>
+            <div id="ai-content" style="margin-top: 20px;"></div>
         </div>
     </div>
     
     <!-- History Tab -->
-    <div data-tab-content="history" style="display: none; padding: 15px; overflow-y: auto;">
+    <div data-tab-content="history" style="
+        display: none; 
+        padding: 15px; 
+        overflow-y: auto; 
+        overflow-x: hidden;
+        height: calc(100vh - 165px);
+        -webkit-overflow-scrolling: touch;
+    ">
         <div id="history-container"></div>
     </div>
     
