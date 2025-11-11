@@ -1167,6 +1167,9 @@ class GeminiAnalyzer:
                     winning_cond = patterns.get('winning_conditions', {})
                     losing_cond = patterns.get('losing_conditions', {})
                     
+                    # Get rsi_mfi from data for learning recommendation
+                    rsi_mfi = data.get('rsi_mfi', {})
+                    
                     historical_context = f"""
 ═══════════════════════════════════════════
 🧠 HISTORICAL PERFORMANCE FOR {symbol} (Last 7 days)
@@ -2433,13 +2436,13 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
             
             # Parse JSON
             try:
-                # Remove only dangerous control characters (0x00-0x1F except tab, newline, carriage return)
+                # STEP 1: Remove dangerous control characters (0x00-0x1F except tab, newline, carriage return)
                 # Keep Unicode characters for Vietnamese text
                 import re
                 # Remove control chars except \t (09), \n (0A), \r (0D)
                 response_text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F]', '', response_text)
                 
-                # Additional JSON cleaning (MORE AGGRESSIVE)
+                # STEP 2: Additional JSON cleaning (MORE AGGRESSIVE)
                 # Fix trailing commas in arrays/objects
                 response_text = re.sub(r',\s*}', '}', response_text)
                 response_text = re.sub(r',\s*]', ']', response_text)
@@ -2448,23 +2451,42 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
                 # Pattern: "value"\n  "key" -> "value",\n  "key"
                 response_text = re.sub(r'"\s*\n\s*"', '",\n  "', response_text)
                 
-                # Fix missing commas after numbers in arrays: ] -> ,]
+                # Fix missing commas after numbers in arrays
                 response_text = re.sub(r'(\d)\s*\n\s*(\d)', r'\1,\2', response_text)
                 
                 # Fix missing commas in arrays: 100.00 200.00 -> 100.00, 200.00
                 response_text = re.sub(r'(\d+\.?\d*)\s+(\d+\.?\d*)', r'\1, \2', response_text)
                 
-                # Fix long text breaking JSON: truncate reasoning if > 2000 chars
-                reasoning_match = re.search(r'"reasoning_vietnamese"\s*:\s*"([^"]*(?:\\"[^"]*)*)"', response_text, re.DOTALL)
+                # STEP 3: Handle long reasoning_vietnamese WITHOUT truncating
+                # Instead of truncating, escape special characters properly
+                def escape_json_string(text):
+                    """Properly escape string for JSON"""
+                    # Escape backslashes first
+                    text = text.replace('\\', '\\\\')
+                    # Escape quotes
+                    text = text.replace('"', '\\"')
+                    # Escape newlines (keep them as \n)
+                    text = text.replace('\n', '\\n')
+                    text = text.replace('\r', '\\r')
+                    text = text.replace('\t', '\\t')
+                    return text
+                
+                # Find and properly escape reasoning_vietnamese
+                reasoning_match = re.search(r'"reasoning_vietnamese"\s*:\s*"(.*?)(?:"\s*[,}])', response_text, re.DOTALL)
                 if reasoning_match:
                     reasoning_text = reasoning_match.group(1)
-                    if len(reasoning_text) > 2000:
-                        # Truncate and close properly
-                        truncated = reasoning_text[:2000] + '..."'
-                        response_text = response_text.replace(reasoning_match.group(0), 
-                                                              f'"reasoning_vietnamese": "{truncated}')
-                        logger.warning(f"Truncated reasoning_vietnamese from {len(reasoning_text)} to 2000 chars")
+                    # Check if already escaped (contains \\n)
+                    if '\\n' not in reasoning_text and '\n' in reasoning_text:
+                        # Not escaped - needs escaping
+                        escaped_reasoning = escape_json_string(reasoning_text)
+                        # Replace in response_text
+                        response_text = response_text.replace(
+                            reasoning_match.group(0),
+                            f'"reasoning_vietnamese": "{escaped_reasoning}",'
+                        )
+                        logger.info(f"✅ Escaped reasoning_vietnamese ({len(reasoning_text)} chars)")
                 
+                # Try to parse
                 analysis = json.loads(response_text)
             except json.JSONDecodeError as json_err:
                 logger.error(f"JSON parsing failed for {symbol}: {json_err}")
@@ -2507,9 +2529,15 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
                         tp_match = re.search(r'"take_profit"\s*:\s*\[([\d.,\s]+)\]', response_text)
                         period_match = re.search(r'"expected_holding_period"\s*:\s*"([^"]+)"', response_text)
                         risk_match = re.search(r'"risk_level"\s*:\s*"([^"]+)"', response_text)
-                        reason_match = re.search(r'"reasoning_vietnamese"\s*:\s*"([^"]+(?:\\"[^"]*)*)"', response_text, re.DOTALL)
+                        # Extract full reasoning without truncating
+                        reason_match = re.search(r'"reasoning_vietnamese"\s*:\s*"(.*?)(?:"\s*[,}])', response_text, re.DOTALL)
                         
                         if rec_match and conf_match:
+                            # Get full reasoning text (don't truncate)
+                            full_reasoning = reason_match.group(1) if reason_match else 'Không có phân tích chi tiết.'
+                            # Clean but don't truncate
+                            full_reasoning = full_reasoning.replace('\\n', '\n').replace('\\r', '\r').replace('\\"', '"')
+                            
                             # Build minimal valid JSON
                             analysis = {
                                 'recommendation': rec_match.group(1),
@@ -2520,9 +2548,9 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
                                 'take_profit': [float(x.strip()) for x in tp_match.group(1).split(',')] if tp_match else [],
                                 'expected_holding_period': period_match.group(1) if period_match else '3-7 days',
                                 'risk_level': risk_match.group(1) if risk_match else 'MEDIUM',
-                                'reasoning_vietnamese': (reason_match.group(1)[:500] + '...') if reason_match else 'Không có phân tích chi tiết.'
+                                'reasoning_vietnamese': full_reasoning  # Keep full text
                             }
-                            logger.info(f"✅ Extracted partial JSON with regex for {symbol}")
+                            logger.info(f"✅ Extracted partial JSON with regex for {symbol} (reasoning: {len(full_reasoning)} chars)")
                         else:
                             logger.error(f"❌ Cannot extract minimal required fields (recommendation, confidence)")
                             return None
