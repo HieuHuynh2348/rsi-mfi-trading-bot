@@ -301,11 +301,11 @@
         /* TAB CONTENT WRAPPERS */
         [data-tab-content] {
             min-height: calc(100vh - 165px - 52px);
-            padding-bottom: 52px; /* Space for ultra-compact bottom nav */
+            padding-bottom: 0; /* Bottom nav is fixed, no padding needed */
         }
         
         [data-tab-content="chart"] {
-            padding-bottom: 0; /* Chart handles its own spacing */
+            padding-bottom: 0;
             min-height: 0; /* Chart has its own height calculation */
         }
         
