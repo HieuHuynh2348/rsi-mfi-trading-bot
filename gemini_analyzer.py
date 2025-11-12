@@ -2891,19 +2891,36 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
                 tech += f"• Rotation Risk: {escape_html(sector.get('rotation_risk', ''))}\n\n"
             
             corr = analysis.get('correlation_analysis', {})
-            if corr and corr.get('btc_correlation', 0) > 0:
-                tech += f"🔗 <b>Correlation:</b>\n"
-                tech += f"• BTC: {corr.get('btc_correlation', 0)}%\n"
-                tech += f"• ETH: {corr.get('eth_correlation', 0)}%\n"
-                tech += f"• Independent: {corr.get('independent_move_probability', 50)}%\n\n"
+            if corr:
+                # Safely convert to int, handle both string and int
+                try:
+                    btc_corr = int(corr.get('btc_correlation', 0)) if corr.get('btc_correlation') else 0
+                    eth_corr = int(corr.get('eth_correlation', 0)) if corr.get('eth_correlation') else 0
+                    indep_prob = int(corr.get('independent_move_probability', 50)) if corr.get('independent_move_probability') else 50
+                    
+                    if btc_corr > 0:
+                        tech += f"🔗 <b>Correlation:</b>\n"
+                        tech += f"• BTC: {btc_corr}%\n"
+                        tech += f"• ETH: {eth_corr}%\n"
+                        tech += f"• Independent: {indep_prob}%\n\n"
+                except (ValueError, TypeError):
+                    # Skip correlation section if values can't be converted
+                    pass
             
             fund = analysis.get('fundamental_analysis', {})
-            if fund and fund.get('health_score', 0) >= 0:
-                tech += f"💪 <b>Fundamental:</b>\n"
-                tech += f"• Health: {fund.get('health_score', 0)}/100\n"
-                tech += f"• Tokenomics: {escape_html(fund.get('tokenomics', 'Unknown'))}\n"
-                tech += f"• Risk: {escape_html(fund.get('centralization_risk', 'Medium'))}\n"
-                tech += f"• Ecosystem: {escape_html(fund.get('ecosystem_strength', 'Moderate'))}\n\n"
+            if fund:
+                # Safely convert health_score to int
+                try:
+                    health_score = int(fund.get('health_score', 0)) if fund.get('health_score') is not None else 0
+                    if health_score >= 0:
+                        tech += f"💪 <b>Fundamental:</b>\n"
+                        tech += f"• Health: {health_score}/100\n"
+                        tech += f"• Tokenomics: {escape_html(fund.get('tokenomics', 'Unknown'))}\n"
+                        tech += f"• Risk: {escape_html(fund.get('centralization_risk', 'Medium'))}\n"
+                        tech += f"• Ecosystem: {escape_html(fund.get('ecosystem_strength', 'Moderate'))}\n\n"
+                except (ValueError, TypeError):
+                    # Skip if health_score can't be converted
+                    pass
             
             sizing = analysis.get('position_sizing_recommendation', {})
             if sizing and sizing.get('position_size_percent'):
@@ -2933,12 +2950,17 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
                     tech += f"• Liquidity: {escape_html(macro.get('liquidity_assessment', 'N/A'))}\n\n"
             
             # Scores
-            tech_score = analysis.get('technical_score', 0)
-            fund_score = analysis.get('fundamental_score', 0)
+            # Safely convert scores to numbers
+            try:
+                tech_score = float(analysis.get('technical_score', 0)) if analysis.get('technical_score') is not None else 0
+                fund_score = float(analysis.get('fundamental_score', 0)) if analysis.get('fundamental_score') is not None else 0
+            except (ValueError, TypeError):
+                tech_score = 0
+                fund_score = 0
             
             tech += "📈 <b>&#272;i&#7875;m &#272;&#225;nh Gi&#225;:</b>\n"
-            tech += f"• K&#7929; Thu&#7853;t: {tech_score}/100\n"
-            tech += f"• C&#417; B&#7843;n: {fund_score}/100\n"
+            tech += f"• K&#7929; Thu&#7853;t: {tech_score:.0f}/100\n"
+            tech += f"• C&#417; B&#7843;n: {fund_score:.0f}/100\n"
             tech += f"• T&#7893;ng: {(tech_score + fund_score)/2:.0f}/100\n\n"
             
             # Market sentiment
