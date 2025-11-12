@@ -65,8 +65,11 @@ class BinanceClient:
                 logger.debug(f"Cache hit for {symbol} {interval} (age: {age.total_seconds():.1f}s)")
                 return cached['data']
             else:
-                # Cache expired, remove it
-                del self._klines_cache[cache_key]
+                # Cache expired, remove it - safe deletion of specific key
+                try:
+                    del self._klines_cache[cache_key]
+                except KeyError:
+                    pass  # Already deleted by another thread
         return None
     
     def _cache_klines(self, symbol, interval, df):
@@ -78,8 +81,9 @@ class BinanceClient:
         }
         # Keep cache size under control (max 100 entries)
         if len(self._klines_cache) > 100:
-            # Remove oldest entry
-            oldest_key = min(self._klines_cache.keys(), 
+            # Remove oldest entry - use list() to avoid "dictionary changed during iteration" error
+            cache_keys = list(self._klines_cache.keys())
+            oldest_key = min(cache_keys, 
                            key=lambda k: self._klines_cache[k]['timestamp'])
             del self._klines_cache[oldest_key]
 
