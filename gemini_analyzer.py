@@ -1864,9 +1864,9 @@ Provide a comprehensive trading analysis in JSON format with the following struc
         
         prompt += f"""
   ,
-  "key_points": ["Point 1", "Point 2", ...],
-  "conflicting_signals": ["Signal 1", "Signal 2", ...] or [],
-  "warnings": ["Warning 1", ...] or [],
+  "key_points": ["Điểm chính 1 (bằng tiếng Việt)", "Điểm chính 2 (bằng tiếng Việt)", ...],
+  "conflicting_signals": ["Tín hiệu mâu thuẫn 1 (tiếng Việt)", "Tín hiệu 2", ...] or [],
+  "warnings": ["Cảnh báo 1 (tiếng Việt)", "Cảnh báo 2", ...] or [],
   "market_sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
   "technical_score": 0-100,
   "fundamental_score": 0-100,
@@ -1933,7 +1933,14 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
    - Adjust confidence penalties based on asset type (see Dynamic Risk Rules)
    - Include macro_context section in JSON (conditional on asset type)
 
-2. Reasoning MUST be in Vietnamese language (300-500 words)
+2. **CRITICAL: ALL TEXT FIELDS MUST BE IN VIETNAMESE**
+   - reasoning_vietnamese: MUST be 100% Vietnamese (300-500 words)
+   - key_points: MUST be Vietnamese (e.g., "RSI quá bán cho thấy...", "Khối lượng giảm đáng kể...")
+   - conflicting_signals: MUST be Vietnamese (e.g., "Tín hiệu RSI tăng nhưng MFI giảm...")
+   - warnings: MUST be Vietnamese (e.g., "Cảnh báo: Khối lượng thấp...")
+   - historical_analysis fields (rsi_interpretation, volume_trend, etc.): MUST be Vietnamese
+   - historical_learning.recommendation_rationale: MUST be Vietnamese
+   - DO NOT use English for any text content visible to users
 
 3. **Analyze ALL technical indicators systematically:**
    - RSI+MFI consensus and individual timeframe signals
@@ -2853,7 +2860,7 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
                     # Uppercase
                     'À': '&#192;', 'Á': '&#193;', 'Ả': '&#7842;', 'Ã': '&#195;', 'Ạ': '&#7840;',
                     'Ă': '&#258;', 'Ằ': '&#7856;', 'Ắ': '&#7854;', 'Ẳ': '&#7858;', 'Ẵ': '&#7860;', 'Ặ': '&#7862;',
-                    'Â': '&#202;', 'Ầ': '&#7846;', 'Ấ': '&#7844;', 'Ẩ': '&#7848;', 'Ẫ': '&#7850;', 'Ậ': '&#7852;',
+                    'Â': '&#194;', 'Ầ': '&#7846;', 'Ấ': '&#7844;', 'Ẩ': '&#7848;', 'Ẫ': '&#7850;', 'Ậ': '&#7852;',
                     'Đ': '&#272;',
                     'È': '&#200;', 'É': '&#201;', 'Ẻ': '&#7866;', 'Ẽ': '&#7868;', 'Ẹ': '&#7864;',
                     'Ê': '&#202;', 'Ề': '&#7872;', 'Ế': '&#7870;', 'Ể': '&#7874;', 'Ễ': '&#7876;', 'Ệ': '&#7878;',
