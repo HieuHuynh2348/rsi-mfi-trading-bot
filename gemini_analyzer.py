@@ -2814,7 +2814,7 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
             summary += "<i>💡 Dữ liệu từ Gemini AI 2.0 Flash</i>"
             
             # Message 2: Technical Details
-            tech = "📊 <b>PH&#202;N T&#205;CH K&#7926; THU&#7852;T CHI TI&#7870;T</b>\n\n"
+            tech = "📊 <b>PH&#194;N T&#205;CH K&#7926; THU&#7852;T CHI TI&#7870;T</b>\n\n"
             tech += f"💎 <b>{symbol}</b>\n\n"
             
             # Data used
@@ -3048,7 +3048,7 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
             tech += "\n<i>💡 Ph&#226;n t&#237;ch &#273;a khung th&#7901;i gian</i>"
             
             # Message 3: AI Reasoning
-            reasoning = "🧠 <b>PH&#202;N T&#205;CH CHI TI&#7870;T T&#7914; AI</b>\n\n"
+            reasoning = "🧠 <b>PH&#194;N T&#205;CH CHI TI&#7870;T T&#7914; AI</b>\n\n"
             reasoning += f"💎 <b>{symbol}</b>\n\n"
             reasoning += encode_vietnamese(analysis.get('reasoning_vietnamese', 'Không có phân tích chi tiết.'))
             reasoning += f"\n\n⏰ <b>Th&#7901;i gian:</b> {analysis.get('analyzed_at', 'N/A')}\n"
