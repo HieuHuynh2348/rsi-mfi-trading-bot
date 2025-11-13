@@ -81,11 +81,17 @@ class BinanceClient:
         }
         # Keep cache size under control (max 100 entries)
         if len(self._klines_cache) > 100:
-            # Remove oldest entry - use list() to avoid "dictionary changed during iteration" error
-            cache_keys = list(self._klines_cache.keys())
-            oldest_key = min(cache_keys, 
-                           key=lambda k: self._klines_cache[k]['timestamp'])
-            del self._klines_cache[oldest_key]
+            try:
+                # Remove oldest entry - use list() to avoid "dictionary changed during iteration" error
+                # Create items list to avoid KeyError if cache changes during min() operation
+                cache_items = [(k, v['timestamp']) for k, v in list(self._klines_cache.items())]
+                if cache_items:
+                    oldest_key = min(cache_items, key=lambda x: x[1])[0]
+                    if oldest_key in self._klines_cache and oldest_key != cache_key:
+                        del self._klines_cache[oldest_key]
+            except (KeyError, ValueError) as e:
+                # Cache was modified by another thread, skip cleanup
+                logger.debug(f"Cache cleanup skipped due to concurrent modification")
 
     def _load_symbol_info(self, symbol):
         """Load and cache symbol info from exchange info for precision calculation"""
