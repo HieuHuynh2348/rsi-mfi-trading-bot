@@ -1,9 +1,16 @@
 """
-Gemini AI Trading Analyzer
+Gemini AI Trading Analyzer v3.3
 Integrates Google Gemini 1.5 Pro for comprehensive trading analysis
 
+Enhanced with:
+- Advanced Pump/Dump Detector integration
+- Real-time data from 15+ sources
+- Sentiment analysis & on-chain data
+- Institutional flow detection
+- 5 BOT type detection
+
 Author: AI Assistant
-Date: November 9, 2025
+Date: November 20, 2025
 """
 
 import google.generativeai as genai
@@ -26,10 +33,19 @@ except ImportError as e:
     logger.warning(f"⚠️ Database/Price Tracker not available: {e}")
     DATABASE_AVAILABLE = False
 
+# Import advanced detection
+try:
+    from advanced_pump_detector import AdvancedPumpDumpDetector, integrate_advanced_detection_to_prompt
+    ADVANCED_DETECTOR_AVAILABLE = True
+    logger.info("✅ Advanced Pump/Dump Detector loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Advanced Detector not available: {e}")
+    ADVANCED_DETECTOR_AVAILABLE = False
+
 
 class GeminiAnalyzer:
     """
-    Google Gemini AI integration for advanced trading analysis
+    Google Gemini AI integration for advanced trading analysis v3.3
     
     Features:
     - Comprehensive multi-indicator analysis
@@ -37,6 +53,8 @@ class GeminiAnalyzer:
     - Scalping and swing trading recommendations
     - Risk assessment and entry/exit points
     - Vietnamese language output
+    - Advanced pump/dump detection with institutional flow
+    - 5 BOT type detection (Wash Trading, Spoofing, Iceberg, Market Maker, Dump)
     """
     
     def __init__(self, api_key: str, binance_client, stoch_rsi_analyzer):
@@ -79,6 +97,15 @@ class GeminiAnalyzer:
         self.sr_detector = SupportResistanceDetector(binance_client)
         self.smc_analyzer = SmartMoneyAnalyzer(binance_client)
         
+        # Initialize Advanced Detector (NEW)
+        self.advanced_detector = None
+        if ADVANCED_DETECTOR_AVAILABLE:
+            try:
+                self.advanced_detector = AdvancedPumpDumpDetector(binance_client)
+                logger.info("✅ Advanced Pump/Dump Detector initialized")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize Advanced Detector: {e}")
+        
         # Configure Gemini
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel('gemini-2.5-flash')
@@ -91,7 +118,7 @@ class GeminiAnalyzer:
         self.last_request_time = 0
         self.min_request_interval = 1.0  # 1 second between requests
         
-        logger.info("Gemini AI Analyzer initialized (Model: gemini-1.5-pro, Institutional indicators loaded)")
+        logger.info("✅ Gemini AI Analyzer v3.3 initialized (gemini-2.5-flash + Advanced Detection + Institutional indicators)")
     
     def _check_cache(self, symbol: str) -> Optional[Dict]:
         """
@@ -271,6 +298,50 @@ class GeminiAnalyzer:
                 'volume_24h': ticker_24h['volume']
             }
             
+            # === ADVANCED PUMP/DUMP DETECTION (NEW!) ===
+            advanced_detection = None
+            if self.advanced_detector:
+                try:
+                    logger.info(f"🤖 Running advanced pump/dump detection for {symbol}...")
+                    
+                    # Get recent trades for advanced analysis
+                    recent_trades = []
+                    order_book = None
+                    try:
+                        recent_trades = self.binance.client.get_recent_trades(symbol=symbol, limit=500)
+                        order_book = self.binance.client.get_order_book(symbol=symbol, limit=100)
+                    except:
+                        logger.debug("Could not fetch trades/orderbook for advanced detection")
+                    
+                    # Run comprehensive analysis
+                    advanced_detection = self.advanced_detector.analyze_comprehensive(
+                        symbol=symbol,
+                        klines_5m=klines_dict.get('5m'),
+                        klines_1h=klines_dict.get('1h'),
+                        order_book=order_book,
+                        trades=recent_trades,
+                        market_data=ticker_24h
+                    )
+                    
+                    if advanced_detection:
+                        signal = advanced_detection.get('signal', 'NEUTRAL')
+                        confidence = advanced_detection.get('confidence', 0)
+                        direction_prob = advanced_detection.get('direction_probability', {})
+                        
+                        logger.info(f"✅ Advanced Detection: Signal={signal}, Confidence={confidence}%, UP={direction_prob.get('up')}%")
+                        
+                        # Log warnings
+                        if signal in ['STRONG_DUMP', 'DUMP']:
+                            logger.warning(f"⚠️ {symbol}: {signal} detected - Confidence {confidence}%")
+                        
+                        bot_activity = advanced_detection.get('bot_activity', {})
+                        for bot_type, data in bot_activity.items():
+                            if data.get('detected'):
+                                logger.warning(f"🚨 {symbol}: {bot_type.upper()} BOT detected (confidence {data.get('confidence')}%)")
+                
+                except Exception as e:
+                    logger.error(f"Error in advanced detection for {symbol}: {e}")
+            
             logger.info(f"✅ Data collection complete for {symbol}")
             
             return {
@@ -288,7 +359,9 @@ class GeminiAnalyzer:
                 'fair_value_gaps': fvg_result,
                 'order_blocks': ob_result,
                 'support_resistance': sr_result,
-                'smart_money_concepts': smc_result
+                'smart_money_concepts': smc_result,
+                # Advanced detection (NEW)
+                'advanced_detection': advanced_detection
             }
             
         except Exception as e:
@@ -2710,6 +2783,15 @@ Khuyến nghị WAIT cho đến khi giá về DISCOUNT hoặc RSI xuống dướ
 """
         
         prompt += "\nReturn ONLY valid JSON, no markdown formatting.\n"
+        
+        # === INJECT ADVANCED DETECTION RESULTS (NEW!) ===
+        if data.get('advanced_detection') and ADVANCED_DETECTOR_AVAILABLE:
+            try:
+                advanced_section = integrate_advanced_detection_to_prompt(data['advanced_detection'])
+                prompt += "\n" + advanced_section
+                logger.info("✅ Injected advanced detection results into prompt")
+            except Exception as e:
+                logger.error(f"Error injecting advanced detection: {e}")
         
         return prompt
     

@@ -1,6 +1,13 @@
 """
-Bot Trading Activity Detector
+Bot Trading Activity Detector v2.0
 Detects algorithmic/bot trading patterns on Binance
+
+Enhanced with 5 BOT types:
+- Wash Trading BOT
+- Spoofing BOT
+- Iceberg BOT
+- Market Maker BOT
+- Dump BOT
 """
 
 import logging
@@ -20,7 +27,7 @@ class BotDetector:
             binance_client: BinanceClient instance
         """
         self.binance = binance_client
-        logger.info("Bot detector initialized")
+        logger.info("✅ Bot detector v2.0 initialized with 5 BOT detection types")
     
     def detect_bot_activity(self, symbol):
         """
@@ -54,11 +61,15 @@ class BotDetector:
             timing_analysis = self._analyze_timing(agg_trades)
             pump_analysis = self._analyze_pump_pattern(ticker_24h, klines, trades)
             
+            # NEW: Enhanced BOT detection (5 types)
+            enhanced_bot_detection = self._detect_enhanced_bot_types(klines, trades, depth, ticker_24h)
+            
             # Combine analyses
             bot_score = self._calculate_bot_score(
                 orderbook_analysis,
                 trade_analysis,
-                timing_analysis
+                timing_analysis,
+                enhanced_bot_detection  # Include enhanced detection in scoring
             )
             
             # Calculate pump score separately
@@ -76,10 +87,18 @@ class BotDetector:
                 'trades': trade_analysis,
                 'timing': timing_analysis,
                 'pump': pump_analysis,
+                'enhanced_bot_types': enhanced_bot_detection,  # NEW
                 'timestamp': datetime.now()
             }
             
             logger.info(f"Bot detection for {symbol}: Bot Score={bot_score:.1f}%, Pump Score={pump_score:.1f}%")
+            
+            # Log detected BOT types
+            detected_types = [k for k, v in enhanced_bot_detection.items() 
+                            if isinstance(v, dict) and v.get('detected')]
+            if detected_types:
+                logger.warning(f"⚠️ {symbol}: Detected BOT types: {', '.join(detected_types)}")
+            
             return result
             
         except Exception as e:
@@ -384,6 +403,109 @@ class BotDetector:
             logger.error(f"Error analyzing pump pattern: {e}")
             return {'pump_score': 0, 'pump_indicators': 0}
     
+    def _detect_enhanced_bot_types(self, klines, trades, depth, ticker_24h):
+        """
+        Enhanced BOT detection - 5 types
+        
+        Returns:
+            dict with detection results for each BOT type
+        """
+        bot_types = {
+            'wash_trading': {'detected': False, 'confidence': 0, 'evidence': []},
+            'spoofing': {'detected': False, 'confidence': 0, 'evidence': []},
+            'iceberg': {'detected': False, 'confidence': 0, 'evidence': []},
+            'market_maker': {'detected': False, 'confidence': 0, 'evidence': []},
+            'dump_bot': {'detected': False, 'confidence': 0, 'evidence': []}
+        }
+        
+        try:
+            # === 1. WASH TRADING BOT ===
+            if klines is not None and not klines.empty and len(klines) >= 20:
+                recent = klines.tail(20)
+                volume_spike = recent['volume'].iloc[-1] > recent['volume'].mean() * 2
+                price_change = abs((recent['close'].iloc[-1] - recent['close'].iloc[-5]) / recent['close'].iloc[-5] * 100)
+                
+                if volume_spike and price_change < 0.5:
+                    bot_types['wash_trading']['detected'] = True
+                    bot_types['wash_trading']['confidence'] = min(90, 50 + (2.0 - price_change) * 20)
+                    bot_types['wash_trading']['evidence'].append(f"Volume {recent['volume'].iloc[-1] / recent['volume'].mean():.1f}x but price only {price_change:.2f}%")
+            
+            # === 2. SPOOFING BOT ===
+            if depth and trades and len(trades) > 50:
+                try:
+                    bid_depth = sum([float(bid[1]) for bid in depth.get('bids', [])[:10]])
+                    ask_depth = sum([float(ask[1]) for ask in depth.get('asks', [])[:10]])
+                    total_depth = bid_depth + ask_depth
+                    
+                    recent_trades_vol = sum([float(t.get('qty', 0)) for t in trades[-50:]])
+                    
+                    if total_depth > recent_trades_vol * 5:
+                        bot_types['spoofing']['detected'] = True
+                        bot_types['spoofing']['confidence'] = min(85, 40 + (total_depth / recent_trades_vol) * 5)
+                        bot_types['spoofing']['evidence'].append(f"Orderbook depth {total_depth:.2f} >> trades {recent_trades_vol:.2f}")
+                except:
+                    pass
+            
+            # === 3. ICEBERG BOT ===
+            if trades and len(trades) > 100:
+                try:
+                    trade_sizes = [float(t.get('qty', 0)) for t in trades[-100:]]
+                    size_std = np.std(trade_sizes)
+                    size_mean = np.mean(trade_sizes)
+                    
+                    if size_mean > 0 and size_std / size_mean < 0.15:
+                        timestamps = [t.get('time', 0) for t in trades[-50:]]
+                        if timestamps:
+                            time_diffs = np.diff(timestamps)
+                            if len(time_diffs) > 0:
+                                time_std = np.std(time_diffs)
+                                time_mean = np.mean(time_diffs)
+                                
+                                if time_mean > 0 and time_std / time_mean < 0.3:
+                                    bot_types['iceberg']['detected'] = True
+                                    bot_types['iceberg']['confidence'] = 75
+                                    bot_types['iceberg']['evidence'].append(f"Uniform trade size (CV={size_std/size_mean:.3f}), regular timing")
+                except:
+                    pass
+            
+            # === 4. MARKET MAKER BOT ===
+            if depth:
+                try:
+                    best_bid = float(depth['bids'][0][0]) if depth.get('bids') else 0
+                    best_ask = float(depth['asks'][0][0]) if depth.get('asks') else 0
+                    
+                    if best_bid > 0 and best_ask > 0:
+                        spread_pct = (best_ask - best_bid) / best_bid * 100
+                        
+                        if spread_pct < 0.05:
+                            bot_types['market_maker']['detected'] = True
+                            bot_types['market_maker']['confidence'] = 70
+                            bot_types['market_maker']['evidence'].append(f"Extremely tight spread {spread_pct:.4f}%")
+                except:
+                    pass
+            
+            # === 5. DUMP BOT ===
+            if klines is not None and not klines.empty and len(klines) >= 20:
+                recent_20 = klines.tail(20)
+                
+                price_changes = recent_20['close'].pct_change()
+                negative_candles = (price_changes < 0).sum()
+                
+                volume_trend = np.polyfit(range(len(recent_20)), recent_20['volume'].values, 1)[0]
+                
+                highs = recent_20['high'].values
+                lower_highs = sum([highs[i] < highs[i-1] for i in range(1, len(highs))])
+                
+                if negative_candles > 14 and volume_trend < 0 and lower_highs > 15:
+                    bot_types['dump_bot']['detected'] = True
+                    bot_types['dump_bot']['confidence'] = 80
+                    bot_types['dump_bot']['evidence'].append(f"{negative_candles}/20 red candles, declining volume, {lower_highs}/19 lower highs")
+            
+        except Exception as e:
+            logger.error(f"Error in enhanced BOT detection: {e}")
+        
+        return bot_types
+    
     def _is_round_number(self, num):
         """
         Check if a number is "round" (ends in 0s)
@@ -409,7 +531,7 @@ class BotDetector:
         except:
             return False
     
-    def _calculate_bot_score(self, orderbook, trades, timing):
+    def _calculate_bot_score(self, orderbook, trades, timing, enhanced=None):
         """
         Calculate overall bot activity score (0-100)
         
@@ -435,6 +557,23 @@ class BotDetector:
         # Very fast trades is strong indicator
         if timing.get('avg_interval_ms', 1000) < 50:
             bonus += 10
+        
+        # NEW: Enhanced BOT detection bonus
+        if enhanced:
+            detected_count = sum([1 for k, v in enhanced.items() 
+                                if isinstance(v, dict) and v.get('detected')])
+            
+            # Each detected BOT type adds 10-15 points
+            if enhanced.get('wash_trading', {}).get('detected'):
+                bonus += 12
+            if enhanced.get('spoofing', {}).get('detected'):
+                bonus += 15
+            if enhanced.get('iceberg', {}).get('detected'):
+                bonus += 10
+            if enhanced.get('market_maker', {}).get('detected'):
+                bonus += 8
+            if enhanced.get('dump_bot', {}).get('detected'):
+                bonus += 15
         
         # Cap at 100
         final_score = min(100, base_score + bonus)

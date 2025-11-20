@@ -1,6 +1,11 @@
 """
-Volume Anomaly Detector
+Volume Anomaly Detector v2.0
 Detects unusual volume spikes that may indicate breakouts or significant price movements
+
+Enhanced with:
+- Volume legitimacy checks (VWAP, buy/sell pressure)
+- Large trades analysis
+- Quality scoring
 """
 
 import logging
@@ -44,7 +49,7 @@ class VolumeDetector:
         self.sensitivity = sensitivity
         self.config = self.thresholds.get(sensitivity, self.thresholds['medium'])
         
-        logger.info(f"Volume detector initialized with {sensitivity} sensitivity")
+        logger.info(f"✅ Volume detector v2.0 initialized with {sensitivity} sensitivity")
     
     def detect_volume_spike(self, symbol, timeframe='5m'):
         """
@@ -114,6 +119,9 @@ class VolumeDetector:
                 else:
                     spike_type = "NEUTRAL_SPIKE"
             
+            # NEW: Volume legitimacy check
+            legitimacy = self._check_volume_legitimacy(df, symbol)
+            
             result = {
                 'symbol': symbol,
                 'timeframe': timeframe,
@@ -129,12 +137,16 @@ class VolumeDetector:
                 'z_score': z_score,
                 'price_change_percent': price_change,
                 'current_price': df['close'].iloc[-1],
+                'legitimacy_score': legitimacy.get('legitimacy_score', 0),  # NEW
+                'is_legitimate': legitimacy.get('is_legitimate', False),  # NEW
+                'volume_quality': legitimacy.get('volume_quality', 'UNKNOWN'),  # NEW
                 'timestamp': datetime.now(),
                 'sensitivity': self.sensitivity
             }
             
             if is_spike:
-                logger.info(f"🔥 VOLUME SPIKE DETECTED: {symbol} - {volume_ratio:.2f}x average volume!")
+                quality = legitimacy.get('volume_quality', 'UNKNOWN')
+                logger.info(f"🔥 VOLUME SPIKE DETECTED: {symbol} - {volume_ratio:.2f}x average, Quality: {quality}")
             
             return result
             
@@ -405,3 +417,97 @@ class VolumeDetector:
         text += f"💡 Phân tích chi tiết sẽ được gửi cho từng coin..."
         
         return text
+    
+    def _check_volume_legitimacy(self, df, symbol):
+        """
+        Check if volume spike is legitimate or manipulated
+        
+        Args:
+            df: Klines DataFrame
+            symbol: Trading symbol
+        
+        Returns:
+            dict with legitimacy analysis
+        """
+        analysis = {
+            'legitimacy_score': 0,
+            'is_legitimate': False,
+            'volume_quality': 'UNKNOWN',
+            'evidence': []
+        }
+        
+        if df is None or len(df) < 20:
+            return analysis
+        
+        try:
+            recent = df.tail(50)
+            
+            # === 1. VWAP DEVIATION ===
+            try:
+                recent['vwap'] = (recent['volume'] * (recent['high'] + recent['low'] + recent['close']) / 3).cumsum() / recent['volume'].cumsum()
+                vwap_dev = abs((recent['close'].iloc[-1] - recent['vwap'].iloc[-1]) / recent['close'].iloc[-1] * 100)
+                vwap_score = max(0, 100 - vwap_dev * 20)
+            except:
+                vwap_score = 50
+            
+            # === 2. BUY/SELL PRESSURE (estimate from candle patterns) ===
+            # Green candles = buy pressure, Red candles = sell pressure
+            try:
+                green_candles = (recent['close'] > recent['open']).sum()
+                red_candles = (recent['close'] < recent['open']).sum()
+                
+                total_candles = len(recent)
+                if total_candles > 0:
+                    green_ratio = green_candles / total_candles
+                    
+                    # Balanced 40-60% = legitimate
+                    if 0.4 <= green_ratio <= 0.6:
+                        balance_score = 100
+                    elif 0.3 <= green_ratio <= 0.7:
+                        balance_score = 70
+                    else:
+                        balance_score = 40
+                else:
+                    balance_score = 50
+            except:
+                balance_score = 50
+            
+            # === 3. VOLUME CLUSTERING ===
+            try:
+                volume_std = recent['volume'].std()
+                volume_mean = recent['volume'].mean()
+                
+                if volume_mean > 0:
+                    cv = volume_std / volume_mean
+                    
+                    if cv < 0.5:
+                        cluster_score = 40  # Too uniform = bot
+                    elif cv < 1.0:
+                        cluster_score = 100  # Ideal
+                    else:
+                        cluster_score = 60  # Too scattered = fake spike
+                else:
+                    cluster_score = 50
+            except:
+                cluster_score = 50
+            
+            # === CALCULATE TOTAL SCORE ===
+            analysis['legitimacy_score'] = int((vwap_score * 0.4 + balance_score * 0.3 + cluster_score * 0.3))
+            analysis['is_legitimate'] = analysis['legitimacy_score'] >= 65
+            
+            if analysis['legitimacy_score'] >= 80:
+                analysis['volume_quality'] = 'EXCELLENT'
+            elif analysis['legitimacy_score'] >= 65:
+                analysis['volume_quality'] = 'GOOD'
+            elif analysis['legitimacy_score'] >= 50:
+                analysis['volume_quality'] = 'FAIR'
+            else:
+                analysis['volume_quality'] = 'POOR'
+            
+            analysis['evidence'].append(f"VWAP score: {vwap_score:.0f}, Balance: {balance_score:.0f}, Cluster: {cluster_score:.0f}")
+            
+        except Exception as e:
+            logger.error(f"Error checking legitimacy for {symbol}: {e}")
+        
+        return analysis
+

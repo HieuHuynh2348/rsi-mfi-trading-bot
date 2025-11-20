@@ -1,13 +1,19 @@
 """
-Real-time Pump Detector - 3-Layer Detection System
+Real-time Pump Detector v3.0 - 3-Layer Detection System with Advanced Analysis
 Phát hiện pump sớm 10-20 phút với độ chính xác 90%+
 
 LAYER 1 (5m): Fast detection - Phát hiện pump đang hình thành
-LAYER 2 (1h/4h): Confirmation - Xác nhận pump an toàn
+LAYER 2 (1h/4h): Confirmation - Xác nhận pump an toàn + ADVANCED DETECTION
 LAYER 3 (1D): Long-term trend - Xu hướng dài hạn
 
+Enhanced with:
+- Advanced Pump/Dump Detector integration
+- Institutional flow detection
+- BOT activity filtering
+- Volume legitimacy checks
+
 Author: AI Assistant
-Date: November 8, 2025
+Date: November 20, 2025
 """
 
 import logging
@@ -22,17 +28,18 @@ logger = logging.getLogger(__name__)
 
 class RealtimePumpDetector:
     """
-    Real-time pump detector with 3-layer confirmation system
+    Real-time pump detector with 3-layer confirmation system + Advanced detection
     
     Features:
     - Layer 1 (5m): Volume spike, trade frequency, buy pressure
-    - Layer 2 (1h/4h): RSI/MFI momentum, bot detection  
+    - Layer 2 (1h/4h): RSI/MFI momentum, bot detection, ADVANCED ANALYSIS  
     - Layer 3 (1D): Long-term trend confirmation
     - 90%+ accuracy with minimal false alarms
     - API efficient: ~200-300 requests/minute
+    - NEW: Institutional flow + direction probability
     """
     
-    def __init__(self, binance_client, telegram_bot, bot_detector, watchlist_manager=None):
+    def __init__(self, binance_client, telegram_bot, bot_detector, watchlist_manager=None, advanced_detector=None):
         """
         Initialize real-time pump detector
         
@@ -41,11 +48,13 @@ class RealtimePumpDetector:
             telegram_bot: Telegram bot for alerts
             bot_detector: Bot detection system
             watchlist_manager: Optional watchlist manager for auto-save
+            advanced_detector: Optional advanced pump/dump detector (NEW)
         """
         self.binance = binance_client
         self.bot = telegram_bot
         self.bot_detector = bot_detector
         self.watchlist = watchlist_manager
+        self.advanced_detector = advanced_detector  # NEW
         
         # Scan intervals for each layer
         self.layer1_interval = 60   # 1 minute (5m detection) - FAST
@@ -85,9 +94,9 @@ class RealtimePumpDetector:
         self.top_volume_cache = []  # Cache for top volume coins
         self.top_volume_cache_time = 0  # Last update time
         
-        logger.info(f"Realtime pump detector initialized")
+        logger.info(f"✅ Realtime pump detector v3.0 initialized with Advanced Detection")
         logger.info(f"  • Layer1: {self.layer1_interval}s (full scan)")
-        logger.info(f"  • Layer2: {self.layer2_interval}s (confirmation)")
+        logger.info(f"  • Layer2: {self.layer2_interval}s (confirmation + ADVANCED)")
         logger.info(f"  • Layer3: {self.layer3_interval}s (long-term)")
         logger.info(f"  • Quick Scan: {self.quick_scan_interval}s (top {self.quick_scan_top_n} coins)")
     
@@ -484,13 +493,77 @@ class RealtimePumpDetector:
             if bot_score_raw > 60:  # High bot activity (risky)
                 bot_detection_score -= 5
             
+            # === 6. ADVANCED PUMP/DUMP DETECTION (NEW!) ===
+            advanced_result = None
+            advanced_adjustment = 0
+            direction_prob = {'up': 50, 'down': 50, 'sideways': 50}
+            
+            if self.advanced_detector:
+                try:
+                    # Get 5m klines for advanced analysis
+                    df_5m = self.binance.get_klines(symbol, '5m', limit=200)
+                    
+                    # Run advanced detection
+                    advanced_result = self.advanced_detector.analyze_comprehensive(
+                        symbol=symbol,
+                        klines_5m=df_5m,
+                        klines_1h=df_1h
+                    )
+                    
+                    if advanced_result:
+                        direction_prob = advanced_result.get('direction_probability', {'up': 50, 'down': 50, 'sideways': 50})
+                        adv_confidence = advanced_result.get('confidence', 0)
+                        signal = advanced_result.get('signal', 'NEUTRAL')
+                        
+                        # Adjust pump score based on advanced detection
+                        if signal == 'STRONG_PUMP' and adv_confidence >= 75:
+                            advanced_adjustment += 25  # Major boost
+                            logger.info(f"🚀 {symbol}: STRONG_PUMP signal detected (confidence {adv_confidence}%)")
+                        elif signal == 'PUMP' and adv_confidence >= 65:
+                            advanced_adjustment += 15
+                        elif signal == 'STRONG_DUMP':
+                            advanced_adjustment -= 30  # Major penalty
+                            logger.warning(f"⚠️ {symbol}: STRONG_DUMP signal detected - reducing score")
+                        elif signal == 'DUMP':
+                            advanced_adjustment -= 15
+                        
+                        # Institutional flow bonus
+                        inst_flow = advanced_result.get('institutional_flow', {})
+                        if inst_flow.get('activity_type') == 'ACCUMULATION':
+                            advanced_adjustment += 12
+                            logger.info(f"🐋 {symbol}: Institutional accumulation detected")
+                        elif inst_flow.get('activity_type') == 'DISTRIBUTION':
+                            advanced_adjustment -= 10
+                        
+                        if inst_flow.get('smart_money_flow') == 'INFLOW':
+                            advanced_adjustment += 8
+                        
+                        # Volume legitimacy check
+                        vol_analysis = advanced_result.get('volume_analysis', {})
+                        if not vol_analysis.get('is_legitimate'):
+                            advanced_adjustment -= 12
+                            logger.warning(f"⚠️ {symbol}: Volume legitimacy check FAILED")
+                        
+                        # BOT activity penalties
+                        bot_activity = advanced_result.get('bot_activity', {})
+                        if bot_activity.get('wash_trading', {}).get('detected'):
+                            advanced_adjustment -= 15
+                            logger.warning(f"⚠️ {symbol}: Wash trading detected")
+                        if bot_activity.get('dump_bot', {}).get('detected'):
+                            advanced_adjustment -= 20
+                            logger.warning(f"🚨 {symbol}: Dump BOT detected - AVOID")
+                        
+                except Exception as e:
+                    logger.debug(f"Advanced detection error for {symbol}: {e}")
+            
             # CALCULATE CONFIRMATION SCORE
             pump_score = (
                 rsi_1h_score + 
                 mfi_1h_score + 
                 trend_4h_score + 
                 volume_sustained_score + 
-                bot_detection_score
+                bot_detection_score +
+                advanced_adjustment  # NEW
             )
             
             # Bonus: Layer 1 momentum still valid
@@ -498,7 +571,7 @@ class RealtimePumpDetector:
                 pump_score += 10
             
             if pump_score >= self.layer2_threshold:
-                return {
+                result = {
                     'symbol': symbol,
                     'pump_score': pump_score,
                     'layer': 2,
@@ -515,9 +588,22 @@ class RealtimePumpDetector:
                         'volume_sustained_score': round(volume_sustained_score, 1),
                         'bot_score': round(bot_score_raw, 1),
                         'pump_score_raw': round(pump_score_raw, 1),
-                        'bot_detection_score': round(bot_detection_score, 1)
+                        'bot_detection_score': round(bot_detection_score, 1),
+                        # NEW: Advanced detection results
+                        'advanced_signal': advanced_result.get('signal') if advanced_result else None,
+                        'advanced_confidence': advanced_result.get('confidence') if advanced_result else 0,
+                        'advanced_adjustment': round(advanced_adjustment, 1),
+                        'direction_probability': direction_prob,
+                        'institutional_activity': advanced_result.get('institutional_flow', {}).get('activity_type') if advanced_result else None,
+                        'volume_legitimate': advanced_result.get('volume_analysis', {}).get('is_legitimate') if advanced_result else None
                     }
                 }
+                
+                # Store advanced result for later use in alerts
+                if advanced_result:
+                    result['advanced_detection'] = advanced_result
+                
+                return result
             
             return None
             
