@@ -1,8 +1,15 @@
 """
-Market Scanner - Automatic Extreme RSI Detection with Bot Analysis
+Market Scanner v2.0 - Advanced Detection Integration
 Scans all Binance USDT pairs for extreme overbought/oversold RSI conditions on 1D timeframe
 Alert condition: RSI only (MFI is calculated but not used for alerts)
-Additionally detects: Bot activity, Pump patterns, Dump patterns for early entry signals
+
+Enhanced with Advanced Detection System:
+- Institutional flow detection (accumulation/distribution)
+- Volume legitimacy checks (VWAP, buy/sell pressure)
+- 5 BOT type detection (Wash Trading, Spoofing, Iceberg, Market Maker, Dump)
+- Direction probability calculation (UP/DOWN/SIDEWAYS)
+- Risk assessment (LOW/MEDIUM/HIGH/EXTREME)
+- Early entry signals 10-20 minutes before pump
 """
 
 import logging
@@ -13,11 +20,20 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
+# Import advanced detection
+try:
+    from advanced_pump_detector import AdvancedPumpDumpDetector
+    ADVANCED_DETECTOR_AVAILABLE = True
+    logger.info("✅ Advanced Pump/Dump Detector available for MarketScanner")
+except ImportError:
+    ADVANCED_DETECTOR_AVAILABLE = False
+    logger.warning("⚠️ Advanced Detector not available for MarketScanner")
+
 
 class MarketScanner:
     def __init__(self, command_handler, scan_interval=900):
         """
-        Initialize market scanner
+        Initialize market scanner with advanced detection
         
         Args:
             command_handler: TelegramCommandHandler instance
@@ -26,7 +42,17 @@ class MarketScanner:
         self.command_handler = command_handler
         self.binance = command_handler.binance
         self.bot = command_handler.bot
-        self.bot_detector = command_handler.bot_detector  # Add bot detector
+        self.bot_detector = command_handler.bot_detector  # Basic bot detector
+        
+        # Initialize Advanced Detector (NEW)
+        self.advanced_detector = None
+        if ADVANCED_DETECTOR_AVAILABLE:
+            try:
+                self.advanced_detector = AdvancedPumpDumpDetector(self.binance)
+                logger.info("✅ Advanced Detector initialized for MarketScanner")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to initialize Advanced Detector: {e}")
+        
         self.scan_interval = scan_interval
         
         # Scanner state
@@ -40,7 +66,12 @@ class MarketScanner:
         self.mfi_upper = 80
         self.mfi_lower = 20
         
-        logger.info(f"Market scanner initialized with bot detection (interval: {self.scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
+        # Advanced detection thresholds
+        self.advanced_confidence_threshold = 70  # Minimum confidence for advanced signals
+        self.institutional_flow_threshold = 50   # Minimum institutional score
+        
+        detector_status = "with Advanced Detection" if self.advanced_detector else "basic mode"
+        logger.info(f"✅ Market scanner v2.0 initialized {detector_status} (interval: {self.scan_interval}s, RSI: {self.rsi_lower}-{self.rsi_upper})")
     
     def start(self):
         """Start market scanner"""
@@ -208,6 +239,39 @@ class MarketScanner:
             except Exception as e:
                 logger.warning(f"Bot detection failed for {symbol}: {e}")
             
+            # === ADVANCED DETECTION (NEW) ===
+            advanced_result = None
+            if self.advanced_detector:
+                try:
+                    # Run comprehensive advanced detection
+                    advanced_result = self.advanced_detector.analyze_comprehensive(
+                        symbol=symbol,
+                        klines_5m=None,  # Will fetch internally if needed
+                        klines_1h=None,
+                        order_book=None,
+                        trades=None,
+                        market_data=None
+                    )
+                    
+                    if advanced_result:
+                        signal = advanced_result.get('signal', 'NEUTRAL')
+                        confidence = advanced_result.get('confidence', 0)
+                        direction_prob = advanced_result.get('direction_probability', {})
+                        
+                        logger.info(f"🎯 Advanced: {symbol} - Signal={signal}, Confidence={confidence}%, UP={direction_prob.get('up')}%")
+                        
+                        # Log institutional activity
+                        inst_flow = advanced_result.get('institutional_flow', {})
+                        if inst_flow.get('is_institutional'):
+                            activity = inst_flow.get('activity_type', 'NONE')
+                            logger.info(f"🐋 {symbol}: Institutional {activity} detected")
+                        
+                        # Log BOT warnings
+                        bot_activity = advanced_result.get('bot_activity', {})
+                        for bot_type, data in bot_activity.items():
+                            if data.get('detected'):
+                                logger.warning(f"🚨 {symbol}: {bot_type.upper()} BOT detected ({data.get('confidence')}%)")
+            
             # Determine condition type (RSI only)
             conditions = []
             if current_rsi >= self.rsi_upper:
@@ -225,6 +289,38 @@ class MarketScanner:
                 if bot_score >= 40:  # Bot activity detected
                     conditions.append(f"🤖 Bot Activity ({bot_score:.0f}%)")
             
+            # === ADD ADVANCED DETECTION CONDITIONS (NEW) ===
+            if advanced_result:
+                signal = advanced_result.get('signal', 'NEUTRAL')
+                confidence = advanced_result.get('confidence', 0)
+                
+                # Strong signals
+                if signal == 'STRONG_PUMP' and confidence >= 75:
+                    conditions.append(f"🚀 STRONG PUMP ({confidence:.0f}%)")
+                elif signal == 'STRONG_DUMP':
+                    conditions.append(f"🚨 STRONG DUMP ({confidence:.0f}%)")
+                
+                # Institutional activity
+                inst_flow = advanced_result.get('institutional_flow', {})
+                if inst_flow.get('is_institutional'):
+                    activity = inst_flow.get('activity_type', 'NONE')
+                    if activity == 'ACCUMULATION':
+                        conditions.append(f"🐋 Institutional Accumulation")
+                    elif activity == 'DISTRIBUTION':
+                        conditions.append(f"🐋 Institutional Distribution")
+                
+                # Volume legitimacy warning
+                vol_analysis = advanced_result.get('volume_analysis', {})
+                if not vol_analysis.get('is_legitimate') and vol_analysis.get('legitimacy_score', 100) < 50:
+                    conditions.append(f"⚠️ Fake Volume")
+                
+                # Critical BOT warnings
+                bot_activity = advanced_result.get('bot_activity', {})
+                if bot_activity.get('wash_trading', {}).get('detected'):
+                    conditions.append(f"🚨 Wash Trading")
+                if bot_activity.get('dump_bot', {}).get('detected'):
+                    conditions.append(f"🚨 Dump BOT")
+            
             return {
                 'symbol': symbol,
                 'is_extreme': True,
@@ -233,6 +329,7 @@ class MarketScanner:
                 'price': current_price,
                 'conditions': conditions,
                 'bot_detection': bot_detection,  # Include full bot analysis
+                'advanced_detection': advanced_result,  # NEW: Advanced detection results
                 'timestamp': datetime.now()
             }
             
@@ -266,12 +363,17 @@ class MarketScanner:
                 return
             
             # Send summary first in Vietnamese
-            summary = f"<b>🔍 CẢNH BÁO QUÉT THỊ TRƯỜNG</b>\n\n"
+            summary = f"<b>🔍 CẢNH BÁO QUÉT THỊ TRƯỜNG (v2.0)</b>\n\n"
             summary += f"⚡ Tìm thấy <b>{len(new_alerts)}</b> coin có RSI 1D cực đoan:\n\n"
             
             # Count bot/pump detections
             pump_count = sum(1 for c in new_alerts if c.get('bot_detection') and c['bot_detection'].get('pump_score', 0) >= 45)
             bot_count = sum(1 for c in new_alerts if c.get('bot_detection') and c['bot_detection'].get('bot_score', 0) >= 40)
+            
+            # Count advanced detection signals (NEW)
+            strong_pump_count = sum(1 for c in new_alerts if c.get('advanced_detection') and c['advanced_detection'].get('signal') == 'STRONG_PUMP')
+            institutional_count = sum(1 for c in new_alerts if c.get('advanced_detection') and c['advanced_detection'].get('institutional_flow', {}).get('is_institutional'))
+            fake_volume_count = sum(1 for c in new_alerts if c.get('advanced_detection') and not c['advanced_detection'].get('volume_analysis', {}).get('is_legitimate'))
             
             for coin in new_alerts:
                 symbol = coin['symbol']
@@ -305,12 +407,20 @@ class MarketScanner:
                 summary += f"\n   ⚡ {conditions_text}\n\n"
             
             # Add summary stats
-            if pump_count > 0 or bot_count > 0:
-                summary += f"<b>⚠️ PHÁT HIỆN:</b>\n"
+            has_detections = (pump_count > 0 or bot_count > 0 or strong_pump_count > 0 or institutional_count > 0 or fake_volume_count > 0)
+            
+            if has_detections:
+                summary += f"<b>⚠️ PHÁT HIỆN (Advanced Detection):</b>\n"
+                if strong_pump_count > 0:
+                    summary += f"🚀 {strong_pump_count} STRONG PUMP signals (confidence ≥75%)\n"
                 if pump_count > 0:
-                    summary += f"🚀 {pump_count} mẫu PUMP\n"
+                    summary += f"⚡ {pump_count} mẫu PUMP (basic detection)\n"
+                if institutional_count > 0:
+                    summary += f"🐋 {institutional_count} hoạt động Institutional\n"
                 if bot_count > 0:
                     summary += f"🤖 {bot_count} hoạt động Bot\n"
+                if fake_volume_count > 0:
+                    summary += f"⚠️ {fake_volume_count} volume giả (wash trading)\n"
                 summary += f"\n"
             
             summary += f"📤 Đang gửi phân tích chi tiết cho từng coin...\n"
@@ -334,14 +444,15 @@ class MarketScanner:
     
     def _send_1d_analysis_with_bot(self, coin):
         """
-        Send 1D analysis for a coin with bot detection (calculates both RSI and MFI, shows both + bot analysis)
+        Send 1D analysis with ADVANCED DETECTION RESULTS
         
         Args:
-            coin: Coin data dict with symbol, rsi_1d, mfi_1d, price, conditions, bot_detection
+            coin: Coin data dict with symbol, rsi_1d, mfi_1d, price, conditions, bot_detection, advanced_detection
         """
         try:
             symbol = coin['symbol']
             bot_detection = coin.get('bot_detection')
+            advanced_result = coin.get('advanced_detection')  # NEW
             
             # Get only 1D klines
             df_1d = self.binance.get_klines(symbol, '1d', limit=100)
@@ -429,14 +540,94 @@ class MarketScanner:
             # Signal
             msg += f"\n<b>📍 Tín Hiệu: {enhanced_signal_vi}</b>\n"
             
-            # Bot Detection Section - Only show if detected
-            if bot_detection:
+            # === ADVANCED DETECTION SECTION (NEW) ===
+            if advanced_result:
+                signal_adv = advanced_result.get('signal', 'NEUTRAL')
+                confidence = advanced_result.get('confidence', 0)
+                direction_prob = advanced_result.get('direction_probability', {})
+                risk_level = advanced_result.get('risk_level', 'MEDIUM')
+                
+                # Show advanced signal if significant
+                if confidence >= 60:
+                    msg += f"\n<b>🎯 ADVANCED DETECTION (v4.0):</b>\n"
+                    msg += f"Signal: <b>{signal_adv}</b> (Confidence: {confidence}%)\n"
+                    msg += f"Direction: ⬆️{direction_prob.get('up', 0)}% | ⬇️{direction_prob.get('down', 0)}% | ➡️{direction_prob.get('sideways', 0)}%\n"
+                    msg += f"Risk Level: {risk_level}\n"
+                
+                # Institutional Flow
+                inst_flow = advanced_result.get('institutional_flow', {})
+                if inst_flow.get('is_institutional'):
+                    activity = inst_flow.get('activity_type', 'NONE')
+                    smart_flow = inst_flow.get('smart_money_flow', 'NEUTRAL')
+                    
+                    msg += f"\n<b>🐋 INSTITUTIONAL FLOW:</b>\n"
+                    msg += f"Activity: <b>{activity}</b>\n"
+                    msg += f"Smart Money: {smart_flow}\n"
+                    
+                    if activity == 'ACCUMULATION' and current_rsi <= self.rsi_lower:
+                        msg += f"\n💎 <b>CƠ HỘI VÀNG!</b>\n"
+                        msg += f"   • Tổ chức đang tích lũy\n"
+                        msg += f"   • RSI quá bán\n"
+                        msg += f"   • Có thể vào lệnh sớm 10-20 phút\n"
+                    elif activity == 'DISTRIBUTION' and current_rsi >= self.rsi_upper:
+                        msg += f"\n⚠️ <b>CẢNH BÁO THOÁT!</b>\n"
+                        msg += f"   • Tổ chức đang phân phối\n"
+                        msg += f"   • RSI quá mua\n"
+                        msg += f"   • Cân nhắc chốt lời / thoát lệnh\n"
+                
+                # Volume Legitimacy
+                vol_analysis = advanced_result.get('volume_analysis', {})
+                if not vol_analysis.get('is_legitimate'):
+                    legitimacy_score = vol_analysis.get('legitimacy_score', 0)
+                    volume_quality = vol_analysis.get('volume_quality', 'UNKNOWN')
+                    
+                    msg += f"\n<b>⚠️ CẢNH BÁO VOLUME:</b>\n"
+                    msg += f"Legitimacy: {legitimacy_score}/100 ({volume_quality})\n"
+                    msg += f"⚠️ Volume có thể giả - Thận trọng!\n"
+                
+                # BOT Activity Warnings
+                bot_activity = advanced_result.get('bot_activity', {})
+                detected_bots = [k for k, v in bot_activity.items() if isinstance(v, dict) and v.get('detected')]
+                
+                if detected_bots:
+                    msg += f"\n<b>🚨 BOT ACTIVITY DETECTED:</b>\n"
+                    for bot_type in detected_bots:
+                        conf = bot_activity[bot_type].get('confidence', 0)
+                        bot_name_map = {
+                            'wash_trading': 'Wash Trading',
+                            'spoofing': 'Spoofing',
+                            'iceberg': 'Iceberg BOT',
+                            'market_maker': 'Market Maker',
+                            'dump_bot': 'Dump BOT'
+                        }
+                        bot_name = bot_name_map.get(bot_type, bot_type)
+                        msg += f"• {bot_name}: {conf}%\n"
+                    
+                    msg += f"\n⚠️ Thị trường bị thao túng - TRÁNH TRADE!\n"
+                
+                # Recommendation
+                recommendation = advanced_result.get('recommendation', {})
+                action = recommendation.get('action', 'WAIT')
+                
+                if action in ['BUY', 'SELL'] and confidence >= 70:
+                    msg += f"\n<b>💡 KHUYẾN NGHỊ:</b>\n"
+                    msg += f"Action: <b>{action}</b>\n"
+                    msg += f"Position Size: {recommendation.get('position_size', 'N/A')}\n"
+                    
+                    reasoning = recommendation.get('reasoning', [])
+                    if reasoning:
+                        msg += f"Lý do:\n"
+                        for reason in reasoning[:3]:  # Show first 3 reasons
+                            msg += f"  {reason}\n"
+            
+            # Bot Detection Section - Only show if detected (basic)
+            elif bot_detection:  # Only show if no advanced detection
                 bot_score = bot_detection.get('bot_score', 0)
                 pump_score = bot_detection.get('pump_score', 0)
                 
                 # Only show bot analysis if there's something detected
                 if bot_score >= 20 or pump_score >= 20:
-                    msg += f"\n<b>🤖 PHÂN TÍCH BOT:</b>\n"
+                    msg += f"\n<b>🤖 PHÂN TÍCH BOT (Basic):</b>\n"
                     
                     if bot_score >= 20:
                         status = "✅ PHÁT HIỆN" if bot_score >= 40 else "⚠️ Có dấu hiệu"

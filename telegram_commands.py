@@ -1923,7 +1923,7 @@ class TelegramCommandHandler:
         
         @self.telegram_bot.message_handler(commands=['startmarketscan'])
         def handle_startmarketscan(message):
-            """Start automatic market scanner"""
+            """Start automatic market scanner with Advanced Detection v2.0"""
             logger.info(f"Received /startmarketscan command from chat {message.chat.id}")
             
             if not check_authorized(message):
@@ -1942,22 +1942,56 @@ class TelegramCommandHandler:
                     logger.info(f"/startmarketscan: Scanner start result: {success}")
                     
                     if success:
+                        # Check if advanced detector is available
+                        has_advanced = self.market_scanner.advanced_detector is not None
+                        
                         msg = "✅ <b>Market Scanner Started!</b>\n\n"
+                        
+                        if has_advanced:
+                            msg += "🎯 <b>Mode: ADVANCED DETECTION v4.0</b>\n\n"
+                        else:
+                            msg += "🎯 <b>Mode: Basic Detection</b>\n\n"
+                        
                         msg += "🔍 <b>What it does:</b>\n"
                         msg += "   • Scans ALL Binance USDT pairs\n"
                         msg += "   • Calculates 1D RSI & MFI\n"
                         msg += "   • Alerts based on RSI only (&gt;80 or &lt;20)\n"
-                        msg += "   • 🤖 Detects bot activity automatically\n"
-                        msg += "   • 🚀 Identifies pump patterns\n"
-                        msg += "   • ⚠️ Warns about dump risks\n\n"
-                        msg += f"⏱️ <b>Scan interval:</b> {self.market_scanner.scan_interval//60} minutes\n"
+                        
+                        if has_advanced:
+                            msg += "\n🚀 <b>Advanced Features:</b>\n"
+                            msg += "   • 🐋 Institutional flow detection\n"
+                            msg += "   • 📊 Volume legitimacy checks\n"
+                            msg += "   • 🤖 5 BOT type detection:\n"
+                            msg += "      - Wash Trading\n"
+                            msg += "      - Spoofing\n"
+                            msg += "      - Iceberg BOT\n"
+                            msg += "      - Market Maker\n"
+                            msg += "      - Dump BOT\n"
+                            msg += "   • 🎯 Direction probability (UP/DOWN/SIDEWAYS)\n"
+                            msg += "   • ⚠️ Risk assessment (LOW/MEDIUM/HIGH/EXTREME)\n"
+                            msg += "   • ⚡ Early entry signals 10-20 min before pump\n"
+                        else:
+                            msg += "   • 🤖 Basic bot activity detection\n"
+                            msg += "   • 🚀 Pump pattern identification\n"
+                            msg += "   • ⚠️ Dump risk warnings\n"
+                        
+                        msg += f"\n⏱️ <b>Scan interval:</b> {self.market_scanner.scan_interval//60} minutes\n"
                         msg += f"📊 <b>RSI alert levels:</b> &lt;{self.market_scanner.rsi_lower} or &gt;{self.market_scanner.rsi_upper}\n"
                         msg += f"💰 <b>MFI (display only):</b> {self.market_scanner.mfi_lower}-{self.market_scanner.mfi_upper}\n"
                         msg += f"🔔 <b>Cooldown:</b> 1 hour per coin\n\n"
-                        msg += "⚡ <b>Early Entry Signals:</b>\n"
-                        msg += "   🚀 Pump + Oversold RSI = STRONG BUY\n"
-                        msg += "   ⚠️ Pump + Overbought RSI = DUMP WARNING\n\n"
-                        msg += "🚀 Scanner running in background...\n"
+                        
+                        if has_advanced:
+                            msg += "⚡ <b>Advanced Entry Signals:</b>\n"
+                            msg += "   💎 Institutional Accumulation + Oversold RSI = GOLDEN OPPORTUNITY\n"
+                            msg += "   🚀 STRONG_PUMP + confidence &gt;75% = HIGH CONFIDENCE BUY\n"
+                            msg += "   ⚠️ Institutional Distribution + Overbought = EXIT WARNING\n"
+                            msg += "   🚨 BOT Activity Detected = AVOID TRADE\n"
+                        else:
+                            msg += "⚡ <b>Early Entry Signals:</b>\n"
+                            msg += "   🚀 Pump + Oversold RSI = STRONG BUY\n"
+                            msg += "   ⚠️ Pump + Overbought RSI = DUMP WARNING\n"
+                        
+                        msg += "\n🚀 Scanner running in background...\n"
                         msg += "💡 Use /stopmarketscan to stop"
                     else:
                         msg = "❌ Failed to start market scanner"
