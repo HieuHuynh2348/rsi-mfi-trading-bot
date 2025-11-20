@@ -1754,8 +1754,165 @@ KEY INTERPRETATIONS:
   24h Low: ${market['low_24h']:,.2f}
   24h Volume: ${market['volume_24h']:,.0f} USDT
 
+═══════════════════════════════════════════════════════════════════════════════
+🔄 SECTION 0.5: MULTI-SOURCE ON-CHAIN DATA INTEGRATION (v3.3 - REAL-TIME)
+═══════════════════════════════════════════════════════════════════════════════
+
+**IMPORTANT FOR AI:** You have web browsing capability. Fetch real-time on-chain data from these public URLs:
+
+**Glassnode Institutional Flows:** https://studio.glassnode.com/metrics
+- Browse for Exchange Flow Multiple, Long-Term Holder Supply, Miner Reserve
+- Example: Rising miner reserves = capitulation bottom signal
+- Integration: Cross-verify with Arkham whale flows for BTC direction
+
+**CoinGlass Derivatives Data:** https://www.coinglass.com/
+- Browse perpetual funding rates, liquidation heatmaps, open interest
+- Example: BTC Funding Rate >0.1% = contrarian short opportunity
+- Integration: Combine with DeFiLlama TVL for hedging signals
+
+**DeFiLlama TVL & Liquidity:** https://defillama.com/
+- Browse TVL across chains, protocol revenue, yield trends
+- Example: Ethereum TVL $50B+, Solana yield spikes indicate sector rotation
+- Integration: Monitor cross-chain bridges for liquidity shifts
+
+**Arkham Entity Explorer:** https://platform.arkhamintelligence.com/explorer
+- Track institutional wallet flows and entity clustering
+- Example: Binance Hot Wallet >10k ETH transfers signal exchange inflows
+- Integration: High concentration (>30% top 10) increases dump risk
+
+**Token Terminal Protocol Revenue:** https://tokenterminal.com/terminal
+- Browse protocol revenue, P/S ratios, valuation multiples
+- Example: Uniswap P/S <5x with rising revenue = long opportunity
+- Integration: Compare with Messari tokenomics for valuation models
+
+**Nansen Smart Money Analysis:** https://www.nansen.ai/research
+- Follow smart money wallets and DEX trader performance
+- Example: Smart DEX traders with >90% win rate = follow their entries
+- Integration: Highest weight for entry confirmation signals
+
+**Messari Research & Tokenomics:** https://messari.io/research
+- Read free research reports on fundamentals and market structure
+- Example: DePIN protocol incentive burns indicate utility strength
+- Integration: Combine with DeFiLlama TVL for sector rotation alpha
+
+**DATA INTEGRATION PRIORITIES:**
+1. Cross-verify signals across MINIMUM 3 independent on-chain sources
+2. Weight institutional sources 40% higher (Glassnode, Arkham, Token Terminal)
+3. Prioritize real-time DEX data over CEX for altcoins (less manipulation)
+4. Use Glassnode flows as PRIMARY BTC direction indicator
+5. Apply mean-variance optimization to correlation analysis
+6. Factor time decay: older signals weighted 30% lower than current
+
+═══════════════════════════════════════════════════════════════════════════════
+🧭 SECTION 1.5: INSTITUTIONAL FUND TRADING TACTICS (v3.3)
+═══════════════════════════════════════════════════════════════════════════════
+
+**ASSET ALLOCATION STRATEGY (Risk Parity Model):**
+- Macro Regime Detection: Fed policy + BTC dominance + institutional flows + volatility
+- Risk Parity Allocation: Position sizing based on volatility-adjusted correlations
+- Cross-DEX Liquidity Mining: Capture alpha from concentrated liquidity in high-fee tiers
+- Derivatives Hedging: Use CoinGlass funding rates to delta-neutral hedge spot exposure
+- Yield Curve Arbitrage: Exploit basis differences between spot/futures/perpetuals
+
+**ENTRY/EXIT METHODOLOGY (Smart Money Framework):**
+- Track >$10M institutional orders via Arkham for confirmation
+- Follow labeled smart money wallets with >90% win rate history (Nansen)
+- Enter when price approaches high-liquidity DEX zones (Volume Profile analysis)
+- Use CoinGlass funding extremes (>±$0.1%) for contrarian signals
+- Use Glassnode miner capitulation for BTC bottom fishing
+
+**RISK MANAGEMENT (Fund Grade Standards):**
+- Max Drawdown: 2% per trade, 8% per portfolio
+- Correlation Risk: Reduce position 30% when BTC correlation >85%
+- Liquidity Risk: Avoid positions >10% of daily DEX volume
+- Black Swan Protection: Maintain 5% stablecoin buffer during high volatility
+- Stress Test: Simulate -30% scenarios before entry
+- Kelly Criterion: Position Size = (win_prob × win_loss_ratio - loss_prob) / win_loss_ratio
+
+**PORTFOLIO CONSTRUCTION (Institutional Framework):**
+- Core Holdings (60%): BTC + ETH with custody and yield
+- Satellite (25%): High-conviction alts with fundamentals
+- Alpha Generation (10%): Active trading from technical + on-chain signals
+- Risk Mitigation (5%): Options protection, stablecoin yield, cash
+
+**PERFORMANCE TARGETS:**
+- Sharpe Ratio: >1.5 (risk-adjusted returns)
+- Win Rate: ≥65% for systematic strategies
+- Profit Factor: >2.0 (gross profits / gross losses)
+- Max Drawdown: <25% annually
+- Calmar Ratio: >1.0 (annual return / max drawdown)
+
+═══════════════════════════════════════════════════════════════════════════════
+😨 SECTION 1.6: MULTI-SOURCE SENTIMENT & MEDIA DATA INTEGRATION (v3.3 - REAL-TIME)
+═══════════════════════════════════════════════════════════════════════════════
+
+**IMPORTANT FOR AI:** Fetch real-time sentiment from these public URLs:
+
+**Social Media Sentiment (Browse & Analyze):**
+- X/Twitter: https://x.com/ - Search "{symbol} price" or "{symbol} news" for FOMO detection
+- Telegram: https://web.telegram.org/ - Monitor {symbol} channels for retail panic
+- Reddit: https://www.reddit.com/ - Check r/cryptocurrency and {symbol}-specific subreddits
+- TradingView Ideas: https://www.tradingview.com/ - Check if >70% votes bullish
+
+**News Platforms (Latest Headlines):**
+- CoinDesk: https://www.coindesk.com/ - Institutional buy-in signals (ETF approvals)
+- Cointelegraph: https://cointelegraph.com/ - Regulatory and project news
+- Bloomberg Crypto: https://www.bloomberg.com/crypto - Macro and institution interest
+- Reuters Markets: https://www.reuters.com/markets/cryptocurrencies/ - Official announcements
+- Yahoo Finance Crypto: https://finance.yahoo.com/cryptocurrencies/ - Sentiment shifts
+
+**Search Trends (Retail Interest Indicator):**
+- Google Trends: https://trends.google.com/ - Search "{symbol}" for trend spikes
+- CryptoCompare: https://www.cryptocompare.com/ - Search volume vs price correlation
+- >200% WoW spike = Retail entry phase (caution for dump)
+
+**Economic Calendar & Macro Events:**
+- ForexFactory: https://www.forexfactory.com/calendar - Fed decisions (HIGH impact = volatility)
+- Investing.com: https://www.investing.com/economic-calendar/ - Macro events impact
+- Correlate Fed rate decisions with BTC direction
+
+**Whale & Liquidation Alerts:**
+- Whale Alert Twitter: https://x.com/whale_alert - ">10,000 BTC to exchange" signals
+- CoinGlass Heatmap: https://www.coinglass.com/ - Liquidation cascades predict volatility
+- Large transfers = distribution risk (price likely down next)
+
+**Options & Derivatives Sentiment:**
+- Deribit Options: https://www.deribit.com/ - Put/call ratios (>1.5 = bearish)
+- OKX Options: https://www.okx.com/ - Volatility skew analysis
+- High puts = fear = contrarian buy setup
+
+**Funding Rate Sentiment (Leverage Positions):**
+- Binance Perpetuals: https://www.binance.com/ - Browse funding rates
+- OKX Perpetuals: https://www.okx.com/ - Negative funding = squeeze potential
+- Bybit Perpetuals: https://www.bybit.com/ - Longs overly leveraged = risk
+
+**Fear & Greed Index (Market Sentiment Gauge):**
+- Alternative.me: https://alternative.me/crypto/fear-and-greed-index/
+- **CONTRARIAN SIGNAL:** Index 0-20 (Extreme Fear) = Buy opportunity
+- Index 80-100 (Extreme Greed) = Sell/Take profits
+- Current usage: If index is 11 (Extreme Fear), boost buy confidence by 15-20%
+
+**Institutional Filings (Long-term Conviction):**
+- SEC EDGAR: https://www.sec.gov/edgar.shtml - Search "Bitcoin ETF" or {symbol} ETF
+- Form 13F filings = Quarterly institutional holdings changes
+- ETF inflows >$500M = Strong institutional support
+
+**SENTIMENT WEIGHTING FRAMEWORK:**
+1. Institutional News (Bloomberg, Reuters): 35% weight - High reliability
+2. Social Media (X/Telegram): 25% weight - Retail flow indicator
+3. On-Chain Data (Glassnode, Arkham): 25% weight - Actual money movement
+4. Fear & Greed Index: 10% weight - Market extremes for contrarian plays
+5. Search Trends: 5% weight - Retail FOMO detection
+
+**SENTIMENT INTEGRATION RULES:**
+- If Fear & Greed <20 AND technical bullish = STRONG BUY (contrarian + technicals)
+- If Fear & Greed >80 AND technical bearish = STRONG SELL (greed + technicals)
+- If whale alert ">10k BTC to exchange" + price rallying = DISTRIBUTION RISK (lower confidence)
+- If smart money wallet accumulating + price consolidating = STRONG BUY setup
+- If news +ve but Fear & Greed extreme fear = EXTREME BULL move coming
+
 ═══════════════════════════════════════════
-🎯 YOUR TASK
+🎯 YOUR TASK (v3.3 ENHANCED)
 ═══════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -1796,13 +1953,14 @@ CAPPED AT: {position_sizing_guide}
 
 APPLY THESE RULES TO YOUR RECOMMENDATION AND ADJUST ENTRY/TP/SL ACCORDINGLY.
 
-═══════════════════════════════════════════
-🎯 ENHANCED JSON FORMAT (v2.2)
-═══════════════════════════════════════════
+═══════════════════════════════════════════════════════════════════════════════
+🎯 ENHANCED JSON FORMAT (v3.3 - REAL-TIME + SENTIMENT)
+═══════════════════════════════════════════════════════════════════════════════
 
-Provide a comprehensive trading analysis in JSON format with the following structure:
+Provide a comprehensive trading analysis in JSON format with REAL-TIME timestamp:
 
 {{
+  "real_time_timestamp": "ISO 8601 timestamp when this analysis was generated (e.g., '2025-11-20T12:00:00Z')",
   "asset_type": "{asset_type}",
   "recommendation": "BUY" | "SELL" | "HOLD" | "WAIT",
   "confidence": 0-100,
@@ -1922,14 +2080,111 @@ Provide a comprehensive trading analysis in JSON format with the following struc
       "current_adjustments": "Specific changes made to entry/SL/TP based on past" or "No adjustments needed"
     }},
     "recommendation_rationale": "Brief explanation of how historical data influenced final recommendation (2-3 sentences)"
+  }},
+  
+  "sentiment_analysis": {{
+    "fear_greed_index": {{
+      "current_value": 0-100,
+      "current_status": "Extreme Fear" | "Fear" | "Neutral" | "Greed" | "Extreme Greed",
+      "contrarian_signal": "Buy opportunity" | "Normal" | "Sell opportunity",
+      "confidence_impact": "Increase confidence by X%" or "Decrease confidence by X%"
+    }},
+    "social_media_sentiment": {{
+      "x_twitter_sentiment": "Very Positive" | "Positive" | "Neutral" | "Negative" | "Very Negative",
+      "telegram_sentiment": "Very Positive" | "Positive" | "Neutral" | "Negative" | "Very Negative",
+      "reddit_sentiment": "Very Positive" | "Positive" | "Neutral" | "Negative" | "Very Negative",
+      "overall_social_score": 0-100,
+      "retail_fomo_level": "Extreme" | "High" | "Moderate" | "Low" | "None"
+    }},
+    "news_sentiment": {{
+      "latest_news_source": "CoinDesk" | "Cointelegraph" | "Bloomberg" | "Reuters" | "Other",
+      "headline": "Latest significant headline",
+      "sentiment": "Very Positive" | "Positive" | "Neutral" | "Negative" | "Very Negative",
+      "institutional_impact": "Strong positive" | "Positive" | "Neutral" | "Negative" | "Strong negative",
+      "news_relevance": "Direct to {symbol}" | "Sector impact" | "Market-wide impact"
+    }},
+    "whale_activity_sentiment": {{
+      "recent_whale_alerts": "Large transfers to exchange" | "Accumulation" | "None significant",
+      "distribution_risk": "High" | "Moderate" | "Low",
+      "sentiment_impact": "Bearish" | "Neutral" | "Bullish"
+    }},
+    "economic_calendar_impact": {{
+      "upcoming_event": "Fed rate decision" | "CPI release" | "Other macro event" | "None",
+      "event_impact_level": "HIGH" | "MEDIUM" | "LOW",
+      "expected_direction": "Bullish for crypto" | "Bearish for crypto" | "Neutral"
+    }},
+    "sentiment_divergence": {{
+      "retail_vs_institutional": "Retail bullish, institutions bearish" | "Aligned" | "Retail bearish, institutions bullish",
+      "divergence_strength": "Extreme" | "Significant" | "Moderate" | "None",
+      "risk_implication": "High risk of reversal" | "Mixed signals" | "Aligned direction"
+    }},
+    "overall_sentiment_score": 0-100,
+    "sentiment_summary": "One sentence summary of market sentiment for {symbol} (tiếng Việt)"
+  }},
+  
+  "on_chain_analysis": {{
+    "glassnode_flows": {{
+      "exchange_flow_status": "Net inflows >$100M" | "Neutral flows" | "Net outflows >$100M",
+      "interpretation": "Accumulation" | "Neutral" | "Distribution"
+    }},
+    "coinglass_derivatives": {{
+      "funding_rate_status": "Positive >0.1%" | "Positive <0.1%" | "Neutral" | "Negative",
+      "liquidation_risk": "High" | "Moderate" | "Low",
+      "open_interest_trend": "Increasing" | "Stable" | "Decreasing"
+    }},
+    "defillama_tvl": {{
+      "tvl_trend": "Increasing >10% MoM" | "Stable" | "Decreasing >10% MoM",
+      "protocol_health": "Strong" | "Stable" | "Concerning",
+      "cross_chain_flows": "Inflows" | "Neutral" | "Outflows"
+    }}
+  }},
+  
+  "data_sources": {{
+    "real_time_data_timestamp": "ISO 8601 timestamp of data fetch",
+    "on_chain_sources": [
+      {{"url": "https://studio.glassnode.com/metrics", "fetched_at": "ISO timestamp", "data": "Exchange flows, LTH supply"}},
+      {{"url": "https://www.coinglass.com/", "fetched_at": "ISO timestamp", "data": "Funding rates, liquidations"}},
+      {{"url": "https://defillama.com/", "fetched_at": "ISO timestamp", "data": "TVL, cross-chain flows"}}
+    ],
+    "sentiment_sources": [
+      {{"url": "https://alternative.me/crypto/fear-and-greed-index/", "fetched_at": "ISO timestamp", "value": "Current Fear & Greed value"}},
+      {{"url": "https://x.com/whale_alert", "fetched_at": "ISO timestamp", "data": "Latest whale transfers"}},
+      {{"url": "https://www.coindesk.com/", "fetched_at": "ISO timestamp", "headline": "Latest news"}}
+    ],
+    "fetched_metrics": [
+      "BTC price from news: ~$91,500",
+      "Fear & Greed Index: 11 (Extreme Fear)",
+      "Glassnode flows: [specific data]",
+      "Whale alerts: [specific transfers]"
+    ]
   }}
 }}
 
-IMPORTANT GUIDELINES - EXPANDED (v2.2):
+IMPORTANT GUIDELINES - EXPANDED (v3.3):
 
-1. **ASSET TYPE ANALYSIS (New):**
+1. **REAL-TIME DATA REQUIREMENT:**
+   - Must include real_time_timestamp in ISO 8601 format
+   - Must include data_sources with fetched_at timestamps for each source
+   - Verify data is current (within 24h) or note any delays
+   - If unable to fetch current data, indicate "data age >24h" in warnings
+
+2. **SENTIMENT ANALYSIS INTEGRATION (NEW - v3.3):**
+   - Fill fear_greed_index with current value from https://alternative.me/crypto/fear-and-greed-index/
+   - If Fear & Greed <20 (Extreme Fear): Apply +15 confidence boost for BUY signals
+   - If Fear & Greed >80 (Extreme Greed): Apply -15 confidence reduction for SELL signals
+   - Cross-verify sentiment divergence: Retail bullish but institutions selling = CAUTION
+   - Whale alerts showing >$1B to exchange = distribution risk, reduce confidence
+
+3. **ON-CHAIN DATA INTEGRATION (v3.3):**
+   - Browse Glassnode for latest exchange flows (indicator of institutional direction)
+   - Check CoinGlass funding rates: >0.1% = longs overly leveraged, contrarian short
+   - Monitor DeFiLlama TVL changes: >10% MoM growth = sector strength
+   - Weight on-chain data 25% in final confidence calculation
+
+4. **ASSET TYPE ANALYSIS:**
    - {asset_type} requires specific focus areas (see Section 0)
    - Apply risk multiplier {risk_multiplier}x to position sizing
+
    - Adjust confidence penalties based on asset type (see Dynamic Risk Rules)
    - Include macro_context section in JSON (conditional on asset type)
 
@@ -2174,6 +2429,111 @@ IMPORTANT GUIDELINES - EXPANDED (v2.2):
    - If current setup very similar to recent LOSS → WAIT unless conditions clearly different
    - If only 1-2 historical analyses (insufficient data) → Note "limited historical context, be cautious"
 
+═══════════════════════════════════════════════════════════════════════════════
+🌍 SECTION 14: REAL-TIME DATA INTEGRATION (v3.3 - NEW)
+═══════════════════════════════════════════════════════════════════════════════
+
+**AI INSTRUCTION - MANDATORY DATA FETCHING:**
+
+You MUST fetch real-time data from public URLs before finalizing your analysis:
+
+1. **On-Chain Data (30% weight in final recommendation):**
+   - Visit https://studio.glassnode.com/metrics for Glassnode exchange flows
+   - Browse https://www.coinglass.com/ for funding rates and liquidations
+   - Check https://defillama.com/ for TVL and cross-chain flows
+   - Include fetched data in data_sources section with timestamps
+
+2. **Sentiment Data (25% weight in final recommendation):**
+   - Visit https://alternative.me/crypto/fear-and-greed-index/ for current Fear & Greed
+   - Browse https://x.com/ for latest {symbol} sentiment (search "{symbol} news", "{symbol} bullish")
+   - Check https://www.coindesk.com/ for latest institutional news
+   - Visit https://x.com/whale_alert for recent large transfers
+
+3. **Data Quality Requirements:**
+   - All fetched data MUST have timestamps in ISO 8601 format (2025-11-20T12:00:00Z)
+   - If data is >24h old, note this as "⚠️ Data age >24h" in warnings section
+   - If unable to fetch current data, explicitly state this in analysis
+   - Cross-verify multiple sources - require agreement from 2/3 sources for high confidence
+
+4. **Timestamp Integration:**
+   - real_time_timestamp field MUST be current (when you generate the analysis)
+   - Each data_source entry MUST have fetched_at timestamp
+   - Use exact timestamp when data was retrieved, not approximate time
+
+5. **Data Sources Documentation:**
+   - data_sources.on_chain_sources: List URLs and data fetched for each
+   - data_sources.sentiment_sources: List URLs and data fetched for each
+   - data_sources.fetched_metrics: Specific values like "BTC price ~$91,500", "Fear & Greed: 11"
+   - This ensures full transparency and reproducibility
+
+═══════════════════════════════════════════════════════════════════════════════
+🔍 SECTION 15: SENTIMENT-ADJUSTED CONFIDENCE FORMULA (v3.3 - NEW)
+═══════════════════════════════════════════════════════════════════════════════
+
+**FINAL CONFIDENCE CALCULATION WITH REAL-TIME DATA:**
+
+```
+TECHNICAL_SCORE = (RSI analysis + MFI analysis + Volume profile + SMC bias + Pump signals) / 5
+
+HISTORICAL_SCORE = Historical Adjustment (from past analyses and patterns)
+
+SENTIMENT_SCORE = (Fear & Greed impact + News sentiment + Whale activity + On-chain flows) / 4
+
+INSTITUTIONAL_WEIGHT = On-chain data quality and confirmation strength (0-100)
+
+FINAL_CONFIDENCE = (
+  TECHNICAL_SCORE × 0.40 +
+  HISTORICAL_SCORE × 0.25 +
+  SENTIMENT_SCORE × 0.20 +
+  INSTITUTIONAL_WEIGHT × 0.15
+)
+
+APPLIED_ADJUSTMENTS:
+1. If Fear & Greed < 20: +15 confidence for BUY (contrarian)
+2. If Fear & Greed > 80: -15 confidence for SELL (greed risk)
+3. If whale alerts show >$1B to exchange: -10 confidence (distribution risk)
+4. If Glassnode flows positive >$500M: +8 confidence (institutional inflows)
+5. If news extremely negative but technical bullish: -5 confidence (caution)
+6. If sentiment divergence (retail bullish, institutions bearish): -10 confidence
+```
+
+**EXAMPLE CALCULATION:**
+- Technical Score: 72 (good confluence)
+- Historical Score: +10 (similar to past WIN, 68% win rate)
+- Sentiment Score: 65 (Fear & Greed 15 = contrarian +15, news +5, flows positive)
+- Institutional Weight: 75 (Glassnode confirmed inflow)
+
+Final = (72 × 0.40) + (10 × 0.25) + (65 × 0.20) + (75 × 0.15)
+     = 28.8 + 2.5 + 13.0 + 11.25
+     = 55.55 → Round to 56 (medium-high confidence)
+
+With adjustments: 56 + 15 (Fear & Greed extreme) = 71 final confidence
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ FINAL CHECKLIST (v3.3 - BEFORE SUBMITTING)
+═══════════════════════════════════════════════════════════════════════════════
+
+**REQUIRED FOR EVERY RESPONSE:**
+
+1. ✅ real_time_timestamp included (ISO 8601 format)
+2. ✅ data_sources section with URLs and fetched_at timestamps
+3. ✅ sentiment_analysis section filled with Fear & Greed, social, news, whale alerts
+4. ✅ on_chain_analysis section with Glassnode, CoinGlass, DeFiLlama data
+5. ✅ historical_learning section with all sub-fields filled
+6. ✅ reasoning_vietnamese 100% in Vietnamese (300-500 words)
+7. ✅ key_points, conflicting_signals, warnings all in Vietnamese
+8. ✅ Entry/SL/TP specific and justified
+9. ✅ Confidence calculation explained (technical + historical + sentiment)
+10. ✅ Risk level appropriate for asset type
+11. ✅ Position sizing within recommended ranges
+12. ✅ No major internal contradictions (if reasoning says "bullish" but confidence <50, explain)
+13. ✅ All numeric fields properly typed (not strings where integers expected)
+14. ✅ JSON properly formatted and parseable
+
+**IF ANY REQUIREMENT NOT MET:** 
+- Do not submit incomplete analysis
+- Re-check and complete all required sections
+- Ensure data is current (fetch fresh if needed)
 **📊 EXAMPLES OF CORRECT HISTORICAL INTEGRATION:**
 
 ✅ **EXCELLENT ANALYSIS WITH PREVIOUS ANALYSES REFERENCE:**
